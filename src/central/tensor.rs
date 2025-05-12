@@ -36,13 +36,38 @@ impl Tensor {
     /// # Arugments
     /// * 'shape' - The shape of the allocated tensor
     pub fn new(shape: Shape) -> Tensor {
-        let id = get_equation().allocate_tensor(shape);
+        let id = get_equation().allocate_zero_tensor(shape);
         Tensor {
             id,
             shape
         }
     }
 
+    /// Allocates a new tensor with provided shape, all with 0s
+    /// # Arugments
+    /// * 'shape' - The shape of the allocated tensor
+    pub fn zeros(shape: Shape) -> Tensor {
+        let id = get_equation().allocate_zero_tensor(shape);
+        Tensor {
+            id,
+            shape
+        }
+    }
+
+    /// Allocates a new tensor with provided shape, where each element is element
+    /// # Arugments
+    /// * 'shape' - The shape of the allocated tensor
+    /// * 'element' - The value that will be set for each element
+    pub fn element(shape: Shape, element: f32) -> Tensor {
+        let id = get_equation().allocate_from_element(shape, element);
+        Tensor {
+            id,
+            shape
+        }
+    }
+
+
+    /// Returns the underlaying tensor as an Array
     pub fn item(&self) -> ArrayD<f32> {
         return get_equation().get_item(self.id);
     }
@@ -68,4 +93,21 @@ mod tests {
         }
     }
 
+    #[test]
+    pub fn zeroes_test() {
+        let tensor = Tensor::zeros(Shape::new(vec![1, 2, 3]));
+        let item = tensor.item();
+        for datum in item {
+            assert!(datum == 0.0);
+        }
+    }
+
+    #[test]
+    pub fn element_test() {
+        let tensor = Tensor::element(Shape::new(vec![1, 2, 3]), 42.0);
+        let item = tensor.item();
+        for datum in item {
+            assert!(datum == 42.0);
+        }
+    }
 }

@@ -29,13 +29,13 @@ impl Equation {
     /// Allocates a tensor, and returns the ID of it, so it can be looked up later
     /// # Arguments
     /// * 'shape' - the shape of the tensor. shape.total_size * 2 memory will be allocated(data and grad)
-    pub fn allocate_tensor(&mut self, shape: Shape) -> TensorID {
+    /// * 'data' - the data that backs the tensor. It is a flat buffer for simplicty of storagee
+    pub fn allocate_tensor(&mut self, shape: Shape, data: Vec<f32>) -> TensorID {
 
         let id = self.allocate_tensor_id();
         let total_size = shape.total_size();
 
         // Allocate our data
-        let data = vec![0.0;total_size];
         let grad = vec![0.0;total_size];
         let data_start = self.data.len();
         let grad_stat = self.grad.len();
@@ -51,6 +51,23 @@ impl Equation {
         return id;
     }
 
+    /// Allocates a tensor, and returns the ID of it, so it can be looked up later, is all zeroes
+    /// # Arguments
+    /// * 'shape' - the shape of the tensor. shape.total_size * 2 memory will be allocated(data and grad)
+    pub fn allocate_zero_tensor(&mut self, shape: Shape) -> TensorID {
+        let zero = vec![0.0;shape.total_size()];
+        return self.allocate_tensor(shape, zero);
+    }
+
+    /// Allocates a tensor, and returns the ID of it, so it can be looked up later, will be filled with element
+    /// # Arguments
+    /// * 'shape' - the shape of the tensor. shape.total_size * 2 memory will be allocated(data and grad)
+    /// * 'element' - the value that will be filled in all positions
+    pub fn allocate_from_element(&mut self, shape: Shape, element: f32) -> TensorID {
+        let data = vec![element; shape.total_size()];
+        return self.allocate_tensor(shape, data);
+    }
+
     /// Allocated a tensor id, this is unique id for each tensor, used to look in up later
     fn allocate_tensor_id(&mut self) -> TensorID {
         self.tensor_count += 1;
@@ -59,10 +76,13 @@ impl Equation {
         };
     }
 
+    /// Returns the underlaying data of a tensor, as an array
+    /// # Arugments
+    /// 'id' - Id for lookup of the tensor
     pub fn get_item(&self, id: TensorID) -> ArrayD<f32>{
         let internal_tensor = self.tensor_record.get(&id).unwrap();
         let shape = internal_tensor.shape;
-        let data = &self.data[internal_tensor.data_start_index..shape.total_size()];
+        let data = &self.data[internal_tensor.data_start_index..(internal_tensor.data_start_index + shape.total_size())];
         let array = ArrayD::from_shape_vec(shape.as_ndarray_shape(), data.to_vec()).unwrap();
         return array;
     }
