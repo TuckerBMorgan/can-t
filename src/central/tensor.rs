@@ -1,5 +1,7 @@
 
-use super::{get_equation, shape, Shape};
+use ndarray::ArrayD;
+
+use super::{equation, get_equation, shape, Shape};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TensorID {
@@ -7,10 +9,10 @@ pub struct TensorID {
 }
 
 pub struct InternalTensor {
-    id: TensorID, // the unique id for this tensor, it is used by the equation to look up the data
-    shape: Shape, // the shape this tensor has
-    data_start_index: usize, // where the equation.data this tensors data starts
-    grad_start_index: usize // where in equation.grad this tensors grad starts
+    pub id: TensorID, // the unique id for this tensor, it is used by the equation to look up the data
+    pub shape: Shape, // the shape this tensor has
+    pub data_start_index: usize, // where the equation.data this tensors data starts
+    pub grad_start_index: usize // where in equation.grad this tensors grad starts
 }
 
 impl InternalTensor {
@@ -40,15 +42,30 @@ impl Tensor {
             shape
         }
     }
+
+    pub fn item(&self) -> ArrayD<f32> {
+        return get_equation().get_item(self.id);
+    }
+    
 }
 
 #[cfg(test)]
 mod tests {
     use crate::central::Shape;
-
     use super::Tensor;
+
     #[test]
     pub fn allocate_test() {
-        let tensor = Tensor::new(Shape::new(vec![1, 2, 3]));
+        let tensor = Tensor::new(Shape::new(vec![1, 2, 3]));        
     }
+
+    #[test]
+    pub fn allocate_and_data_test() {
+        let tensor = Tensor::new(Shape::new(vec![1, 2, 3]));
+        let item = tensor.item();
+        for datum in item {
+            assert!(datum == 0.0);
+        }
+    }
+
 }

@@ -97,7 +97,7 @@ impl Shape {
     /// * 'other' - the other shape provided to check against
     pub fn can_matmul(&self, other: Shape) -> bool {
         if self.number_of_dimension() > 2 || other.number_of_dimension() > 2{
-            panic!("Uncovered branch")
+            assert!(false == true, "assertion failed")
         }
 
         let last_dimension = self.dimensions()[self.dimensions().len() - 1];
@@ -278,9 +278,7 @@ impl Shape {
     /// # Arguments
     /// * 'other' - The shape we are testing against
     pub fn broadcast_shape(&self, other: Shape) -> Shape {
-        if self.can_broadcast(other) == false {
-            panic!("Cannot broadcast {:?} {:?}", self, other);
-        }
+        assert!(self.can_broadcast(other), "Cannot broadcast {:?} {:?}", self, other);
         let self_dimensions = self.dimensions();
         let other_dimensions = other.dimensions();
 
@@ -311,6 +309,15 @@ impl Shape {
 
         dimension_in_reverse.reverse();
         return Shape::new(dimension_in_reverse);
+    }
+
+    /// Returns the cant lib shape type in the right format to passed to an ndarray ArrayD
+    pub fn as_ndarray_shape(&self) -> Vec<usize> {
+        let mut shape = Vec::new();
+        for i in 0..self.in_use_dimension {
+            shape.push(self.dimension[i]);
+        }
+        shape
     }
 
 }
@@ -433,6 +440,15 @@ mod tests {
         assert!(dimensions[1] == 15);
         assert!(dimensions[2] == 5);
         assert!(dimensions[3] == 7);
+
+        let a = Shape::new(vec![1, 5, 6]);
+        let b = Shape::new(vec![15, 6, 7]);
+        let new_shape = a.matmul_shape(b);
+        let dimensions = new_shape.dimensions();
+
+        assert!(dimensions[0] == 15);
+        assert!(dimensions[1] == 5);
+        assert!(dimensions[2] == 7);
     }
 
     #[test]
@@ -471,4 +487,74 @@ mod tests {
         assert!(shape_a.can_matmul(shape_b) == false);
     }
 
+    #[test]
+    #[should_panic(expected = "assertion failed")]
+    pub fn bad_shape_test() {
+        let _shape = Shape::new(vec![]);
+    }
+
+    #[test]
+    #[should_panic(expected = "assertion failed")]
+    pub fn bad_shape_test_remove_at_zero() {
+        let shape = Shape::new(vec![1]);
+        let _new_shape = shape.remove_index(0);
+    }
+
+    #[test]
+    #[should_panic(expected = "assertion failed")]
+    pub fn bad_can_matmul() {
+        let a = Shape::new(vec![10, 1, 5, 6]);
+        let b = Shape::new(vec![1, 15, 6, 7]);
+        a.can_matmul(b);
+    }
+
+    #[test]
+    pub fn simple_matmul_test_1x1() {
+        let a = Shape::new(vec![6]);
+        let b = Shape::new(vec![6]);
+        let matmul_shape = a.matmul_shape(b);
+        assert!(matmul_shape.dimensions()[0] == 1);
+    }
+
+    #[test]
+    pub fn simple_matmul_test_1x2() {
+        let a = Shape::new(vec![6]);
+        let b = Shape::new(vec![6, 1]);
+        let matmul_shape = a.matmul_shape(b);
+        assert!(matmul_shape.dimensions()[0] == 1);
+    }
+
+    #[test]
+    pub fn simple_matmul_test_2x1() {
+        let a = Shape::new(vec![1, 6]);
+        let b = Shape::new(vec![6]);
+        let matmul_shape = a.matmul_shape(b);
+        assert!(matmul_shape.dimensions()[0] == 1);
+    }
+
+    #[test]
+    pub fn bad_broadacst_test() {
+        let a = Shape::new(vec![4, 6]);
+        let b = Shape::new(vec![5, 6]);
+        assert!(a.can_broadcast(b) == false);
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot broadcast Shape")]
+    pub fn bad_broadacst_shape_test() {
+        let a = Shape::new(vec![4, 6]);
+        let b = Shape::new(vec![5, 6]);
+        a.broadcast_shape(b);
+    }
+
+
+    /* 
+    #[test]
+    pub fn simple_matmul_test_3x1() {
+        let a = Shape::new(vec![1, 2, 6]);
+        let b = Shape::new(vec![6]);
+        let matmul_shape = a.matmul_shape(b);
+        assert!(matmul_shape.dimensions()[0] == 1);
+    }
+    */
 }

@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use ndarray::ArrayD;
+
 use super::{shape::*, InternalTensor, TensorID};
 
 
@@ -55,5 +57,13 @@ impl Equation {
         return TensorID {
             id: self.tensor_count
         };
+    }
+
+    pub fn get_item(&self, id: TensorID) -> ArrayD<f32>{
+        let internal_tensor = self.tensor_record.get(&id).unwrap();
+        let shape = internal_tensor.shape;
+        let data = &self.data[internal_tensor.data_start_index..shape.total_size()];
+        let array = ArrayD::from_shape_vec(shape.as_ndarray_shape(), data.to_vec()).unwrap();
+        return array;
     }
 }
