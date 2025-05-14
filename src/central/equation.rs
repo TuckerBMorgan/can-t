@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use ndarray::ArrayD;
-
+use rand_distr::{Distribution, Normal};
 use super::{shape::*, InternalTensor, TensorID};
 
 
@@ -65,6 +65,15 @@ impl Equation {
     /// * 'element' - the value that will be filled in all positions
     pub fn allocate_from_element(&mut self, shape: Shape, element: f32) -> TensorID {
         let data = vec![element; shape.total_size()];
+        return self.allocate_tensor(shape, data);
+    }
+
+    pub fn allocate_random_tesnor(&mut self, shape: Shape) -> TensorID{
+        let mut rng = rand::thread_rng();
+        let normal = Normal::new(0.0, 0.01).unwrap();
+        let data: Vec<f32> = (0..shape.total_size())
+            .map(|_| normal.sample(&mut rng))
+            .collect();
         return self.allocate_tensor(shape, data);
     }
 

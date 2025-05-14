@@ -6,6 +6,8 @@ edition = "2024"
 [dependencies]
 lazy_static = "1.4.0"
 ndarray = { version =  "0.15.6", features = ["rayon"]}
+rand = "0.8.5"
+rand_distr = "0.4.3"
 
 [workspace]
 members = [

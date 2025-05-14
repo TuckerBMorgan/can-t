@@ -25,6 +25,4 @@ pub fn get_equation() -> MutexGuard<'static, Equation> {
             }
         }
     }
-
-
 }

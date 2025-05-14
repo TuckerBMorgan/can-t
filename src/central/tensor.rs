@@ -66,7 +66,17 @@ impl Tensor {
         }
     }
 
-
+    /// Allocates a random tensor of provided shape
+    /// # Arugments
+    /// *'shape' - The shape of the random tensor
+    pub fn randn(shape: Shape) -> Tensor {
+        let id = get_equation().allocate_random_tesnor(shape);
+        Tensor {
+            id,
+            shape
+        }
+    }
+    
     /// Returns the underlaying tensor as an Array
     pub fn item(&self) -> ArrayD<f32> {
         return get_equation().get_item(self.id);
@@ -109,5 +119,10 @@ mod tests {
         for datum in item {
             assert!(datum == 42.0);
         }
+    }
+
+    #[test]
+    pub fn randn_test() {
+        let tensor = Tensor::randn(Shape::new(vec![1, 2, 3]));
     }
 }
