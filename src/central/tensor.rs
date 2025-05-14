@@ -1,9 +1,9 @@
 
 use ndarray::ArrayD;
 
-use super::{equation, get_equation, shape, Shape};
+use super::{get_equation, Shape, Operation};
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TensorID {
     pub id: usize
 }
@@ -12,7 +12,7 @@ pub struct InternalTensor {
     pub id: TensorID, // the unique id for this tensor, it is used by the equation to look up the data
     pub shape: Shape, // the shape this tensor has
     pub data_start_index: usize, // where the equation.data this tensors data starts
-    pub grad_start_index: usize // where in equation.grad this tensors grad starts
+    pub grad_start_index: usize, // where in equation.grad this tensors grad starts
 }
 
 impl InternalTensor {
@@ -28,7 +28,8 @@ impl InternalTensor {
 
 pub struct Tensor {
     id: TensorID, // The unique id for this tensor, ties it to the InternalTensor that can be used to look up the data
-    shape: Shape // The shape of the tensor
+    shape: Shape, // The shape of the tensor
+    opeartion: Operation
 }
 
 impl Tensor {
@@ -39,7 +40,8 @@ impl Tensor {
         let id = get_equation().allocate_zero_tensor(shape);
         Tensor {
             id,
-            shape
+            shape,
+            opeartion: Operation::Nop
         }
     }
 
@@ -50,7 +52,8 @@ impl Tensor {
         let id = get_equation().allocate_zero_tensor(shape);
         Tensor {
             id,
-            shape
+            shape,
+            opeartion: Operation::Nop
         }
     }
 
@@ -62,7 +65,8 @@ impl Tensor {
         let id = get_equation().allocate_from_element(shape, element);
         Tensor {
             id,
-            shape
+            shape,
+            opeartion: Operation::Nop
         }
     }
 
@@ -73,7 +77,8 @@ impl Tensor {
         let id = get_equation().allocate_random_tesnor(shape);
         Tensor {
             id,
-            shape
+            shape,
+            opeartion: Operation::Nop
         }
     }
     

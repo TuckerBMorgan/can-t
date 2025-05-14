@@ -4,14 +4,12 @@ use ndarray::ArrayD;
 use rand_distr::{Distribution, Normal};
 use super::{shape::*, InternalTensor, TensorID};
 
-
-
 pub struct Equation {
     data: Vec<f32>, // All of the data in all of the tensors, kept in one place
     grad: Vec<f32>, // All of the grads for all of the tensors, kept in one place
     tensor_count: usize, // the number of tensors we have allocated, used for tensor ids
-    tensor_record: HashMap<TensorID, InternalTensor> // A lookup table from the tensor id to a internal tensor \
-        // (which has the information needed to find tensors in data and grad)
+    tensor_record: HashMap<TensorID, InternalTensor>, // A lookup table from the tensor id to a internal tensor \
+        // (which has the information needed to find tensors in data and grad),
 }
 
 impl Equation {

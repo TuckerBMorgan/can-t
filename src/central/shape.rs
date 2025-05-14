@@ -165,14 +165,13 @@ impl Shape {
         let right_hand_working_shape = {
             if other.number_of_dimension() == 4 || other.number_of_dimension() == 3 {
                 let return_shape = other.clone();
-                if self.number_of_dimension() == 3 {
+                if other.number_of_dimension() == 3 {
                     return_shape.remove_index(0)
                 }
                 else {
                     return_shape.remove_index(0).remove_index(0)
                 }
             }
-
             else {
                 if other.number_of_dimension() == 2 {
                     other.clone()
@@ -200,8 +199,8 @@ impl Shape {
         let mut left_side_batch_dimension = vec![];
         let mut right_side_batch_dimension = vec![];
 
-        let number_of_left_side_batch_dimension = self.number_of_dimension() - 2;
-        let number_of_right_side_batch_dimension = other.number_of_dimension() - 2;
+        let number_of_left_side_batch_dimension = self.number_of_dimension().saturating_sub(2);
+        let number_of_right_side_batch_dimension = other.number_of_dimension().saturating_sub(2);
 
         if number_of_left_side_batch_dimension == 0 {
             for i in 0..number_of_right_side_batch_dimension {
@@ -547,14 +546,43 @@ mod tests {
         a.broadcast_shape(b);
     }
 
-
-    /* 
     #[test]
     pub fn simple_matmul_test_3x1() {
         let a = Shape::new(vec![1, 2, 6]);
         let b = Shape::new(vec![6]);
         let matmul_shape = a.matmul_shape(b);
         assert!(matmul_shape.dimensions()[0] == 1);
+        assert!(matmul_shape.dimensions()[1] == 2);
     }
-    */
+
+    #[test]
+    pub fn simple_matmul_test_1x3() {
+        let a = Shape::new(vec![2]);
+        let b = Shape::new(vec![1, 2, 6]);
+        let matmul_shape = a.matmul_shape(b);
+        assert!(matmul_shape.dimensions()[0] == 1);
+        assert!(matmul_shape.dimensions()[1] == 6);
+    }
+
+    #[test]
+    pub fn simple_matmul_test_2x3() {
+        let a = Shape::new(vec![6, 2]);
+        let b = Shape::new(vec![1, 2, 6]);
+        let matmul_shape = a.matmul_shape(b);
+        assert!(matmul_shape.dimensions()[0] == 1);
+        assert!(matmul_shape.dimensions()[1] == 6);
+        assert!(matmul_shape.dimensions()[2] == 6);
+    }
+
+    #[test]
+    pub fn simple_matmul_test_4x3() {
+        let a = Shape::new(vec![15 ,15, 6, 2]);
+        let b = Shape::new(vec![1, 2, 6]);
+        let matmul_shape = a.matmul_shape(b);
+        assert!(matmul_shape.dimensions()[0] == 15);
+        assert!(matmul_shape.dimensions()[1] == 15);
+        assert!(matmul_shape.dimensions()[2] == 6);
+        assert!(matmul_shape.dimensions()[3] == 6);
+    }
+
 }
