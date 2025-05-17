@@ -27,9 +27,9 @@ impl InternalTensor {
 }
 
 pub struct Tensor {
-    id: TensorID, // The unique id for this tensor, ties it to the InternalTensor that can be used to look up the data
-    shape: Shape, // The shape of the tensor
-    opeartion: Operation
+    pub id: TensorID, // The unique id for this tensor, ties it to the InternalTensor that can be used to look up the data
+    pub shape: Shape, // The shape of the tensor
+    opeartion: Operation // The operation that created this Tensor(Nop for basic allocations)
 }
 
 impl Tensor {
@@ -79,6 +79,14 @@ impl Tensor {
             id,
             shape,
             opeartion: Operation::Nop
+        }
+    }
+
+    pub fn create_tensor_from_id_and_shape_and_operation(shape: Shape, tensor_id: TensorID, operation: Operation) -> Tensor {
+        return Tensor {
+            id: tensor_id,
+            shape,
+            opeartion: operation
         }
     }
     

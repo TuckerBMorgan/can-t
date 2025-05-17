@@ -4,6 +4,16 @@ use ndarray::ArrayD;
 use rand_distr::{Distribution, Normal};
 use super::{shape::*, InternalTensor, TensorID};
 
+use cant_cpu::prelude::*;
+
+macro_rules! extract_tensor_data {
+    ($record:expr, $key:expr, $data:expr) => {{
+        let internal_tensor = $record.get(&$key).unwrap();
+        let shape = internal_tensor.shape;
+        &$data[internal_tensor.data_start_index..(internal_tensor.data_start_index + shape.total_size())]
+    }};
+}
+
 pub struct Equation {
     data: Vec<f32>, // All of the data in all of the tensors, kept in one place
     grad: Vec<f32>, // All of the grads for all of the tensors, kept in one place
@@ -81,6 +91,25 @@ impl Equation {
         return TensorID {
             id: self.tensor_count
         };
+    }
+
+    /// Takes two tensors as flat buffers, adds them together at an elementwise level and returns the result
+    /// # Arguments
+    /// * 'a' : The first tensor
+    /// * 'b' : the second tensor
+    pub fn add_tensors(&mut self, a: TensorID, b: TensorID) -> TensorID {
+
+        // Get the left side of the add
+        let left_data = extract_tensor_data!(self.tensor_record, a, self.data);
+
+        // Get the the right side of the add
+        let right_data = extract_tensor_data!(self.tensor_record, b, self.data);
+
+        // Preform the operation of the platform vended version of tensor_add 
+        let result_data =  tensor_add(left_data, right_data);
+        let a_shape = self.tensor_record.get(&a).unwrap().shape;
+        let allocate_tensor = self.allocate_tensor(a_shape, result_data);
+        return allocate_tensor;
     }
 
     /// Returns the underlaying data of a tensor, as an array
