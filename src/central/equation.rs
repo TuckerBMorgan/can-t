@@ -98,7 +98,7 @@ impl Equation {
     /// * 'a' : The first tensor
     /// * 'b' : the second tensor
     pub fn add_tensors(&mut self, a: TensorID, b: TensorID) -> TensorID {
-
+        
         // Get the left side of the add
         let left_data = extract_tensor_data!(self.tensor_record, a, self.data);
 

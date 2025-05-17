@@ -1,6 +1,6 @@
 use core::panic;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Shape {
     dimension: [usize;4], // Right to left, the length of up to 4 dimensions, Capping at 4 since that is the most we will encounter
     in_use_dimension: usize // the number of the 4 dimensions that we are using
