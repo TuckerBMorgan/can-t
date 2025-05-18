@@ -4,6 +4,4 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-
-[target.'cfg(macos)'.dependencies]
 metal = "0.30.0"

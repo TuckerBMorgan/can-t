@@ -4,7 +4,8 @@ use ndarray::ArrayD;
 use rand_distr::{Distribution, Normal};
 use super::{shape::*, InternalTensor, TensorID};
 
-use cant_cpu::prelude::*;
+//use cant_cpu::prelude::*;
+use cant_metal::prelude::*;
 
 macro_rules! extract_tensor_data {
     ($record:expr, $key:expr, $data:expr) => {{

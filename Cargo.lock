@@ -31,6 +31,7 @@ name = "cant"
 version = "0.1.0"
 dependencies = [
  "cant_cpu",
+ "cant_metal",
  "lazy_static",
  "ndarray",
  "rand",
