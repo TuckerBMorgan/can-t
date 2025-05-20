@@ -1,6 +1,6 @@
 use core::panic;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Shape {
     dimension: [usize;4], // Right to left, the length of up to 4 dimensions, Capping at 4 since that is the most we will encounter
     in_use_dimension: usize // the number of the 4 dimensions that we are using
@@ -280,10 +280,13 @@ impl Shape {
         assert!(self.can_broadcast(other), "Cannot broadcast {:?} {:?}", self, other);
         let self_dimensions = self.dimensions();
         let other_dimensions = other.dimensions();
-
+        println!("self dimension {:?}", self_dimensions);
+        println!(" other dimension{:?}", other_dimensions);
 
         let lowest_length = usize::min(self_dimensions.len(), other_dimensions.len());
         let mut dimension_in_reverse = vec![];
+        
+        println!("{:?}", lowest_length);
 
         for i in 0..lowest_length {
             let self_index = self_dimensions[self_dimensions.len() - 1 - i];
@@ -294,6 +297,8 @@ impl Shape {
                 dimension_in_reverse.push(usize::max(self_index, other_index));
             }
         }
+
+        println!("{:?}", dimension_in_reverse);
 
         // If they are the same length we are just early return and be done with this
         if self_dimensions.len() == other_dimensions.len() { 

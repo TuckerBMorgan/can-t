@@ -82,9 +82,19 @@ impl Tensor {
         }
     }
 
+    /// Utility function for creating a tensor after an operation
     pub fn create_tensor_from_id_and_shape_and_operation(shape: Shape, tensor_id: TensorID, operation: Operation) -> Tensor {
         return Tensor {
             id: tensor_id,
+            shape,
+            opeartion: operation
+        }
+    }
+
+    pub fn create_tensor_data_and_shape_and_operation(shape: Shape, data: Vec<f32>, operation: Operation) -> Tensor {
+        let id = get_equation().allocate_tensor(shape, data);
+        return Tensor {
+            id,
             shape,
             opeartion: operation
         }
@@ -93,6 +103,27 @@ impl Tensor {
     /// Returns the underlaying tensor as an Array
     pub fn item(&self) -> ArrayD<f32> {
         return get_equation().get_item(self.id);
+    }
+
+    pub fn broadcast(&self, shape: Shape) -> Tensor {
+        // We need to get the shape that we are going to brodcast from
+        // as broadcast shape can be a combination of local shape
+        // and then shape we are brocasting to
+        // EX: 
+        // [1, 4, 3] bc [4, 1, 3] = [4, 3, 3]
+
+        let broad_cast_shape = self.shape.broadcast_shape(shape);
+
+        let data: Vec<f32> = self
+            .item()
+            .broadcast(broad_cast_shape.as_ndarray_shape())            
+            .unwrap()
+            .iter()
+            .map(|x| *x)
+            .collect();
+
+
+        return Tensor::create_tensor_data_and_shape_and_operation(broad_cast_shape, data, Operation::BroadCast(self.id, shape));
     }
     
 }
