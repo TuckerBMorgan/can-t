@@ -1,7 +1,7 @@
 
 use ndarray::ArrayD;
 
-use super::{get_equation, Shape, Operation};
+use super::{get_equation, opeartion, Operation, Shape};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TensorID {
@@ -13,16 +13,37 @@ pub struct InternalTensor {
     pub shape: Shape, // the shape this tensor has
     pub data_start_index: usize, // where the equation.data this tensors data starts
     pub grad_start_index: usize, // where in equation.grad this tensors grad starts
+    pub operation: Operation
 }
 
 impl InternalTensor {
-    pub fn new(id: TensorID, shape: Shape, data_start_index: usize, grad_start_index: usize) -> InternalTensor {
+    pub fn new(id: TensorID, shape: Shape, data_start_index: usize, grad_start_index: usize, operation: Operation) -> InternalTensor {
         InternalTensor {
             id,
             shape,
             data_start_index,
-            grad_start_index
+            grad_start_index,
+            operation
         }
+    }
+    
+    pub fn dependencies(&self) -> Vec<TensorID> {
+        match &self.operation{
+            Operation::Nop => {
+                return vec![];
+            },
+            Operation::Add(left, right) => {
+                return vec![*left, *right];
+            },
+            Operation::BroadCast(from, _shape) => {
+                return vec![*from];
+            }
+        }
+    }
+
+    pub fn backward(&self) {
+        assert!(self.shape.total_size() == 1, "You may only pass back a loss of size 1");
+        
     }
 }
 
@@ -92,7 +113,7 @@ impl Tensor {
     }
 
     pub fn create_tensor_data_and_shape_and_operation(shape: Shape, data: Vec<f32>, operation: Operation) -> Tensor {
-        let id = get_equation().allocate_tensor(shape, data);
+        let id = get_equation().allocate_tensor(shape, data, operation);
         return Tensor {
             id,
             shape,
@@ -113,7 +134,9 @@ impl Tensor {
         // [1, 4, 3] bc [4, 1, 3] = [4, 3, 3]
 
         let broad_cast_shape = self.shape.broadcast_shape(shape);
-
+        
+        // use the ndarry lib to do this, as I am sure I would fuck it up
+        // And I don't know if there is a hardware accerlated way of doing this faster
         let data: Vec<f32> = self
             .item()
             .broadcast(broad_cast_shape.as_ndarray_shape())            

@@ -1,8 +1,10 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
 
 use ndarray::ArrayD;
 use rand_distr::{Distribution, Normal};
-use super::{shape::*, InternalTensor, TensorID};
+use super::{shape::*, InternalTensor, Operation, TensorID};
+
 
 //use cant_cpu::prelude::*;
 use cant_metal::prelude::*;
@@ -39,7 +41,7 @@ impl Equation {
     /// # Arguments
     /// * 'shape' - the shape of the tensor. shape.total_size * 2 memory will be allocated(data and grad)
     /// * 'data' - the data that backs the tensor. It is a flat buffer for simplicty of storagee
-    pub fn allocate_tensor(&mut self, shape: Shape, data: Vec<f32>) -> TensorID {
+    pub fn allocate_tensor(&mut self, shape: Shape, data: Vec<f32>, operation: Operation) -> TensorID {
 
         let id = self.allocate_tensor_id();
         let total_size = shape.total_size();
@@ -50,7 +52,7 @@ impl Equation {
         let grad_stat = self.grad.len();
 
         //Do some record keeping
-        let internal_tensor = InternalTensor::new(id, shape, data_start, grad_stat);
+        let internal_tensor = InternalTensor::new(id, shape, data_start, grad_stat, operation);
         self.tensor_record.insert(id, internal_tensor);
 
         // Extend the vectors by the right length, with 0 init data
@@ -65,7 +67,7 @@ impl Equation {
     /// * 'shape' - the shape of the tensor. shape.total_size * 2 memory will be allocated(data and grad)
     pub fn allocate_zero_tensor(&mut self, shape: Shape) -> TensorID {
         let zero = vec![0.0;shape.total_size()];
-        return self.allocate_tensor(shape, zero);
+        return self.allocate_tensor(shape, zero, Operation::Nop);
     }
 
     /// Allocates a tensor, and returns the ID of it, so it can be looked up later, will be filled with element
@@ -74,7 +76,7 @@ impl Equation {
     /// * 'element' - the value that will be filled in all positions
     pub fn allocate_from_element(&mut self, shape: Shape, element: f32) -> TensorID {
         let data = vec![element; shape.total_size()];
-        return self.allocate_tensor(shape, data);
+        return self.allocate_tensor(shape, data, Operation::Nop);
     }
 
     pub fn allocate_random_tesnor(&mut self, shape: Shape) -> TensorID{
@@ -83,7 +85,7 @@ impl Equation {
         let data: Vec<f32> = (0..shape.total_size())
             .map(|_| normal.sample(&mut rng))
             .collect();
-        return self.allocate_tensor(shape, data);
+        return self.allocate_tensor(shape, data, Operation::Nop);
     }
 
     /// Allocated a tensor id, this is unique id for each tensor, used to look in up later
@@ -109,7 +111,7 @@ impl Equation {
         // Preform the operation of the platform vended version of tensor_add 
         let result_data =  tensor_add(left_data, right_data);
         let a_shape = self.tensor_record.get(&a).unwrap().shape;
-        let allocate_tensor = self.allocate_tensor(a_shape, result_data);
+        let allocate_tensor = self.allocate_tensor(a_shape, result_data, Operation::Add(a, b));
         return allocate_tensor;
     }
 
@@ -122,5 +124,29 @@ impl Equation {
         let data = &self.data[internal_tensor.data_start_index..(internal_tensor.data_start_index + shape.total_size())];
         let array = ArrayD::from_shape_vec(shape.as_ndarray_shape(), data.to_vec()).unwrap();
         return array;
+    }
+
+    fn topological_sort_util(
+        &self,
+        node: TensorID,
+        visited: &mut HashSet<TensorID>,
+        stack: &mut Vec<TensorID>,
+    ) {
+        visited.insert(node);
+
+        // Assuming 'dependencies' method returns all the nodes that the current node depends on
+        if let Some(dependencies) = self
+            .tensor_record
+            .get(&node)
+            .map(|n| n.dependencies())
+        {
+            for dep in dependencies {
+                if !visited.contains(&dep) {
+                    self.topological_sort_util(dep, visited, stack);
+                }
+            }
+        }
+
+        stack.push(node);
     }
 }
