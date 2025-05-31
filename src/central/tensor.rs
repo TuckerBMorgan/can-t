@@ -1,19 +1,20 @@
 
 use ndarray::ArrayD;
 
-use super::{get_equation, opeartion, Operation, Shape};
+use super::{get_equation, operation, Operation, Shape};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TensorID {
     pub id: usize
 }
 
+/// A internal record keeping version of a Tensor, holds the pointers to the data and grad of the array
 pub struct InternalTensor {
     pub id: TensorID, // the unique id for this tensor, it is used by the equation to look up the data
     pub shape: Shape, // the shape this tensor has
     pub data_start_index: usize, // where the equation.data this tensors data starts
     pub grad_start_index: usize, // where in equation.grad this tensors grad starts
-    pub operation: Operation
+    pub operation: Operation // Ther operation that created this tensor, Nop for an allocation
 }
 
 impl InternalTensor {
@@ -27,6 +28,7 @@ impl InternalTensor {
         }
     }
     
+    /// Returns which Tensors created this operation
     pub fn dependencies(&self) -> Vec<TensorID> {
         match &self.operation{
             Operation::Nop => {
@@ -37,20 +39,22 @@ impl InternalTensor {
             },
             Operation::BroadCast(from, _shape) => {
                 return vec![*from];
+            },
+            Operation::Mul(left, right, ) => {
+                return vec![*left, *right];
+            },
+            Operation::Sum(from, _, _) => {
+                return vec![*from];
             }
         }
     }
-
-    pub fn backward(&self) {
-        assert!(self.shape.total_size() == 1, "You may only pass back a loss of size 1");
-        
-    }
 }
 
+#[derive(Clone, Copy)]
 pub struct Tensor {
     pub id: TensorID, // The unique id for this tensor, ties it to the InternalTensor that can be used to look up the data
     pub shape: Shape, // The shape of the tensor
-    opeartion: Operation // The operation that created this Tensor(Nop for basic allocations)
+    operation: Operation // The operation that created this Tensor(Nop for basic allocations)
 }
 
 impl Tensor {
@@ -62,7 +66,7 @@ impl Tensor {
         Tensor {
             id,
             shape,
-            opeartion: Operation::Nop
+            operation: Operation::Nop
         }
     }
 
@@ -74,7 +78,7 @@ impl Tensor {
         Tensor {
             id,
             shape,
-            opeartion: Operation::Nop
+            operation: Operation::Nop
         }
     }
 
@@ -87,7 +91,7 @@ impl Tensor {
         Tensor {
             id,
             shape,
-            opeartion: Operation::Nop
+            operation: Operation::Nop
         }
     }
 
@@ -99,7 +103,7 @@ impl Tensor {
         Tensor {
             id,
             shape,
-            opeartion: Operation::Nop
+            operation: Operation::Nop
         }
     }
 
@@ -108,16 +112,22 @@ impl Tensor {
         return Tensor {
             id: tensor_id,
             shape,
-            opeartion: operation
+            operation: operation
         }
     }
 
+    /// Utility function for create a tensor with data, shape and operation
+    /// # Arugments
+    /// 'shape' - the shape of the tensor
+    /// 'data' - the data
     pub fn create_tensor_data_and_shape_and_operation(shape: Shape, data: Vec<f32>, operation: Operation) -> Tensor {
+        assert!(shape.total_size() == data.len(), "You cannot create a tensor with a shape of different size then data : shape size {} data length {}", shape.total_size(), data.len());
         let id = get_equation().allocate_tensor(shape, data, operation);
+
         return Tensor {
             id,
             shape,
-            opeartion: operation
+            operation: operation
         }
     }
     
@@ -126,12 +136,21 @@ impl Tensor {
         return get_equation().get_item(self.id);
     }
 
+    /// returns the underlaying grad of this tensor as an Array
+    pub fn grad(&self) -> ArrayD<f32> {
+        return get_equation().get_grad(self.id);
+    }
+
+    /// Broadcasts two tensors togethers to form a new broadcast shape
+    /// # Aruguments
+    /// 'shape' - The shape we want to broadcast to
     pub fn broadcast(&self, shape: Shape) -> Tensor {
         // We need to get the shape that we are going to brodcast from
         // as broadcast shape can be a combination of local shape
         // and then shape we are brocasting to
         // EX: 
         // [1, 4, 3] bc [4, 1, 3] = [4, 3, 3]
+        assert!(shape.can_broadcast(self.shape));
 
         let broad_cast_shape = self.shape.broadcast_shape(shape);
         
@@ -148,7 +167,12 @@ impl Tensor {
 
         return Tensor::create_tensor_data_and_shape_and_operation(broad_cast_shape, data, Operation::BroadCast(self.id, shape));
     }
-    
+
+    /// sends this node backwards though the network, adding to the grad of every node that feeds into this one
+    pub fn backward(&self) {
+        assert!(self.shape.total_size() == 1, "You may only pass back a loss of size 1");
+        get_equation().backward(self.id);
+    }
 }
 
 #[cfg(test)]

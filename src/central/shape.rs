@@ -75,6 +75,28 @@ impl Shape {
         return Shape::new(new_dimension);
     }
 
+    /// Returns a new shape with the dimensions changed to a new ones
+    /// 
+    /// # Arguments
+    /// *'index' - the 0base index we will be swapping
+    /// *'new_dimension' the new dimension will be putting in there
+    pub fn swap_index(&self, index: usize, dimension: usize) -> Shape {
+        assert!(index < self.in_use_dimension);
+
+        let mut new_dimension = vec![];
+        for i in 0..self.in_use_dimension {
+            // Skip the dimension provided
+            if i != index {
+                new_dimension.push(self.dimension[i]);
+            }
+            else if i == index {
+                new_dimension.push(dimension);
+            }
+        }
+
+        return Shape::new(new_dimension);
+    }
+
     /// Returns a new shape with the provided dimension added at the provided index
     /// # Arguments
     /// * 'dimension' - the dimension to be inserted
@@ -326,7 +348,7 @@ impl Shape {
 
 }
 
-#[cfg(test)]   
+#[cfg(test)]
 mod tests {
     use super::Shape;
 
