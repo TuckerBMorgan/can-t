@@ -77,6 +77,10 @@ impl Tensor {
         }
     }
 
+    // Loads a tensor from a GGUF file
+    // # Arugments
+    // * 'tensor_name' - The name of the tensor in the file
+    // * 'gguf_file' - the data struct that wraps the file we will be loading
     pub fn from_gguf_file(tensor_name: String, gguf_file: &mut GGUFFile) -> Tensor {
         //    let id = get_equation().allocate_zero_tensor(shape);
         let data = gguf_file.get_weight_for_tensor(tensor_name.clone());

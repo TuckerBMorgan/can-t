@@ -83,6 +83,11 @@ mod tests {
     fn approx_equal(a: f32, b: f32, epsilon: f32) -> bool {
         (a - b).abs() <= epsilon
     }
+
+    fn compare_vectors(a: Vec<f32>, b: Vec<f32>) {
+
+    }
+
     #[test]
     pub fn basic_sum_test() {
         let mut gguf_file = GGUFFile::new(String::from(
@@ -131,6 +136,56 @@ mod tests {
         let binded = cant_result.iter().zip(pytorch_result);
         for (a, b) in binded {
             assert!(approx_equal(*a, b, 1e-6));
+        }
+    }
+
+    #[test]
+    pub fn sum_backward_test_container_test() {
+        let epsilon = 1e-6;
+        let mut gguf_file = GGUFFile::new(String::from(
+            "./models/tests/sum/sum_backward_test_container.gguf",
+        ));
+        let tensor_a = Tensor::from_gguf_file("sum_backward_test_container_tensor_a".to_string(), &mut gguf_file);
+        let tensor_b = Tensor::from_gguf_file("sum_backward_test_container_tensor_b".to_string(), &mut gguf_file);
+        let tensor_a_grad_real = Tensor::from_gguf_file("sum_backward_test_container_tensor_a_grad".to_string(), &mut gguf_file);
+        let tensor_b_grad_real = Tensor::from_gguf_file("sum_backward_test_container_tensor_b_grad".to_string(), &mut gguf_file);
+        let multiplied_real = Tensor::from_gguf_file("sum_backward_test_container_tensor_multiplied".to_string(), &mut gguf_file);
+        let multiplied_real_grad = Tensor::from_gguf_file("sum_backward_test_container_tensor_multiplied_grad".to_string(), &mut gguf_file);
+        let summed_real = Tensor::from_gguf_file("sum_backward_test_container_tensor_summed".to_string(), &mut gguf_file);
+
+        let multiplied = tensor_a * tensor_b;
+        let multiplied_item = multiplied.item();
+        let together = multiplied_item.iter().zip(multiplied_real.item());
+        for (a, b) in together {
+            assert!(approx_equal(*a, b, epsilon));
+        }
+
+        let summed = multiplied.sum(vec![1, 2, 3], false);
+        let summed_item = summed.item();
+        let together = summed_item.iter().zip(summed_real.item());
+        for (a, b) in together {
+            assert!(approx_equal(*a,b, epsilon));
+        }
+
+        summed.backward();
+
+        let multiplied_grad = multiplied.grad();
+        let together = multiplied_grad.iter().zip(multiplied_real_grad.item());
+        for (a, b) in together {
+            assert!(approx_equal(*a, b, epsilon))
+        }
+
+        
+        let tensor_a_grad = tensor_a.grad();
+        let together = tensor_a_grad.iter().zip(tensor_a_grad_real.item());
+        for (a, b) in together {
+            assert!(approx_equal(*a, b, epsilon));
+        }
+
+        let tensor_b_grad = tensor_b.grad();
+        let together = tensor_b_grad.iter().zip(tensor_b_grad_real.item());
+        for (a, b) in together {
+            assert!(approx_equal(*a, b, epsilon));
         }
     }
 }
