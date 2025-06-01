@@ -1,13 +1,14 @@
-
-use std::{ops::{Add, Sub}, ptr::eq};
-use  crate::central::*;
+use crate::central::*;
+use std::{
+    ops::{Add, Sub},
+    ptr::eq,
+};
 
 use super::get_equation;
 
 impl Add for Tensor {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
-
         // We want to make sure that the two operands can be added on a elementwise way
         // so we try to broadcast them together if they do not equal each other
         let mut working_rhs = rhs;
@@ -22,29 +23,40 @@ impl Add for Tensor {
                 working_lfs = working_rhs.broadcast(working_lfs.shape);
             }
         }
-        
+
         assert!(working_lfs.shape == working_rhs.shape);
 
         // We vend out the actual work to the equation, which in turn uses libs that take advantage of platform libs to speed it up
         let data = get_equation().add_tensors(working_lfs.id, working_rhs.id);
-        let return_tensor = Tensor::create_tensor_data_and_shape_and_operation(working_lfs.shape, data, Operation::Add(working_lfs.id, working_rhs.id));
+        let return_tensor = Tensor::create_tensor_data_and_shape_and_operation(
+            working_lfs.shape,
+            data,
+            Operation::Add(working_lfs.id, working_rhs.id),
+        );
         return return_tensor;
-   }
+    }
 }
 
 pub fn backward_for_add(backprop_backet: BackproagationPacket) {
     if let Operation::Add(left_hand_side, right_hand_side) = backprop_backet.operation {
         // for the add operation, the gradient is simply the incoming gradient for both the left and right right operand
-        let grad = backprop_backet.equation.get_grad_flat_buffer(backprop_backet.incoming_grad).to_owned();
-        backprop_backet.equation.add_tensor_grad(right_hand_side, grad.to_vec());
-        backprop_backet.equation.add_tensor_grad(left_hand_side, grad.to_vec());
+        let grad = backprop_backet
+            .equation
+            .get_grad_flat_buffer(backprop_backet.incoming_grad)
+            .to_owned();
+        backprop_backet
+            .equation
+            .add_tensor_grad(right_hand_side, grad.to_vec());
+        backprop_backet
+            .equation
+            .add_tensor_grad(left_hand_side, grad.to_vec());
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::central::Tensor;
     use crate::central::Shape;
+    use crate::central::Tensor;
 
     #[test]
     pub fn basic_add_test() {
@@ -94,7 +106,11 @@ mod test {
         let b = Tensor::element(Shape::new(vec![3, 10]), 5.0);
         let c = a + b;
         let c_item = c.item();
-        assert!(c_item.len() == 30, "length of final array {:?}", c_item.len());
+        assert!(
+            c_item.len() == 30,
+            "length of final array {:?}",
+            c_item.len()
+        );
         for i in c_item {
             assert!(i == 10.0);
         }
@@ -103,7 +119,7 @@ mod test {
     #[test]
     #[should_panic(expected = "assertion failed")]
     pub fn do_not_add_tensors_of_different_size_but_same_length() {
-        // The two tensors have different shapes, but whos length will be the same by the time 
+        // The two tensors have different shapes, but whos length will be the same by the time
         // we get to the bare metal add, so we need to make sure other things catch this case
         let a = Tensor::element(Shape::new(vec![5, 6, 3, 10]), 5.0);
         let b = Tensor::element(Shape::new(vec![5, 3, 6, 10]), 5.0);
@@ -124,7 +140,7 @@ mod test {
         let a = Tensor::element(Shape::new(vec![1]), 5.0);
         let b = Tensor::element(Shape::new(vec![1]), 10.0);
         let c = b + a;
-        let d= Tensor::element(Shape::new(vec![1]), 20.9);
+        let d = Tensor::element(Shape::new(vec![1]), 20.9);
         let e = c + d;
         e.backward();
         assert!(a.grad()[0] == 1.0);
@@ -134,8 +150,8 @@ mod test {
         assert!(e.grad()[0] == 1.0);
     }
 
-    /* 
-    //TODO: undo this comment once we have operations for reducing multidimension arrays to 
+    /*
+    //TODO: undo this comment once we have operations for reducing multidimension arrays to
     // single values
     #[test]
     pub fn multiple_2d_add_backprop_test() {
@@ -164,5 +180,4 @@ mod test {
         }
     }
     */
-
 }

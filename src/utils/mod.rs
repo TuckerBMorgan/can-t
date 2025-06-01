@@ -1,4 +1,4 @@
-mod timing;
 mod gguf;
-pub use timing::*;
+mod timing;
 pub use gguf::*;
+pub use timing::*;

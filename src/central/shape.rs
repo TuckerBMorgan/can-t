@@ -2,8 +2,8 @@ use core::panic;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Shape {
-    dimension: [usize;4], // Right to left, the length of up to 4 dimensions, Capping at 4 since that is the most we will encounter
-    in_use_dimension: usize // the number of the 4 dimensions that we are using
+    dimension: [usize; 4], // Right to left, the length of up to 4 dimensions, Capping at 4 since that is the most we will encounter
+    in_use_dimension: usize, // the number of the 4 dimensions that we are using
 }
 
 impl Shape {
@@ -25,11 +25,17 @@ impl Shape {
 
         let mut final_dimensions = [0, 0, 0, 0];
         for i in 0..in_use_dimension {
-            assert!(dimensions[i] != 0, "tried to create a shape with a 0 dimension");
+            assert!(
+                dimensions[i] != 0,
+                "tried to create a shape with a 0 dimension"
+            );
             final_dimensions[i] = dimensions[i];
         }
 
-        Shape { dimension: final_dimensions, in_use_dimension }
+        Shape {
+            dimension: final_dimensions,
+            in_use_dimension,
+        }
     }
 
     /// Returns the number of dimenions of the shape
@@ -58,7 +64,7 @@ impl Shape {
     }
 
     /// Returns a new shape with the dimension at the provided index removed
-    /// 
+    ///
     /// # Arguments
     /// * 'index' - The 0base index to be removed from the shape
     pub fn remove_index(&self, index: usize) -> Shape {
@@ -76,7 +82,7 @@ impl Shape {
     }
 
     /// Returns a new shape with the dimensions changed to a new ones
-    /// 
+    ///
     /// # Arguments
     /// *'index' - the 0base index we will be swapping
     /// *'new_dimension' the new dimension will be putting in there
@@ -88,8 +94,7 @@ impl Shape {
             // Skip the dimension provided
             if i != index {
                 new_dimension.push(self.dimension[i]);
-            }
-            else if i == index {
+            } else if i == index {
                 new_dimension.push(dimension);
             }
         }
@@ -100,9 +105,12 @@ impl Shape {
     /// Returns a new shape with the provided dimension added at the provided index
     /// # Arguments
     /// * 'dimension' - the dimension to be inserted
-    /// * 'index' - the 0base index that it will be added at 
+    /// * 'index' - the 0base index that it will be added at
     pub fn add_dimension_at_index(&self, dimension: usize, index: usize) -> Shape {
-        assert!(self.number_of_dimension() <= 3, "cannot add more dimensions to this shape");
+        assert!(
+            self.number_of_dimension() <= 3,
+            "cannot add more dimensions to this shape"
+        );
 
         //TODO: Add dynamic index assert
         assert!(index <= 3, "Index high then possible dimenions");
@@ -115,10 +123,10 @@ impl Shape {
     /// Returns if two shapes can be matmuled together
     /// This only covers 2x2 cases or lower
     /// higher dimenions are considered "batched" matmul
-    /// # Arguments 
+    /// # Arguments
     /// * 'other' - the other shape provided to check against
     pub fn can_matmul(&self, other: Shape) -> bool {
-        if self.number_of_dimension() > 2 || other.number_of_dimension() > 2{
+        if self.number_of_dimension() > 2 || other.number_of_dimension() > 2 {
             assert!(false == true, "assertion failed")
         }
 
@@ -136,24 +144,44 @@ impl Shape {
         // Following rules roughly laid out in https://docs.pytorch.org/docs/stable/generated/torch.matmul.html
         // If they are both vectors(1d matrix) then the result will be a single scalar, so the shape will be 1 d
         if self.number_of_dimension() == 1 && other.number_of_dimension() == 1 {
-            assert!(self.dimensions()[0] == other.dimensions()[0], "Mis matching dimensions for 1d@1d matrix multiply a{:?} b{:?}", self, other);
+            assert!(
+                self.dimensions()[0] == other.dimensions()[0],
+                "Mis matching dimensions for 1d@1d matrix multiply a{:?} b{:?}",
+                self,
+                other
+            );
             return Shape::new(vec![1]);
         }
 
         // If they are both 2d, follow the standard forumla, MxN @ NxB = MxB
         if self.number_of_dimension() == 2 && other.number_of_dimension() == 2 {
-            assert!(self.dimensions()[1] == other.dimensions()[0], "Mis matching dimensions for 2d@2d matrix multiply a{:?} b{:?}", self, other);
+            assert!(
+                self.dimensions()[1] == other.dimensions()[0],
+                "Mis matching dimensions for 2d@2d matrix multiply a{:?} b{:?}",
+                self,
+                other
+            );
             return Shape::new(vec![self.dimensions()[0], other.dimensions()[1]]);
         }
 
         // if one is 2d and the other is 1d, take the leading dimension
         if self.number_of_dimension() == 2 && other.number_of_dimension() == 1 {
-            assert!(self.dimensions()[1] == other.dimensions()[0], "Mis matching dimensions for 2d@1d matrix multiply a{:?} b{:?}", self, other);
+            assert!(
+                self.dimensions()[1] == other.dimensions()[0],
+                "Mis matching dimensions for 2d@1d matrix multiply a{:?} b{:?}",
+                self,
+                other
+            );
             return Shape::new(vec![self.dimensions()[0]]);
         }
         // if one is 1d and the other is 2d, take the trailing dimension
         if self.number_of_dimension() == 1 && other.number_of_dimension() == 2 {
-            assert!(self.dimensions()[0] == other.dimensions()[0], "Mis matching dimensions for 1d@2d matrix multiply a{:?} b{:?}", self, other);
+            assert!(
+                self.dimensions()[0] == other.dimensions()[0],
+                "Mis matching dimensions for 1d@2d matrix multiply a{:?} b{:?}",
+                self,
+                other
+            );
             return Shape::new(vec![other.dimensions()[1]]);
         }
 
@@ -161,22 +189,17 @@ impl Shape {
         let mut one_dimension_add_to_right = false;
         // Then get left and right operand for the batch test
         let left_hand_working_shape = {
-
             if self.number_of_dimension() == 4 || self.number_of_dimension() == 3 {
                 let return_shape = self.clone();
                 if self.number_of_dimension() == 3 {
                     return_shape.remove_index(0)
-                }
-                else {
+                } else {
                     return_shape.remove_index(0).remove_index(0)
                 }
-            }
-
-            else {
+            } else {
                 if self.number_of_dimension() == 2 {
                     self.clone()
-                }
-                else {
+                } else {
                     //NOTE: this is different then the right side, we are prepending, below does a append
                     one_dimension_added_to_left = true;
                     self.add_dimension_at_index(1, 0)
@@ -189,16 +212,13 @@ impl Shape {
                 let return_shape = other.clone();
                 if other.number_of_dimension() == 3 {
                     return_shape.remove_index(0)
-                }
-                else {
+                } else {
                     return_shape.remove_index(0).remove_index(0)
                 }
-            }
-            else {
+            } else {
                 if other.number_of_dimension() == 2 {
                     other.clone()
-                }
-                else {
+                } else {
                     //NOTE: this is different then the left side, we are appending, above does a prepend
                     one_dimension_add_to_right = true;
                     other.add_dimension_at_index(1, 1)
@@ -206,16 +226,17 @@ impl Shape {
             }
         };
 
-        let mut dimensions = vec![left_hand_working_shape.dimensions()[0], right_hand_working_shape.dimensions()[1]];
+        let mut dimensions = vec![
+            left_hand_working_shape.dimensions()[0],
+            right_hand_working_shape.dimensions()[1],
+        ];
 
         // We need to remove the added dimensions that made it easier to and simpler to make the new shape
         if one_dimension_added_to_left {
             dimensions.remove(0);
-        }
-        else if one_dimension_add_to_right {
+        } else if one_dimension_add_to_right {
             dimensions.remove(1);
         }
-
 
         // We need to the batch dimensions (the lead dimensions of any vector greater then 2 in length)
         let mut left_side_batch_dimension = vec![];
@@ -228,7 +249,7 @@ impl Shape {
             for i in 0..number_of_right_side_batch_dimension {
                 final_dimensions.push(other.dimensions()[i]);
             }
-            
+
             for i in 0..dimensions.len() {
                 final_dimensions.push(dimensions[i]);
             }
@@ -239,7 +260,7 @@ impl Shape {
             for i in 0..number_of_left_side_batch_dimension {
                 final_dimensions.push(self.dimensions()[i]);
             }
-            
+
             for i in 0..dimensions.len() {
                 final_dimensions.push(dimensions[i]);
             }
@@ -257,14 +278,15 @@ impl Shape {
         let left_side_batch_dimension_shape = Shape::new(left_side_batch_dimension);
         let right_side_batch_dimension_shape = Shape::new(right_side_batch_dimension);
 
-        let broadcast_shape = left_side_batch_dimension_shape.broadcast_shape(right_side_batch_dimension_shape);
+        let broadcast_shape =
+            left_side_batch_dimension_shape.broadcast_shape(right_side_batch_dimension_shape);
 
         let broadcast_dimension = broadcast_shape.dimensions();
-        
+
         for i in 0..broadcast_dimension.len() {
             final_dimensions.push(broadcast_dimension[i]);
         }
-        
+
         for i in 0..dimensions.len() {
             final_dimensions.push(dimensions[i]);
         }
@@ -291,7 +313,6 @@ impl Shape {
             }
         }
 
-
         return true;
     }
 
@@ -299,7 +320,12 @@ impl Shape {
     /// # Arguments
     /// * 'other' - The shape we are testing against
     pub fn broadcast_shape(&self, other: Shape) -> Shape {
-        assert!(self.can_broadcast(other), "Cannot broadcast {:?} {:?}", self, other);
+        assert!(
+            self.can_broadcast(other),
+            "Cannot broadcast {:?} {:?}",
+            self,
+            other
+        );
         let self_dimensions = self.dimensions();
         let other_dimensions = other.dimensions();
         println!("self dimension {:?}", self_dimensions);
@@ -307,7 +333,7 @@ impl Shape {
 
         let lowest_length = usize::min(self_dimensions.len(), other_dimensions.len());
         let mut dimension_in_reverse = vec![];
-        
+
         println!("{:?}", lowest_length);
 
         for i in 0..lowest_length {
@@ -323,14 +349,14 @@ impl Shape {
         println!("{:?}", dimension_in_reverse);
 
         // If they are the same length we are just early return and be done with this
-        if self_dimensions.len() == other_dimensions.len() { 
-            return Shape::new(dimension_in_reverse.iter().rev().map(|x|*x).collect());
+        if self_dimensions.len() == other_dimensions.len() {
+            return Shape::new(dimension_in_reverse.iter().rev().map(|x| *x).collect());
         }
 
         if self_dimensions.len() > other_dimensions.len() {
             let diff = self_dimensions.len() - other_dimensions.len();
             let extra = &self_dimensions[0..diff];
-            dimension_in_reverse.extend(extra.iter().rev().map(|x|*x));
+            dimension_in_reverse.extend(extra.iter().rev().map(|x| *x));
         }
 
         dimension_in_reverse.reverse();
@@ -345,7 +371,6 @@ impl Shape {
         }
         shape
     }
-
 }
 
 #[cfg(test)]
@@ -377,7 +402,6 @@ mod tests {
 
     #[test]
     pub fn basic_remove_test() {
-
         // Set up a basic shape
         let shape = Shape::new(vec![1, 2, 3, 4]);
         assert!(shape.total_size() == (1 * 2 * 3 * 4));
@@ -388,7 +412,11 @@ mod tests {
 
         // Remove just the last dimension
         let new_shape = shape.remove_index(3);
-        assert!(new_shape.total_size() == (1 * 2 * 3 ), "dimensions {:?}", dimensions);
+        assert!(
+            new_shape.total_size() == (1 * 2 * 3),
+            "dimensions {:?}",
+            dimensions
+        );
 
         let dimensions = new_shape.dimensions();
 
@@ -399,12 +427,11 @@ mod tests {
         // Remove the middle index
         let second_new_shape = new_shape.remove_index(1);
 
-        assert!(second_new_shape.total_size() == (1 * 3 ));
+        assert!(second_new_shape.total_size() == (1 * 3));
         let dimensions = second_new_shape.dimensions();
         assert!(dimensions[0] == 1, "dimensions {:?}", dimensions);
         assert!(dimensions[1] == 3, "dimensions {:?}", dimensions);
     }
-
 
     #[test]
     pub fn basic_add_test() {
@@ -413,7 +440,7 @@ mod tests {
         let dimensions = shape.dimensions();
         assert!(dimensions.len() == 2);
         assert!(dimensions[0] == 1, "dimensions {:?}", dimensions);
-        assert!(dimensions[1] == 2,  "dimensions {:?}", dimensions);
+        assert!(dimensions[1] == 2, "dimensions {:?}", dimensions);
 
         let new_shape = shape.add_dimension_at_index(3, 2);
         let new_dimensions = new_shape.dimensions();
@@ -424,7 +451,7 @@ mod tests {
 
         let new_shape = new_shape.add_dimension_at_index(4, 1);
         let new_dimensions = new_shape.dimensions();
-        assert!(new_dimensions.len() == 4); 
+        assert!(new_dimensions.len() == 4);
         assert!(new_dimensions[0] == 1);
         assert!(new_dimensions[1] == 4);
         assert!(new_dimensions[2] == 2);
@@ -485,14 +512,14 @@ mod tests {
         let dimensions = new_shape.dimensions();
         assert!(dimensions[0] == 10);
         assert!(dimensions[1] == 10);
-        
+
         let shape_a = Shape::new(vec![1, 10]);
         let shape_b = Shape::new(vec![10, 1]);
         let new_shape = shape_a.matmul_shape(shape_b);
         let dimensions = new_shape.dimensions();
         assert!(dimensions[0] == 1);
         assert!(dimensions[1] == 1);
-        
+
         let shape_a = Shape::new(vec![2, 1, 10]);
         let shape_b = Shape::new(vec![10, 1]);
         let new_shape = shape_a.matmul_shape(shape_b);
@@ -603,7 +630,7 @@ mod tests {
 
     #[test]
     pub fn simple_matmul_test_4x3() {
-        let a = Shape::new(vec![15 ,15, 6, 2]);
+        let a = Shape::new(vec![15, 15, 6, 2]);
         let b = Shape::new(vec![1, 2, 6]);
         let matmul_shape = a.matmul_shape(b);
         assert!(matmul_shape.dimensions()[0] == 15);
@@ -611,5 +638,4 @@ mod tests {
         assert!(matmul_shape.dimensions()[2] == 6);
         assert!(matmul_shape.dimensions()[3] == 6);
     }
-
 }

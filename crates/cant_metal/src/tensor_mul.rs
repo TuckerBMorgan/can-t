@@ -1,9 +1,9 @@
 use metal::*;
 use std::mem;
 
-pub fn tensor_add(a: &[f32], b: &[f32]) -> Vec<f32> {
+pub fn tensor_mul(a: &[f32], b: &[f32]) -> Vec<f32> {
     // Init the metal library (this will compile the shader code)
-    const METAL_SHADER: &str = include_str!("../shaders/add.msl");
+    const METAL_SHADER: &str = include_str!("../shaders/mul.msl");
     let device = Device::system_default().expect("No Metal device found");
     let library = device
         .new_library_with_source(METAL_SHADER, &CompileOptions::new())
@@ -11,7 +11,7 @@ pub fn tensor_add(a: &[f32], b: &[f32]) -> Vec<f32> {
 
     // Pull out the function we need
     let function = library
-        .get_function("add_arrays", None)
+        .get_function("mul_arrays", None)
         .expect("Function not found");
 
     // Start to setup our compute pipeline

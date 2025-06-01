@@ -10,7 +10,7 @@ impl Timing {
     pub fn new() -> Timing {
         Timing {
             lengths: HashMap::new(),
-            timers: HashMap::new()
+            timers: HashMap::new(),
         }
     }
 
