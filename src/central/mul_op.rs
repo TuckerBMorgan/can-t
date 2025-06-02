@@ -1,6 +1,6 @@
 use super::get_equation;
 use crate::central::*;
-use std::ops::Mul;
+use std::ops::{Mul, Neg, Div};
 use crate::utils::handle_broadcasting;
 
 impl Mul for Tensor {
@@ -19,6 +19,59 @@ impl Mul for Tensor {
         return return_tensor;
     }
 }
+
+/// Overload the multiplication operator for the Tensor struct
+/// This will allow us to multiply a tensor by a scalar
+/// we will convert the scalar into a tensor and then multiply the two tensors together
+impl Mul<f32> for Tensor {
+    type Output = Self;
+    fn mul(self, rhs: f32) -> Self::Output {
+        let right_hand_as_tesnor = Tensor::element(self.shape.clone(), rhs);
+        self * right_hand_as_tesnor
+    }
+}
+
+/// Convinence function to allow us to handle the element wise negation of a tensor
+impl Neg for Tensor {
+    type Output = Self;
+    fn neg(self) -> Self::Output {
+        self * -1.0
+    }
+}
+
+/// Overload the Division operator for the Tensor struct
+/// we are going to use the fact that a/b = a * b^-1
+impl Div for Tensor {
+    type Output = Self;
+    fn div(self, rhs: Self) -> Self::Output {
+        // we take advantage of the fact that a/b = a * b^-1
+        // to let us keep the code simplier
+        let intermidiate = rhs.pow(-1.0);
+        self * intermidiate
+    }
+}
+
+/// Overload the Division operator for the Tensor struct
+/// This will allow us to divide a tensor by a scalar
+/// we will convert the scalar into a tensor and then divide the two tensors together
+impl Div<f32> for Tensor {
+    type Output = Self;
+    fn div(self, rhs: f32) -> Self::Output {
+        let right_hand_as_tesnor = Tensor::element(self.shape.clone(), rhs);
+        self / right_hand_as_tesnor
+    }
+}
+
+/// Overload the Multiplication operator for the f32 struct
+/// This will allow us to multiply a scalar by a tensor
+/// we will convert the scalar into a tensor and then multiply the two tensors together
+impl Mul<Tensor> for f32 {
+    type Output = Tensor;
+    fn mul(self, rhs: Tensor) -> Self::Output {
+        rhs * self
+    }
+}
+
 
 pub fn backward_for_mul(backprop_backet: BackproagationPacket) {
     if let Operation::Mul(left_hand_side, right_hand_side) = backprop_backet.operation {
@@ -67,6 +120,24 @@ mod test {
         let c = a * b;
         let c_item = c.item();
         assert!(c_item[0] == 1.0);
+    }
+
+    #[test]
+    pub fn basic_neg_test() {
+        let a = Tensor::element(Shape::new(vec![1]), 1.0);
+
+        let c = -a;
+        let c_item = c.item();
+        assert!(c_item[0] == -1.0);
+    }
+
+    #[test]
+    pub fn basic_div_test() {
+        let a = Tensor::element(Shape::new(vec![1]), 10.0);
+        let b = Tensor::element(Shape::new(vec![1]), 2.0);
+        let c = a / b;
+        let c_item = c.item();
+        assert!(c_item[0] == 5.0);
     }
 
     #[test]

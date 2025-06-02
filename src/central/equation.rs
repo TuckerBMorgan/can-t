@@ -229,7 +229,7 @@ impl Equation {
     pub fn get_data_flat_buffer(&self, tensor_id: TensorID) -> &[f32] {
         return extract_tensor_data!(self.tensor_record, tensor_id, self.data);
     }
-
+ 
     /// Copies data into the grad of tensor_id
     /// # Arugments
     /// 'tensor_id' - Id of for the loopup on the tensor
@@ -282,13 +282,17 @@ impl Equation {
                 let dimensions = to_shape.dimensions();
                 let mut result = self.get_grad(incoming_grad);
 
+                // Loop over all of the dimensions
                 for index in 0..dimensions.len() {
                     let input_dim = dimensions[dimensions.len() - 1 - index];
+                    // Find those ones that we had to inflate during the broadcast
                     let original_dim = if index < from_shape.len() {
                         from_shape[dimensions.len() - 1 -index]
                     } else {
                         1
                     };
+                    // And sum over those dimensions, reducing the grad from the larger
+                    // dim to the a single value
                     if original_dim == 1 && input_dim != 1 {
                         result = result.sum_axis(Axis(dimensions.len() - 1 - index));
                     }
@@ -301,6 +305,31 @@ impl Equation {
             }
             Operation::Sum(_, _, _) => {
                 sum_op::backward_for_sum(packet);
+            },
+            Operation::Pow(base, power) => {
+                const EPS: f32 = 1.0e-12;
+                const USE_EPS_SHIFT: bool = true;
+                let base_data = self.get_item(base);
+                let power_data = self.get_item(power);
+
+                let power = power_data[0];
+                let p_minus_1 = power - 1.0;
+
+
+                let grad_update = base_data.mapv(|x|{
+                    if x == 0.0 && p_minus_1 < 0.0 {
+                        if USE_EPS_SHIFT {
+                            power * (x + EPS).powf(p_minus_1)
+                        }
+                        else {
+                            0.0
+                        }
+                    }
+                    else {
+                        power * x.powf(p_minus_1)
+                    }
+                }) *  self.get_grad(incoming_grad);
+                self.add_tensor_grad(base, grad_update.to_owned().into_raw_vec());
             }
         }
     }

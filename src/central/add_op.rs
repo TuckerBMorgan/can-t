@@ -27,6 +27,12 @@ impl Add for Tensor {
     }
 }
 
+/* 
+impl Sub for Tensor {
+    type Output = Self;
+}
+*/
+
 pub fn backward_for_add(backprop_backet: BackproagationPacket) {
     if let Operation::Add(left_hand_side, right_hand_side) = backprop_backet.operation {
         // for the add operation, the gradient is simply the incoming gradient for both the left and right right operand
