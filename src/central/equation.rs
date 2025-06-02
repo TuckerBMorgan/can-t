@@ -1,9 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use super::{InternalTensor, Operation, TensorID, add_op, mul_op, shape::*, sum};
+use super::{InternalTensor, Operation, TensorID, add_op, mul_op, shape::*, sum_op};
 use crate::utils::*;
 use ndarray::ArrayD;
 use rand_distr::{Distribution, Normal};
+use ndarray::Axis;
 
 #[cfg(target_os = "windows")]
 use cant_cpu::prelude::*;
@@ -254,16 +255,16 @@ impl Equation {
 
     /// Util function that handles passing back a single value in the equation
     /// # Arugments
-    /// 'tensor_id' - the tensor that we are passing back
-    pub fn backward_for_value(&mut self, tensor_id: TensorID) {
-        let internal_tensor = self.tensor_record.get(&tensor_id).unwrap();
+    /// 'incoming_grad' - the tensor that we are passing back
+    pub fn backward_for_value(&mut self, incoming_grad: TensorID) {
+        let internal_tensor = self.tensor_record.get(&incoming_grad).unwrap();
 
         // collects a lot of common aruguments into a single struct
         // helps avoid needed to update a bunch of function signatures
         // in the future
         let operation = internal_tensor.operation.clone();
-        let packet = BackproagationPacket {
-            incoming_grad: tensor_id,
+        let packet: BackproagationPacket<'_> = BackproagationPacket {
+            incoming_grad: incoming_grad,
             equation: self,
             operation,
         };
@@ -275,14 +276,31 @@ impl Equation {
             Operation::Add(_left_hand_side, _right_hand_side) => {
                 add_op::backward_for_add(packet);
             }
-            Operation::BroadCast(_from, _to_shape) => {
-                panic!("time to implement broadcast");
+            Operation::BroadCast(from, to_shape) => {
+                let from_grad = self.get_grad(from);
+                let from_shape = from_grad.shape();
+                let dimensions = to_shape.dimensions();
+                let mut result = self.get_grad(incoming_grad);
+
+                for index in 0..dimensions.len() {
+                    let input_dim = dimensions[dimensions.len() - 1 - index];
+                    let original_dim = if index < from_shape.len() {
+                        from_shape[dimensions.len() - 1 -index]
+                    } else {
+                        1
+                    };
+                    if original_dim == 1 && input_dim != 1 {
+                        result = result.sum_axis(Axis(dimensions.len() - 1 - index));
+                    }
+                }
+
+                self.add_tensor_grad(from, result.to_owned().into_raw_vec());
             }
             Operation::Mul(_left_hand_side, _right_hand_side) => {
                 mul_op::backward_for_mul(packet);
             }
             Operation::Sum(_, _, _) => {
-                sum::backward_for_sum(packet);
+                sum_op::backward_for_sum(packet);
             }
         }
     }

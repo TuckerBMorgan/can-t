@@ -3,7 +3,7 @@ mod equation;
 mod mul_op;
 mod operation;
 mod shape;
-mod sum;
+mod sum_op;
 mod tensor;
 
 pub use add_op::*;
@@ -13,7 +13,7 @@ pub use mul_op::*;
 pub use operation::*;
 pub use shape::*;
 use std::sync::{Mutex, MutexGuard};
-pub use sum::*;
+pub use sum_op::*;
 pub use tensor::*;
 
 lazy_static! {

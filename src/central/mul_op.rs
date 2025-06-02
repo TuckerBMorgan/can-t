@@ -1,27 +1,13 @@
 use super::get_equation;
 use crate::central::*;
 use std::ops::Mul;
+use crate::utils::handle_broadcasting;
 
 impl Mul for Tensor {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
         // We want to make sure that the two operands can be muled on a elementwise way
-        // so we try to broadcast them together if they do not equal each other
-        /// TODO: THIS WILL LIKELY BE A COMMON OPERATION IS THERE A WAY TO MAKE THIS SIMPLIER
-        let mut working_rhs = rhs;
-        if working_rhs.shape != self.shape {
-            if self.shape.can_broadcast(working_rhs.shape) {
-                working_rhs = self.broadcast(working_rhs.shape);
-            }
-        }
-        let mut working_lfs = self;
-        if working_lfs.shape != working_rhs.shape {
-            if working_lfs.shape.can_broadcast(working_rhs.shape) {
-                working_lfs = working_rhs.broadcast(working_lfs.shape);
-            }
-        }
-
-        assert!(working_lfs.shape == working_rhs.shape);
+        let (working_lfs, working_rhs) = handle_broadcasting(self, rhs);
 
         // We vend out the actual work to the equation, which in turn uses libs that take advantage of platform libs to speed it up
         let data = get_equation().mul_tensors(working_lfs.id, working_rhs.id);

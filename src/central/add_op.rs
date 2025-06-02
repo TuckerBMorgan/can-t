@@ -5,26 +5,16 @@ use std::{
 };
 
 use super::get_equation;
+use crate::utils::handle_broadcasting;
 
 impl Add for Tensor {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
+
         // We want to make sure that the two operands can be added on a elementwise way
         // so we try to broadcast them together if they do not equal each other
-        let mut working_rhs = rhs;
-        if working_rhs.shape != self.shape {
-            if self.shape.can_broadcast(working_rhs.shape) {
-                working_rhs = self.broadcast(working_rhs.shape);
-            }
-        }
-        let mut working_lfs = self;
-        if working_lfs.shape != working_rhs.shape {
-            if working_lfs.shape.can_broadcast(working_rhs.shape) {
-                working_lfs = working_rhs.broadcast(working_lfs.shape);
-            }
-        }
+        let (working_lfs, working_rhs) = handle_broadcasting(self, rhs);
 
-        assert!(working_lfs.shape == working_rhs.shape);
 
         // We vend out the actual work to the equation, which in turn uses libs that take advantage of platform libs to speed it up
         let data = get_equation().add_tensors(working_lfs.id, working_rhs.id);
@@ -57,6 +47,10 @@ pub fn backward_for_add(backprop_backet: BackproagationPacket) {
 mod test {
     use crate::central::Shape;
     use crate::central::Tensor;
+    use crate::{central::*, utils::GGUFFile};
+    fn approx_equal(a: f32, b: f32, epsilon: f32) -> bool {
+        (a - b).abs() <= epsilon
+    }
 
     #[test]
     pub fn basic_add_test() {
@@ -80,6 +74,18 @@ mod test {
 
     #[test]
     pub fn basic_3d_test() {
+        let a = Tensor::element(Shape::new(vec![5, 5, 5]), 5.0);
+        let b = Tensor::element(Shape::new(vec![5, 5, 5]), 7.0);
+        let c = a + b;
+        let c_item = c.item();
+        for i in c_item {
+            assert!(i == 12.0);
+        }
+    }
+
+
+    #[test]
+    pub fn basic_3d_brodcast() {
         let a = Tensor::element(Shape::new(vec![5, 5, 5]), 5.0);
         let b = Tensor::element(Shape::new(vec![5, 5, 5]), 7.0);
         let c = a + b;
@@ -128,11 +134,22 @@ mod test {
 
     #[test]
     pub fn backprop_add_test() {
-        let a = Tensor::element(Shape::new(vec![1]), 5.0);
-        let b = Tensor::element(Shape::new(vec![1]), 10.0);
-        let c = b + a;
-        c.backward();
-        assert!(c.grad()[0] == 1.0);
+        let epsilon = 1e-5;
+        let mut gguf_file = GGUFFile::new(String::from(
+            "./models/tests/add/add_broadcast_test.gguf",
+        ));
+
+        let tensor_a = Tensor::from_gguf_file("add_broadcast_test_tensor_a".to_string(), &mut gguf_file);
+        let tensor_b = Tensor::from_gguf_file("add_broadcast_test_tensor_b".to_string(), &mut gguf_file);
+        let tensor_c_real = Tensor::from_gguf_file("add_broadcast_test_tensor_c".to_string(), &mut gguf_file);
+
+        let tensor_c = tensor_a + tensor_b;
+        let tensor_c_item = tensor_c.item();
+
+        let together = tensor_c_item.iter().zip(tensor_c_real.item());
+        for (a, b) in together {
+            assert!(approx_equal(*a, b, epsilon));
+        }
     }
 
     #[test]
