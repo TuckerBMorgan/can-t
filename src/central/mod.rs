@@ -5,6 +5,7 @@ mod operation;
 mod shape;
 mod sum_op;
 mod tensor;
+mod pow_op;
 
 pub use add_op::*;
 pub use equation::*;
@@ -15,6 +16,7 @@ pub use shape::*;
 use std::sync::{Mutex, MutexGuard};
 pub use sum_op::*;
 pub use tensor::*;
+pub use pow_op::*;
 
 lazy_static! {
     static ref SINGLETON_INSTANCE: Mutex<Equation> = Mutex::new(Equation::new());

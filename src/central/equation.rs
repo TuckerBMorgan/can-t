@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use super::{InternalTensor, Operation, TensorID, add_op, mul_op, shape::*, sum_op};
+use super::{add_op, mul_op, pow_op, shape::*, sum_op, InternalTensor, Operation, TensorID};
 use crate::utils::*;
 use ndarray::ArrayD;
 use rand_distr::{Distribution, Normal};
@@ -307,29 +307,7 @@ impl Equation {
                 sum_op::backward_for_sum(packet);
             },
             Operation::Pow(base, power) => {
-                const EPS: f32 = 1.0e-12;
-                const USE_EPS_SHIFT: bool = true;
-                let base_data = self.get_item(base);
-                let power_data = self.get_item(power);
-
-                let power = power_data[0];
-                let p_minus_1 = power - 1.0;
-
-
-                let grad_update = base_data.mapv(|x|{
-                    if x == 0.0 && p_minus_1 < 0.0 {
-                        if USE_EPS_SHIFT {
-                            power * (x + EPS).powf(p_minus_1)
-                        }
-                        else {
-                            0.0
-                        }
-                    }
-                    else {
-                        power * x.powf(p_minus_1)
-                    }
-                }) *  self.get_grad(incoming_grad);
-                self.add_tensor_grad(base, grad_update.to_owned().into_raw_vec());
+                pow_op::backward_for_pow(packet);
             }
         }
     }

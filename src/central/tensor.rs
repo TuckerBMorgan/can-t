@@ -53,7 +53,7 @@ impl InternalTensor {
             Operation::Sum(from, _, _) => {
                 return vec![*from];
             },
-            Operation::Pow(from, _) => {
+            Operation::Pow(from, _power) => {
                 return vec![*from];
             }
         }
@@ -215,16 +215,7 @@ impl Tensor {
         get_equation().backward(self.id);
     }
 
-    /// 
-    pub fn pow(&self, power: f32) -> Tensor {
-        let power_as_tensor = Tensor::element(Shape::new(vec![1]), power);
-        let data : Vec<f32> = self
-            .item()
-            .into_iter()
-            .map(|x| x.powf(power))
-            .collect();
-        return Tensor::create_tensor_data_and_shape_and_operation(self.shape, data, Operation::Pow(self.id, power_as_tensor.id));
-    }
+
 }
 
 #[cfg(test)]
