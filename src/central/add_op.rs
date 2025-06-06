@@ -1,7 +1,6 @@
 use crate::central::*;
 use std::{
-    ops::{Add, Sub},
-    ptr::eq,
+    ops::Add,
 };
 
 use super::get_equation;
@@ -47,7 +46,7 @@ pub fn backward_for_add(backprop_backet: BackproagationPacket) {
 mod test {
     use crate::central::Shape;
     use crate::central::Tensor;
-    use crate::{central::*, utils::GGUFFile};
+    use crate::utils::GGUFFile;
     fn approx_equal(a: f32, b: f32, epsilon: f32) -> bool {
         (a - b).abs() <= epsilon
     }

@@ -225,7 +225,7 @@ mod tests {
 
     #[test]
     pub fn allocate_test() {
-        let tensor = Tensor::new(Shape::new(vec![1, 2, 3]));
+        let _tensor = Tensor::new(Shape::new(vec![1, 2, 3]));
     }
 
     #[test]
@@ -257,6 +257,6 @@ mod tests {
 
     #[test]
     pub fn randn_test() {
-        let tensor = Tensor::randn(Shape::new(vec![1, 2, 3]));
+        let _tensor = Tensor::randn(Shape::new(vec![1, 2, 3]));
     }
 }

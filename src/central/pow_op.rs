@@ -1,4 +1,3 @@
-use ndarray::prelude::*;
 use crate::central::*;
 
 impl Tensor  {

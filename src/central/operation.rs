@@ -1,5 +1,4 @@
 use super::{Shape, tensor::TensorID};
-use std::fmt;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Operation {

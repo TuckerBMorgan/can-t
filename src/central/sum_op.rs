@@ -1,10 +1,8 @@
 use std::collections::HashSet;
 
-use crate::central::Shape;
 use crate::central::*;
 use ndarray::prelude::*;
 
-use super::get_equation;
 
 impl Tensor {
     pub fn sum(&self, mut axes: Vec<usize>, keep_dimensions: bool) -> Tensor {
