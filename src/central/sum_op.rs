@@ -52,7 +52,7 @@ impl Tensor {
             dimensions_as_array[index] = *dim;
         }
 
-        let sum_opeartion = Operation::Sum(self.id, dimensions_as_array, axes.len());
+        let sum_opeartion = Operation::Sum(self.id, dimensions_as_array, axes.len(), keep_dimensions);
         let new_tensor = Tensor::create_tensor_data_and_shape_and_operation(
             new_shape,
             item.into_raw_vec(),
@@ -62,12 +62,28 @@ impl Tensor {
     }
 }
 pub fn backward_for_sum(backprop_backet: BackproagationPacket) {
-    if let Operation::Sum(from, _dimensions, _dimensions_count) = backprop_backet.operation {
+    if let Operation::Sum(from, dimensions, dimensions_count, keep_dimensions) = backprop_backet.operation {
         // Get the incoming grad and broadcast it back to the shape we want
         let grad = backprop_backet
             .equation
             .get_grad(backprop_backet.incoming_grad);
         let from_array = backprop_backet.equation.get_grad(from);
+        let mut working_shape = grad.shape().to_vec();
+
+
+        // if we removed the dimensions, we need to add back the space that they where
+        if !keep_dimensions {
+            // we loop over the from shape, and 1 out all of the dimensions we removed, so that
+            // we can then broadcast along those dimensions the grad
+            let mut brodcastable_shape = from_array.shape().to_vec();
+            for index in 0..dimensions_count {
+                brodcastable_shape[dimensions[index]] = 1;
+            } 
+            working_shape = brodcastable_shape;
+        }
+
+        // Reshape the grad, just in case we had to add in dimensions
+        let grad = grad.into_shape(working_shape).unwrap();
 
         let grad_broadcasted = grad.broadcast(from_array.shape()).unwrap();
         backprop_backet
@@ -82,10 +98,6 @@ mod tests {
     use crate::{central::*, utils::GGUFFile};
     fn approx_equal(a: f32, b: f32, epsilon: f32) -> bool {
         (a - b).abs() <= epsilon
-    }
-
-    fn compare_vectors(a: Vec<f32>, b: Vec<f32>) {
-
     }
 
     #[test]

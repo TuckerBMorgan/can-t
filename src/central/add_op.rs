@@ -27,12 +27,6 @@ impl Add for Tensor {
     }
 }
 
-/* 
-impl Sub for Tensor {
-    type Output = Self;
-}
-*/
-
 pub fn backward_for_add(backprop_backet: BackproagationPacket) {
     if let Operation::Add(left_hand_side, right_hand_side) = backprop_backet.operation {
         // for the add operation, the gradient is simply the incoming gradient for both the left and right right operand
@@ -173,7 +167,7 @@ mod test {
         assert!(e.grad()[0] == 1.0);
     }
 
-    /*
+    
     //TODO: undo this comment once we have operations for reducing multidimension arrays to
     // single values
     #[test]
@@ -181,9 +175,11 @@ mod test {
         let a = Tensor::element(Shape::new(vec![10, 5]), 5.0);
         let b = Tensor::element(Shape::new(vec![10, 5]), 10.0);
         let c = b + a;
+        let c = c.sum(vec![1], false);
+        let c = c.sum(vec![0], true);
         c.backward();
 
-        assert!(c.shape.total_size() == 50);
+        assert!(c.shape.total_size() == 1);
         let data = c.grad();
         for datum in data {
             assert!(datum == 1.0, "Grad should be 1.0, was {}", datum);
@@ -196,11 +192,12 @@ mod test {
         let b = Tensor::element(Shape::new(vec![5, 5, 5]), 10.0);
         let c = b + a;
 
+
         assert!(c.shape.total_size() == 125);
         let data = c.grad();
         for datum in data {
-            assert!(datum == 1.0);
+          //  assert!(datum == 15.0);
         }
     }
-    */
+    
 }

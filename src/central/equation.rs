@@ -303,7 +303,7 @@ impl Equation {
             Operation::Mul(_left_hand_side, _right_hand_side) => {
                 mul_op::backward_for_mul(packet);
             }
-            Operation::Sum(_, _, _) => {
+            Operation::Sum(_, _, _, _) => {
                 sum_op::backward_for_sum(packet);
             },
             Operation::Pow(base, power) => {

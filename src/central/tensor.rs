@@ -50,7 +50,7 @@ impl InternalTensor {
             Operation::Mul(left, right) => {
                 return vec![*left, *right];
             }
-            Operation::Sum(from, _, _) => {
+            Operation::Sum(from, _, _, _) => {
                 return vec![*from];
             },
             Operation::Pow(from, _power) => {

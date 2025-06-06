@@ -37,3 +37,39 @@ pub fn backward_for_pow(backprop_backet: BackproagationPacket) {
         backprop_backet.equation.add_tensor_grad(base, grad_update.to_owned().into_raw_vec());
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{central::*, utils::GGUFFile};
+    fn approx_equal(a: f32, b: f32, epsilon: f32) -> bool {
+        (a - b).abs() <= epsilon
+    }
+
+    #[test]
+    fn basic_pow_test() {
+        let tensor = Tensor::element(Shape::new(vec![4]), 5.0);
+        let tensor_pow = tensor.pow(2.0);
+        for d in tensor_pow.item() {
+            assert!(d == 25.0);
+        }
+    }
+
+    #[test]
+    fn advance_pow_test() {
+        let epsilon = 1e-5;
+        let mut gguf_file = GGUFFile::new(String::from(
+            "./models/tests/pow/advance_pow_test.gguf",
+        ));
+
+        let tensor_a = Tensor::from_gguf_file("add_broadcast_test_tensor_a".to_string(), &mut gguf_file);
+        let tensor_pow_real = Tensor::from_gguf_file("add_broadcast_test_tensor_pow".to_string(), &mut gguf_file);
+        let tensor_pow = tensor_a.pow(3.0);
+
+        let tensor_pow_item = tensor_pow.item();
+        let together = tensor_pow_item.iter().zip(tensor_pow_real.item());
+
+        for (a, b) in together {
+            assert!(approx_equal(*a, b, epsilon));
+        }
+    }
+}
