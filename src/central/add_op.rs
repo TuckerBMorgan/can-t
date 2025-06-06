@@ -191,12 +191,15 @@ mod test {
         let a = Tensor::element(Shape::new(vec![5, 5, 5]), 5.0);
         let b = Tensor::element(Shape::new(vec![5, 5, 5]), 10.0);
         let c = b + a;
+        let c = c.sum(vec![2], false);
+        let c = c.sum(vec![1], false);
+        let c = c.sum(vec![0], true);
+        c.backward();
 
-
-        assert!(c.shape.total_size() == 125);
+        assert!(c.shape.total_size() == 1);
         let data = c.grad();
         for datum in data {
-          //  assert!(datum == 15.0);
+            assert!(datum == 1.0);
         }
     }
     
