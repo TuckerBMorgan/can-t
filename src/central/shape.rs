@@ -315,6 +315,12 @@ impl Shape {
         return true;
     }
 
+    pub fn should_broadcast(&self, other: Shape) -> bool {
+        let self_dimensions = self.dimensions();
+        let other_dimensions = other.dimensions();
+        return self_dimensions.len() <= other_dimensions.len();
+    }
+
     /// Returns the shape of that results from two shapes being brodcasted
     /// # Arguments
     /// * 'other' - The shape we are testing against
@@ -353,6 +359,9 @@ impl Shape {
         }
 
         dimension_in_reverse.reverse();
+        // Broadcasted shapes should always be the same time, so this is a cheap final check to
+        // help catch cases where that is not true and should be fixed right away
+
         return Shape::new(dimension_in_reverse);
     }
 

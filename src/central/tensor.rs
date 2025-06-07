@@ -178,7 +178,6 @@ impl Tensor {
         assert!(shape.can_broadcast(self.shape));
 
         let broad_cast_shape = shape.broadcast_shape(self.shape);
-
         // use the ndarry lib to do this, as I am sure I would fuck it up
         // And I don't know if there is a hardware accerlated way of doing this faster
         let data: Vec<f32> = self
