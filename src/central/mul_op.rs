@@ -109,7 +109,7 @@ pub fn backward_for_mul(backprop_backet: BackproagationPacket) {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::central::Shape;
     use crate::central::Tensor;
 

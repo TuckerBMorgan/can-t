@@ -44,6 +44,15 @@ mod tests {
         (a - b).abs() <= epsilon
     }
 
+    fn compare_tensors(a: Tensor, b: Tensor) {
+        let epsilon = 1e-5;
+        let a_item = a.item();
+        let together = a_item.iter().zip(b.item());
+        for (a, b) in together {
+            assert!(approx_equal(*a, b, epsilon), "a {} b {}", *a, b);
+        }
+    }
+
     #[test]
     fn basic_pow_test() {
         let tensor = Tensor::element(Shape::new(vec![4]), 5.0);
@@ -68,7 +77,59 @@ mod tests {
         let together = tensor_pow_item.iter().zip(tensor_pow_real.item());
 
         for (a, b) in together {
+            assert!(approx_equal(*a, b, epsilon), "a {} b {}", *a, b);
+        }
+    }
+
+    #[test]
+    fn pow_backward_test() {
+        let epsilon = 1e-5;
+        let mut gguf_file = GGUFFile::new(String::from(
+            "./models/tests/pow/pow_backward_test.gguf",
+        ));
+
+        let tensor_a = Tensor::from_gguf_file("pow_backward_test_tensor_a".to_string(), &mut gguf_file);
+        let tensor_a_grad_real = Tensor::from_gguf_file("pow_backward_test_tensor_a_grad".to_string(), &mut gguf_file);
+        let tensor_b = Tensor::from_gguf_file("pow_backward_test_tensor_b".to_string(), &mut gguf_file);
+        let tensor_b_grad_real = Tensor::from_gguf_file("pow_backward_test_tensor_b_grad".to_string(), &mut gguf_file);
+        let tensor_x_real = Tensor::from_gguf_file("pow_backward_test_tensor_x".to_string(), &mut gguf_file);
+        let tensor_x_grad_real = Tensor::from_gguf_file("pow_backward_test_tensor_x_grad".to_string(), &mut gguf_file);
+        let tensor_pow_real = Tensor::from_gguf_file("pow_backward_test_tensor_pow".to_string(), &mut gguf_file);
+        let tensor_pow_grad_real = Tensor::from_gguf_file("pow_backward_test_tensor_pow_grad".to_string(), &mut gguf_file);
+        let tensor_loss_real = Tensor::from_gguf_file("pow_backward_test_loss".to_string(), &mut gguf_file);
+
+        let tensor_x = tensor_a + tensor_b;
+        let tensor_pow = tensor_x.pow(3.0);
+        let loss = tensor_pow.sum(vec![0], true);
+        loss.backward();
+
+        compare_tensors(tensor_x, tensor_x_real);
+        compare_tensors(tensor_pow, tensor_pow_real);
+        compare_tensors(loss, tensor_loss_real);
+
+        let tensor_a_grad = tensor_a.grad();
+        let together = tensor_a_grad.iter().zip(tensor_a_grad_real.item());
+        for (a, b) in together {
             assert!(approx_equal(*a, b, epsilon));
         }
+
+        let tensor_b_grad = tensor_b.grad();
+        let together = tensor_b_grad.iter().zip(tensor_b_grad_real.item());
+        for (a, b) in together {
+            assert!(approx_equal(*a, b, epsilon));
+        }
+
+        let tensor_pow_grad = tensor_pow.grad();
+        let together = tensor_pow_grad.iter().zip(tensor_pow_grad_real.item());
+        for (a, b) in together {
+            assert!(approx_equal(*a, b, epsilon));
+        }
+
+        let tensor_x_grad = tensor_x.grad();
+        let together = tensor_x_grad.iter().zip(tensor_x_grad_real.item());
+        for (a, b) in together {
+            assert!(approx_equal(*a, b, epsilon));
+        }
+
     }
 }

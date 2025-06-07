@@ -55,6 +55,9 @@ impl InternalTensor {
             },
             Operation::Pow(from, _power) => {
                 return vec![*from];
+            },
+            Operation::Matmul(left, right, ) => {
+                return vec![*left, *right];
             }
         }
     }
@@ -127,19 +130,6 @@ impl Tensor {
             shape,
             operation: Operation::Nop,
         }
-    }
-
-    /// Utility function for creating a tensor after an operation
-    pub fn create_tensor_from_id_and_shape_and_operation(
-        shape: Shape,
-        tensor_id: TensorID,
-        operation: Operation,
-    ) -> Tensor {
-        return Tensor {
-            id: tensor_id,
-            shape,
-            operation: operation,
-        };
     }
 
     /// Utility function for create a tensor with data, shape and operation

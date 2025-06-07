@@ -43,7 +43,7 @@ pub fn backward_for_add(backprop_backet: BackproagationPacket) {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::central::Shape;
     use crate::central::Tensor;
     use crate::utils::GGUFFile;

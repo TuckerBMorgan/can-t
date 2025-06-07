@@ -6,11 +6,13 @@ use ndarray::ArrayD;
 use rand_distr::{Distribution, Normal};
 use ndarray::Axis;
 
-#[cfg(target_os = "windows")]
-use cant_cpu::prelude::*;
+//#[cfg(target_os = "windows")]
+//use cant_cpu::prelude::*;
 
-#[cfg(target_os = "macos")]
-use cant_metal::prelude::*;
+//#[cfg(target_os = "macos")]
+//use cant_metal::prelude::*;
+
+use cant_cpu::prelude::*;
 
 /// A Struct used by the backpropagation functions to help collect common function arugumnets into a single place
 pub struct BackproagationPacket<'a> {
@@ -156,6 +158,40 @@ impl Equation {
         // Preform the operation of the platform vended version of tensor_add
         let result_data = tensor_add(left_data, right_data);
         return result_data;
+    }
+
+    pub fn matmul_tensor(&self, a: TensorID, b: TensorID) -> Vec<f32> {
+        // Get the left side of the add
+        let left_data = extract_tensor_data!(self.tensor_record, a, self.data);
+        // Get the the right side of the add
+        let right_data = extract_tensor_data!(self.tensor_record, b, self.data);
+
+        // tensor_matmul is written "only" with 4dx4d tensors
+        // this works by just assuming that all any tensor less then 4 dimensions
+        // is actually 4d, with just a 1 in the missing dimensions
+        // so for example: a tensor of dimenion [2, 3] can be see as [1, 1, 2, 3]
+        // since that does not actually increase the number of elements in the array
+        // and in cant dimensions over 2 are treated as batches, and are not part
+        // core matmul action
+        let mut a_shape = self.tensor_record[&a].shape.dimensions();
+        let mut b_shape = self.tensor_record[&b].shape.dimensions();
+
+        // So we need to get the shapes of our two operands
+        let a_shape_missing_dimensions = 4 - a_shape.len();
+        for _ in 0..a_shape_missing_dimensions {
+            a_shape.insert(0, 1);
+        }
+
+        // and insert 1s in front of them, to pad out the entire shape
+        let b_shape_missing_dimensions = 4 - b_shape.len();
+        for _ in 0..b_shape_missing_dimensions {
+            b_shape.insert(0, 1);
+        }
+
+        let a_shape = [a_shape[0], a_shape[1], a_shape[2], a_shape[3]];
+        let b_shape = [b_shape[0], b_shape[1], b_shape[2], b_shape[3]];
+        // Before call the actually function that does the matmul
+        return tensor_matmul(left_data, a_shape, right_data, b_shape);
     }
 
     /// Takes two tensors as flat buffers, adds them together at an elementwise level and returns the result
@@ -308,6 +344,9 @@ impl Equation {
             },
             Operation::Pow(base, power) => {
                 pow_op::backward_for_pow(packet);
+            },
+            Operation::Matmul(_left, _right) => {
+                panic!("Time to implement matmul backwrad");
             }
         }
     }

@@ -37,7 +37,7 @@ name = "cant"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "cant_metal",
+ "cant_cpu",
  "lazy_static",
  "ndarray",
  "rand",
@@ -49,6 +49,9 @@ dependencies = [
 [[package]]
 name = "cant_cpu"
 version = "0.1.0"
+dependencies = [
+ "ndarray",
+]
 
 [[package]]
 name = "cant_metal"
