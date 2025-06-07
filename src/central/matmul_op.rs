@@ -8,16 +8,12 @@ use crate::utils::handle_broadcasting;
 impl Shl for Tensor {
     type Output = Tensor;
     fn shl(self, rhs: Self) -> Self::Output {
-     //   assert!(self.shape.can_matmul(rhs.shape), "Invalid operands for matmul left hand {:?} right hand {:?}", self.shape, rhs.shape);
-        // We want to make sure that the two operands can be matmuled together
-        // so we try to broadcast them together if they do not equal each other
+        
+        // Broadcasting and checking if you can matmul at all are covered by this function 
+        let matmul_shape = self.shape.matmul_shape(rhs.shape);
 
         // we vend the actual work of doing the matmul to the equation, which can take advantage of platform libs
         let data = get_equation().matmul_tensor(self.id,rhs.id);
-
-        // Shape has helper funciton to figure out the shape for us
-        let matmul_shape = self.shape.matmul_shape(rhs.shape);
-
         let return_tensor = Tensor::create_tensor_data_and_shape_and_operation(matmul_shape, data, Operation::Matmul(self.id, rhs.id ));
         return return_tensor;
     }
