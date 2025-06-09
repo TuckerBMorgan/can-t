@@ -160,6 +160,10 @@ impl Equation {
         return result_data;
     }
 
+    /// Takes two tensors are flat buffers and preforms matmul on them and returns the result
+    /// # Arugments
+    /// 'a' - the first tensor
+    /// 'b' - The seconf tensor 
     pub fn matmul_tensor(&self, a: TensorID, b: TensorID) -> Vec<f32> {
         // Get the left side of the add
         let left_data = extract_tensor_data!(self.tensor_record, a, self.data);

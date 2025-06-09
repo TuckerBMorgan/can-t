@@ -134,6 +134,66 @@ impl Shape {
         return last_dimension == first_dimension;
     }
 
+    /// Returns the shape that readies two matrices ready for matmul
+    /// Broadcasting matrices is slightly different then normal
+    /// as we only want to broadcast the batch dimensions [batch, batch, outer, inner]
+    /// Which are those dimensions over 2
+    /// for simplicity of matmul, we treat all matrices as if they where 4x4
+    /// # Arguments
+    /// * 'a' - Left hand shape
+    /// * 'b' - Right hand shape
+    pub fn matmul_broadcast(a: Shape, b: Shape) -> (Shape, Shape) {
+
+        let mut a_new_shape = vec![1, 1, 1, 1];
+        let mut b_new_shape = vec![1, 1, 1, 1];
+
+        // it is simplier if we assume that all matrix multiplication simply happens as 4x4 
+        // So first lets fill out dummy shapes with those dimensions we do have
+        for (index, dimension) in a.dimensions().iter().rev().enumerate() {
+            a_new_shape[3 - index] = *dimension;
+        }
+
+        for (index, dimension) in b.dimensions().iter().rev().enumerate() {
+            b_new_shape[3 - index] = *dimension;
+        }
+
+        // Next we want to broadcast just the first two dimensions of the four
+        // Following basic broadcasting rules
+
+        // First check that the indices are broadcastable at all
+        if a_new_shape[0] != 1 && b_new_shape[0] != 1 && a_new_shape[0] != b_new_shape[0] {
+            panic!("None broadcastable shapes {:?} {:?}", a, b);
+        }
+
+
+        // Broadcast them if we need to 
+        if a_new_shape[0] == 1 || b_new_shape[0] == 1 {
+            let a_first = a_new_shape[0];
+            let b_first = b_new_shape[0];
+            let final_dimension = usize::max(a_first, b_first);
+            a_new_shape[0] = final_dimension;
+            b_new_shape[0] = final_dimension;
+        }
+
+        // And then repeat for the second index
+        if a_new_shape[1] != 1 && b_new_shape[1] != 1 && a_new_shape[1] != b_new_shape[1] {
+            panic!("None broadcastable shapes {:?} {:?}", a, b);
+        }
+
+        if a_new_shape[1] == 1 || b_new_shape[1] == 1 {
+            let a_first = a_new_shape[1];
+            let b_first = b_new_shape[1];
+            let final_dimension = usize::max(a_first, b_first);
+            a_new_shape[1] = final_dimension;
+            b_new_shape[1] = final_dimension;
+        }
+
+        let new_a = Shape::new(a_new_shape);
+        let new_b = Shape::new(b_new_shape);
+
+        return (new_a, new_b);
+    }
+
     /// Returns a new shape that would be the result of two matrices of the provided shapes being matmul together
     /// # Arguments
     /// * 'other' - the shape of ther right side operand
@@ -185,7 +245,7 @@ impl Shape {
         }
 
         let mut one_dimension_added_to_left = false;
-        let mut one_dimension_add_to_right = false;
+        let mut one_dimension_added_to_right = false;
         // Then get left and right operand for the batch test
         let left_hand_working_shape = {
             if self.number_of_dimension() == 4 || self.number_of_dimension() == 3 {
@@ -219,7 +279,7 @@ impl Shape {
                     other.clone()
                 } else {
                     //NOTE: this is different then the left side, we are appending, above does a prepend
-                    one_dimension_add_to_right = true;
+                    one_dimension_added_to_right = true;
                     other.add_dimension_at_index(1, 1)
                 }
             }
@@ -233,11 +293,11 @@ impl Shape {
         // We need to remove the added dimensions that made it easier to and simpler to make the new shape
         if one_dimension_added_to_left {
             dimensions.remove(0);
-        } else if one_dimension_add_to_right {
+        } else if one_dimension_added_to_right {
             dimensions.remove(1);
         }
 
-        // We need to the batch dimensions (the lead dimensions of any vector greater then 2 in length)
+        // We need to the batch dimensions (the leading dimensions of any vector greater then 2 in length)
         let mut left_side_batch_dimension = vec![];
         let mut right_side_batch_dimension = vec![];
 
