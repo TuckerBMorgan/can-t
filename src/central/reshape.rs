@@ -13,3 +13,29 @@ impl Tensor {
         return new_tensor;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::central::{Tensor, Shape};
+
+
+    #[test]
+    pub fn basic_reshape_test() {
+        let test = Tensor::element(Shape::new(vec![1, 2, 3, 4]), 4.0);
+        let reshaped = test.reshape(Shape::new(vec![1, 3, 2, 4]));
+        let shape = reshaped.shape;
+        assert!(shape.dimensions()[0] == 1);
+        assert!(shape.dimensions()[1] == 3);
+        assert!(shape.dimensions()[2] == 2);
+        assert!(shape.dimensions()[3] == 4);
+    }
+
+    #[test]
+    pub fn basic_reshape_test_2() {
+        let test = Tensor::element(Shape::new(vec![4]), 4.0);
+        let reshaped = test.reshape(Shape::new(vec![2, 2]));
+        let shape = reshaped.shape;
+        assert!(shape.dimensions()[0] == 2);
+        assert!(shape.dimensions()[1] == 2);
+    }
+}
