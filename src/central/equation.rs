@@ -191,6 +191,9 @@ impl Equation {
         for _ in 0..b_shape_missing_dimensions {
             b_shape.insert(0, 1);
         }
+        if b_shape_missing_dimensions == 3 {
+            b_shape.swap(2, 3);
+        }
 
         let a_shape = [a_shape[0], a_shape[1], a_shape[2], a_shape[3]];
         let b_shape = [b_shape[0], b_shape[1], b_shape[2], b_shape[3]];
@@ -351,6 +354,9 @@ impl Equation {
             },
             Operation::Matmul(_left, _right) => {
                 panic!("Time to implement matmul backwrad");
+            },
+            Operation::Reshape(from, shape) => {
+                panic!("Time to implement reshape backwards");
             }
         }
     }

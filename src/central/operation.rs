@@ -11,5 +11,6 @@ pub enum Operation {
                                       // Rust does not let you copy/clone vecs, and we will not be supporting matrices greater then 4, so we can use [usize;4] as a stand in for
                                       // the vec
     Pow(TensorID, TensorID),  // The tensor we raised to a power, a tensor that holds the value of that power for later
-    Matmul(TensorID, TensorID) // Left side operand tensor, right side operand tensor
+    Matmul(TensorID, TensorID), // Left side operand tensor, right side operand tensor
+    Reshape(TensorID, Shape) // The tensor we are shaping from, the Shape we moved to
 }

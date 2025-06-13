@@ -2,31 +2,40 @@
 use crate::central::*;
 use std::ops::Shl;
 use super::get_equation;
-use crate::utils::handle_broadcasting;
 
  
 impl Shl for Tensor {
     type Output = Tensor;
     fn shl(self, rhs: Self) -> Self::Output {
-        
+
+        // Matmul broadcast rules, if the right hand has only one dimension, we want to add a 1 length dimenion 
+        // so it does make a mistake
+        let mut working_rhs = rhs;
+        if working_rhs.shape.dimensions().len() == 1 {
+            working_rhs = working_rhs.reshape(Shape::new(vec![working_rhs.shape.dimensions()[0], 1]));
+        }
+
         // Broadcasting and checking if you can matmul at all are covered by this function 
-        let (left_hand_broadcast_shape, right_hand_broadcast_shape) = Shape::matmul_broadcast(self.shape, rhs.shape);
+        let (left_hand_broadcast_shape, right_hand_broadcast_shape) = Shape::matmul_broadcast(self.shape, working_rhs.shape);
+        
 
         // Do the final shape based of of the PRE broadcast shapes       
-        let matmul_shape = self.shape.matmul_shape(rhs.shape);
+        let matmul_shape = self.shape.matmul_shape(working_rhs.shape);
 
         // Broadcast the tensors over to their right shape
         let left_hand = self.broadcast(left_hand_broadcast_shape);
-        let right_hand = rhs.broadcast(right_hand_broadcast_shape);
+        let right_hand = working_rhs.broadcast(right_hand_broadcast_shape);
 
         // we vend the actual work of doing the matmul to the equation, which can take advantage of platform libs
-        let data = get_equation().matmul_tensor(left_hand.id,right_hand.id);
+        let data = get_equation().matmul_tensor(left_hand.id, right_hand.id);
         let return_tensor = Tensor::create_tensor_data_and_shape_and_operation(matmul_shape, data, Operation::Matmul(left_hand.id, right_hand.id ));
         return return_tensor;
     }
 }
 #[cfg(test)]
 mod tests {
+    use ndarray::{stack, ArrayD};
+    use ndarray::Axis;
     use crate::central::{Shape, Tensor};
     use crate::utils::GGUFFile;
     
@@ -76,4 +85,31 @@ mod tests {
         let tensor_x = tensor_a << tensor_b;
         compare_tensors(tensor_x, tensor_x_real);
     }
+
+    #[test]
+    pub fn matmul_4x2() {
+        let mut gguf_file = GGUFFile::new(String::from(
+            "./models/tests/matmul/matmul_4x2.gguf",
+        ));
+
+        let tensor_a = Tensor::from_gguf_file(String::from("matmul_4x2_tensor_a"), &mut gguf_file);
+        let tensor_b = Tensor::from_gguf_file(String::from("matmul_4x2_tensor_b"), &mut gguf_file);
+        let tensor_x_real = Tensor::from_gguf_file(String::from("matmul_4x2_tensor_x"), &mut gguf_file);
+        let tensor_x = tensor_a << tensor_b;
+        compare_tensors(tensor_x, tensor_x_real);
+    }
+
+    #[test]
+    pub fn matmul_4x1() {
+        let mut gguf_file = GGUFFile::new(String::from(
+            "./models/tests/matmul/matmul_4x1.gguf",
+        ));
+
+        let tensor_a = Tensor::from_gguf_file(String::from("matmul_4x1_tensor_a"), &mut gguf_file);
+        let tensor_b = Tensor::from_gguf_file(String::from("matmul_4x1_tensor_b"), &mut gguf_file);
+        let tensor_x_real = Tensor::from_gguf_file(String::from("matmul_4x1_tensor_x"), &mut gguf_file);
+        let tensor_x = tensor_a << tensor_b;
+        compare_tensors(tensor_x, tensor_x_real);
+    }
+
 }

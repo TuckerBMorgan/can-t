@@ -7,6 +7,8 @@ mod sum_op;
 mod tensor;
 mod pow_op;
 mod matmul_op;
+mod reshape;
+
 pub use add_op::*;
 pub use equation::*;
 pub use lazy_static::*;
@@ -18,6 +20,7 @@ pub use sum_op::*;
 pub use tensor::*;
 pub use pow_op::*;
 pub use matmul_op::*;
+pub use reshape::*;
 
 lazy_static! {
     static ref SINGLETON_INSTANCE: Mutex<Equation> = Mutex::new(Equation::new());

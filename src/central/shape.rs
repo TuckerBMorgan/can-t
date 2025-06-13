@@ -153,8 +153,16 @@ impl Shape {
             a_new_shape[3 - index] = *dimension;
         }
 
-        for (index, dimension) in b.dimensions().iter().rev().enumerate() {
-            b_new_shape[3 - index] = *dimension;
+        // Special casing 1d vectors on the right hand side
+        // because in the case of for example [1, 2, 3, 4] x [4] we want it to come out
+        // [1, 2, 3, 4] x [1, 2, 4, 1] then [1, 2, 3, 4] x [1, 2, 1, 4]
+        if b.number_of_dimension() == 1 {
+            b_new_shape[2] = b.dimensions()[0];
+        }
+        else {
+            for (index, dimension) in b.dimensions().iter().rev().enumerate() {
+                b_new_shape[3 - index] = *dimension;
+            }    
         }
 
         // Next we want to broadcast just the first two dimensions of the four
@@ -432,6 +440,16 @@ impl Shape {
             shape.push(self.dimension[i]);
         }
         shape
+    }
+
+    /// checks if you can reshape one shape into another
+    pub fn can_reshape_to(&self, other_shape: Shape) -> bool {
+        // with reshapeing you can't add or remove elements, so they total size must be equal
+        if self.total_size() != other_shape.total_size() {
+            return false;
+        }
+
+        return true;
     }
 }
 

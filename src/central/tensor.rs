@@ -58,6 +58,9 @@ impl InternalTensor {
             },
             Operation::Matmul(left, right, ) => {
                 return vec![*left, *right];
+            },
+            Operation::Reshape(from, _shape) => {
+                return vec![*from];
             }
         }
     }
@@ -143,9 +146,10 @@ impl Tensor {
     ) -> Tensor {
         assert!(
             shape.total_size() == data.len(),
-            "You cannot create a tensor with a shape of different size then data : shape size {} data length {}",
+            "You cannot create a tensor with a shape of different size then data : shape size {} data length {} shape {:?}",
             shape.total_size(),
-            data.len()
+            data.len(),
+            shape
         );
         let id = get_equation().allocate_tensor(shape, data, operation);
 

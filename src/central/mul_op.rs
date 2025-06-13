@@ -226,4 +226,33 @@ mod tests {
         assert!(d.grad()[0] == 50.0);
         assert!(e.grad()[0] == 1.0);
     }
+
+
+    #[test]
+    pub fn div_f32_test() {
+        let a = Tensor::element(Shape::new(vec![1]), 10.0);
+        let b = a / 2.0;
+        for element in b.item() {
+            assert!(element == 5.0);
+        }
+    }
+
+    #[test]
+    pub fn mul_f32_test() {
+        let a = Tensor::element(Shape::new(vec![1]), 10.0);
+        let b = a * 2.0;
+        for element in b.item() {
+            assert!(element == 20.0);
+        }
+    }
+
+    #[test]
+    pub fn f32_mul_test() {
+        let a = Tensor::element(Shape::new(vec![1]), 10.0);
+        let b = 2.0 * a;
+        for element in b.item() {
+            assert!(element == 20.0);
+        }
+    }
+
 }

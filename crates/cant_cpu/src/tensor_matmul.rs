@@ -21,6 +21,11 @@ fn valid_shape(a: [usize;4], b:[usize;4]) {
 }
 
 // Performs batched 2D matrix multiplication over 4D tensors
+// Arguments
+// 'a' - a flat buffer of the data in the first tensor
+// 'a_shape' - a 4 element array that represents the matrix dimensions for a
+// 'b' - a flat buffer of the data in the second data
+// 'b_shape' - a 4 element array that represents the matrix dimensions for b
 pub fn tensor_matmul(a: &[f32], a_shape: [usize;4], b: &[f32], b_shape:[usize;4]) -> Vec<f32> {
 
     // Validate that the input shapes are compatible
