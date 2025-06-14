@@ -52,13 +52,13 @@ impl InternalTensor {
             }
             Operation::Sum(from, _, _, _) => {
                 return vec![*from];
-            },
+            }
             Operation::Pow(from, _power) => {
                 return vec![*from];
-            },
-            Operation::Matmul(left, right, ) => {
+            }
+            Operation::Matmul(left, right) => {
                 return vec![*left, *right];
-            },
+            }
             Operation::Reshape(from, _shape) => {
                 return vec![*from];
             }
@@ -95,7 +95,11 @@ impl Tensor {
         let data = gguf_file.get_weight_for_tensor(tensor_name.clone());
         let tensor_data = gguf_file.get_tensor(tensor_name);
 
-        return  Tensor::create_tensor_data_and_shape_and_operation(Shape::new(tensor_data.dimensions), data, Operation::Nop);
+        return Tensor::create_tensor_data_and_shape_and_operation(
+            Shape::new(tensor_data.dimensions),
+            data,
+            Operation::Nop,
+        );
     }
 
     /// Allocates a new tensor with provided shape, all with 0s
@@ -207,8 +211,6 @@ impl Tensor {
         );
         get_equation().backward(self.id);
     }
-
-
 }
 
 #[cfg(test)]

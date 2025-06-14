@@ -3,7 +3,6 @@ use std::collections::HashSet;
 use crate::central::*;
 use ndarray::prelude::*;
 
-
 impl Tensor {
     pub fn sum(&self, mut axes: Vec<usize>, keep_dimensions: bool) -> Tensor {
         // Sanity Check that there is no double sums provided
@@ -50,7 +49,8 @@ impl Tensor {
             dimensions_as_array[index] = *dim;
         }
 
-        let sum_opeartion = Operation::Sum(self.id, dimensions_as_array, axes.len(), keep_dimensions);
+        let sum_opeartion =
+            Operation::Sum(self.id, dimensions_as_array, axes.len(), keep_dimensions);
         let new_tensor = Tensor::create_tensor_data_and_shape_and_operation(
             new_shape,
             item.into_raw_vec(),
@@ -60,14 +60,15 @@ impl Tensor {
     }
 }
 pub fn backward_for_sum(backprop_backet: BackproagationPacket) {
-    if let Operation::Sum(from, dimensions, dimensions_count, keep_dimensions) = backprop_backet.operation {
+    if let Operation::Sum(from, dimensions, dimensions_count, keep_dimensions) =
+        backprop_backet.operation
+    {
         // Get the incoming grad and broadcast it back to the shape we want
         let grad = backprop_backet
             .equation
             .get_grad(backprop_backet.incoming_grad);
         let from_array = backprop_backet.equation.get_grad(from);
         let mut working_shape = grad.shape().to_vec();
-
 
         // if we removed the dimensions, we need to add back the space that they where
         if !keep_dimensions {
@@ -76,7 +77,7 @@ pub fn backward_for_sum(backprop_backet: BackproagationPacket) {
             let mut brodcastable_shape = from_array.shape().to_vec();
             for index in 0..dimensions_count {
                 brodcastable_shape[dimensions[index]] = 1;
-            } 
+            }
             working_shape = brodcastable_shape;
         }
 
@@ -103,8 +104,10 @@ mod tests {
         let mut gguf_file = GGUFFile::new(String::from(
             "./models/tests/sum/sum_test_file_container.gguf",
         ));
-        let presum_tensor = Tensor::from_gguf_file("sum_test_pre_sum_model".to_string(), &mut gguf_file);
-        let postsum_tensor = Tensor::from_gguf_file("sum_test_post_sum_model".to_string(), &mut gguf_file);
+        let presum_tensor =
+            Tensor::from_gguf_file("sum_test_pre_sum_model".to_string(), &mut gguf_file);
+        let postsum_tensor =
+            Tensor::from_gguf_file("sum_test_post_sum_model".to_string(), &mut gguf_file);
         let result = presum_tensor.sum(vec![1], true);
         let cant_result = result.item();
         let pytorch_result = postsum_tensor.item();
@@ -120,8 +123,14 @@ mod tests {
         let mut gguf_file = GGUFFile::new(String::from(
             "./models/tests/sum/double_index_sum_test_file_container.gguf",
         ));
-        let presum_tensor = Tensor::from_gguf_file("sum_test_pre_double_index_sum_model".to_string(), &mut gguf_file);
-        let postsum_tensor = Tensor::from_gguf_file("sum_test_post_double_index_sum_model".to_string(), &mut gguf_file);
+        let presum_tensor = Tensor::from_gguf_file(
+            "sum_test_pre_double_index_sum_model".to_string(),
+            &mut gguf_file,
+        );
+        let postsum_tensor = Tensor::from_gguf_file(
+            "sum_test_post_double_index_sum_model".to_string(),
+            &mut gguf_file,
+        );
         let result = presum_tensor.sum(vec![1, 2], true);
         let cant_result = result.item();
         let pytorch_result = postsum_tensor.item();
@@ -137,9 +146,15 @@ mod tests {
         let mut gguf_file = GGUFFile::new(String::from(
             "./models/tests/sum/double_index_with_skip_sum__test_file_container.gguf",
         ));
-        let presum_tensor = Tensor::from_gguf_file("sum_test_pre_double_index_with_skip_sum_model".to_string(), &mut gguf_file);
+        let presum_tensor = Tensor::from_gguf_file(
+            "sum_test_pre_double_index_with_skip_sum_model".to_string(),
+            &mut gguf_file,
+        );
 
-        let postsum_tensor = Tensor::from_gguf_file("sum_test_post_double_index_with_skip_sum__model".to_string(), &mut gguf_file);
+        let postsum_tensor = Tensor::from_gguf_file(
+            "sum_test_post_double_index_with_skip_sum__model".to_string(),
+            &mut gguf_file,
+        );
         let result = presum_tensor.sum(vec![1, 3], true);
         let cant_result = result.item();
         let pytorch_result = postsum_tensor.item();
@@ -155,13 +170,34 @@ mod tests {
         let mut gguf_file = GGUFFile::new(String::from(
             "./models/tests/sum/sum_backward_test_container.gguf",
         ));
-        let tensor_a = Tensor::from_gguf_file("sum_backward_test_container_tensor_a".to_string(), &mut gguf_file);
-        let tensor_b = Tensor::from_gguf_file("sum_backward_test_container_tensor_b".to_string(), &mut gguf_file);
-        let tensor_a_grad_real = Tensor::from_gguf_file("sum_backward_test_container_tensor_a_grad".to_string(), &mut gguf_file);
-        let tensor_b_grad_real = Tensor::from_gguf_file("sum_backward_test_container_tensor_b_grad".to_string(), &mut gguf_file);
-        let multiplied_real = Tensor::from_gguf_file("sum_backward_test_container_tensor_multiplied".to_string(), &mut gguf_file);
-        let multiplied_real_grad = Tensor::from_gguf_file("sum_backward_test_container_tensor_multiplied_grad".to_string(), &mut gguf_file);
-        let summed_real = Tensor::from_gguf_file("sum_backward_test_container_tensor_summed".to_string(), &mut gguf_file);
+        let tensor_a = Tensor::from_gguf_file(
+            "sum_backward_test_container_tensor_a".to_string(),
+            &mut gguf_file,
+        );
+        let tensor_b = Tensor::from_gguf_file(
+            "sum_backward_test_container_tensor_b".to_string(),
+            &mut gguf_file,
+        );
+        let tensor_a_grad_real = Tensor::from_gguf_file(
+            "sum_backward_test_container_tensor_a_grad".to_string(),
+            &mut gguf_file,
+        );
+        let tensor_b_grad_real = Tensor::from_gguf_file(
+            "sum_backward_test_container_tensor_b_grad".to_string(),
+            &mut gguf_file,
+        );
+        let multiplied_real = Tensor::from_gguf_file(
+            "sum_backward_test_container_tensor_multiplied".to_string(),
+            &mut gguf_file,
+        );
+        let multiplied_real_grad = Tensor::from_gguf_file(
+            "sum_backward_test_container_tensor_multiplied_grad".to_string(),
+            &mut gguf_file,
+        );
+        let summed_real = Tensor::from_gguf_file(
+            "sum_backward_test_container_tensor_summed".to_string(),
+            &mut gguf_file,
+        );
 
         let multiplied = tensor_a * tensor_b;
         let multiplied_item = multiplied.item();
@@ -174,7 +210,7 @@ mod tests {
         let summed_item = summed.item();
         let together = summed_item.iter().zip(summed_real.item());
         for (a, b) in together {
-            assert!(approx_equal(*a,b, epsilon));
+            assert!(approx_equal(*a, b, epsilon));
         }
 
         summed.backward();
@@ -185,7 +221,6 @@ mod tests {
             assert!(approx_equal(*a, b, epsilon))
         }
 
-        
         let tensor_a_grad = tensor_a.grad();
         let together = tensor_a_grad.iter().zip(tensor_a_grad_real.item());
         for (a, b) in together {
@@ -205,13 +240,34 @@ mod tests {
         let mut gguf_file = GGUFFile::new(String::from(
             "./models/tests/sum/sum_and_broadcast_backward_test_container.gguf",
         ));
-        let tensor_a = Tensor::from_gguf_file("sum_and_broadcast_backward_test_container_tensor_a".to_string(), &mut gguf_file);
-        let tensor_b = Tensor::from_gguf_file("sum_and_broadcast_backward_test_container_tensor_b".to_string(), &mut gguf_file);
-        let tensor_a_grad_real = Tensor::from_gguf_file("sum_and_broadcast_backward_test_container_tensor_a_grad".to_string(), &mut gguf_file);
-        let tensor_b_grad_real = Tensor::from_gguf_file("sum_and_broadcast_backward_test_container_tensor_b_grad".to_string(), &mut gguf_file);
-        let multiplied_real = Tensor::from_gguf_file("sum_and_broadcast_backward_test_container_tensor_multiplied".to_string(), &mut gguf_file);
-        let multiplied_real_grad = Tensor::from_gguf_file("sum_and_broadcast_backward_test_container_tensor_multiplied_grad".to_string(), &mut gguf_file);
-        let summed_real = Tensor::from_gguf_file("sum_and_broadcast_backward_test_container_tensor_summed".to_string(), &mut gguf_file);
+        let tensor_a = Tensor::from_gguf_file(
+            "sum_and_broadcast_backward_test_container_tensor_a".to_string(),
+            &mut gguf_file,
+        );
+        let tensor_b = Tensor::from_gguf_file(
+            "sum_and_broadcast_backward_test_container_tensor_b".to_string(),
+            &mut gguf_file,
+        );
+        let tensor_a_grad_real = Tensor::from_gguf_file(
+            "sum_and_broadcast_backward_test_container_tensor_a_grad".to_string(),
+            &mut gguf_file,
+        );
+        let tensor_b_grad_real = Tensor::from_gguf_file(
+            "sum_and_broadcast_backward_test_container_tensor_b_grad".to_string(),
+            &mut gguf_file,
+        );
+        let multiplied_real = Tensor::from_gguf_file(
+            "sum_and_broadcast_backward_test_container_tensor_multiplied".to_string(),
+            &mut gguf_file,
+        );
+        let multiplied_real_grad = Tensor::from_gguf_file(
+            "sum_and_broadcast_backward_test_container_tensor_multiplied_grad".to_string(),
+            &mut gguf_file,
+        );
+        let summed_real = Tensor::from_gguf_file(
+            "sum_and_broadcast_backward_test_container_tensor_summed".to_string(),
+            &mut gguf_file,
+        );
 
         let multiplied = tensor_a + tensor_b;
         let multiplied_item = multiplied.item();
@@ -226,7 +282,7 @@ mod tests {
         let together = summed_item.iter().zip(summed_real.item());
 
         for (a, b) in together {
-            assert!(approx_equal(*a,b, epsilon));
+            assert!(approx_equal(*a, b, epsilon));
         }
 
         summed.backward();
@@ -237,7 +293,6 @@ mod tests {
             assert!(approx_equal(*a, b, epsilon))
         }
 
-        
         let tensor_a_grad = tensor_a.grad();
         let together = tensor_a_grad.iter().zip(tensor_a_grad_real.item());
         for (a, b) in together {

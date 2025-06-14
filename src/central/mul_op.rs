@@ -1,7 +1,7 @@
 use super::get_equation;
 use crate::central::*;
-use std::ops::{Mul, Neg, Div};
 use crate::utils::handle_broadcasting;
+use std::ops::{Div, Mul, Neg};
 
 impl Mul for Tensor {
     type Output = Self;
@@ -71,7 +71,6 @@ impl Mul<Tensor> for f32 {
         rhs * self
     }
 }
-
 
 pub fn backward_for_mul(backprop_backet: BackproagationPacket) {
     if let Operation::Mul(left_hand_side, right_hand_side) = backprop_backet.operation {
@@ -227,7 +226,6 @@ mod tests {
         assert!(e.grad()[0] == 1.0);
     }
 
-
     #[test]
     pub fn div_f32_test() {
         let a = Tensor::element(Shape::new(vec![1]), 10.0);
@@ -254,5 +252,4 @@ mod tests {
             assert!(element == 20.0);
         }
     }
-
 }

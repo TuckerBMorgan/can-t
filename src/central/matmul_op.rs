@@ -1,25 +1,23 @@
-
+use super::get_equation;
 use crate::central::*;
 use std::ops::Shl;
-use super::get_equation;
 
- 
 impl Shl for Tensor {
     type Output = Tensor;
     fn shl(self, rhs: Self) -> Self::Output {
-
-        // Matmul broadcast rules, if the right hand has only one dimension, we want to add a 1 length dimenion 
+        // Matmul broadcast rules, if the right hand has only one dimension, we want to add a 1 length dimenion
         // so it does make a mistake
         let mut working_rhs = rhs;
         if working_rhs.shape.dimensions().len() == 1 {
-            working_rhs = working_rhs.reshape(Shape::new(vec![working_rhs.shape.dimensions()[0], 1]));
+            working_rhs =
+                working_rhs.reshape(Shape::new(vec![working_rhs.shape.dimensions()[0], 1]));
         }
 
-        // Broadcasting and checking if you can matmul at all are covered by this function 
-        let (left_hand_broadcast_shape, right_hand_broadcast_shape) = Shape::matmul_broadcast(self.shape, working_rhs.shape);
-        
+        // Broadcasting and checking if you can matmul at all are covered by this function
+        let (left_hand_broadcast_shape, right_hand_broadcast_shape) =
+            Shape::matmul_broadcast(self.shape, working_rhs.shape);
 
-        // Do the final shape based of of the PRE broadcast shapes       
+        // Do the final shape based of of the PRE broadcast shapes
         let matmul_shape = self.shape.matmul_shape(working_rhs.shape);
 
         // Broadcast the tensors over to their right shape
@@ -28,7 +26,11 @@ impl Shl for Tensor {
 
         // we vend the actual work of doing the matmul to the equation, which can take advantage of platform libs
         let data = get_equation().matmul_tensor(left_hand.id, right_hand.id);
-        let return_tensor = Tensor::create_tensor_data_and_shape_and_operation(matmul_shape, data, Operation::Matmul(left_hand.id, right_hand.id ));
+        let return_tensor = Tensor::create_tensor_data_and_shape_and_operation(
+            matmul_shape,
+            data,
+            Operation::Matmul(left_hand.id, right_hand.id),
+        );
         return return_tensor;
     }
 }
@@ -36,7 +38,7 @@ impl Shl for Tensor {
 mod tests {
     use crate::central::{Shape, Tensor};
     use crate::utils::GGUFFile;
-    
+
     fn approx_equal(a: f32, b: f32, epsilon: f32) -> bool {
         (a - b).abs() <= epsilon
     }
@@ -59,146 +61,133 @@ mod tests {
 
     #[test]
     pub fn matmul_4x4() {
-        let mut gguf_file = GGUFFile::new(String::from(
-            "./models/tests/matmul/matmul_4x4.gguf",
-        ));
+        let mut gguf_file = GGUFFile::new(String::from("./models/tests/matmul/matmul_4x4.gguf"));
 
         let tensor_a = Tensor::from_gguf_file(String::from("matmul_4x4_tensor_a"), &mut gguf_file);
         let tensor_b = Tensor::from_gguf_file(String::from("matmul_4x4_tensor_b"), &mut gguf_file);
-        let tensor_x_real = Tensor::from_gguf_file(String::from("matmul_4x4_tensor_x"), &mut gguf_file);
+        let tensor_x_real =
+            Tensor::from_gguf_file(String::from("matmul_4x4_tensor_x"), &mut gguf_file);
         let tensor_x = tensor_a << tensor_b;
         compare_tensors(tensor_x, tensor_x_real);
     }
 
-
     #[test]
     pub fn matmul_4x3() {
-        let mut gguf_file = GGUFFile::new(String::from(
-            "./models/tests/matmul/matmul_4x3.gguf",
-        ));
+        let mut gguf_file = GGUFFile::new(String::from("./models/tests/matmul/matmul_4x3.gguf"));
 
         let tensor_a = Tensor::from_gguf_file(String::from("matmul_4x3_tensor_a"), &mut gguf_file);
         let tensor_b = Tensor::from_gguf_file(String::from("matmul_4x3_tensor_b"), &mut gguf_file);
-        let tensor_x_real = Tensor::from_gguf_file(String::from("matmul_4x3_tensor_x"), &mut gguf_file);
+        let tensor_x_real =
+            Tensor::from_gguf_file(String::from("matmul_4x3_tensor_x"), &mut gguf_file);
         let tensor_x = tensor_a << tensor_b;
         compare_tensors(tensor_x, tensor_x_real);
     }
 
     #[test]
     pub fn matmul_4x2() {
-        let mut gguf_file = GGUFFile::new(String::from(
-            "./models/tests/matmul/matmul_4x2.gguf",
-        ));
+        let mut gguf_file = GGUFFile::new(String::from("./models/tests/matmul/matmul_4x2.gguf"));
 
         let tensor_a = Tensor::from_gguf_file(String::from("matmul_4x2_tensor_a"), &mut gguf_file);
         let tensor_b = Tensor::from_gguf_file(String::from("matmul_4x2_tensor_b"), &mut gguf_file);
-        let tensor_x_real = Tensor::from_gguf_file(String::from("matmul_4x2_tensor_x"), &mut gguf_file);
+        let tensor_x_real =
+            Tensor::from_gguf_file(String::from("matmul_4x2_tensor_x"), &mut gguf_file);
         let tensor_x = tensor_a << tensor_b;
         compare_tensors(tensor_x, tensor_x_real);
     }
 
     #[test]
     pub fn matmul_4x1() {
-        let mut gguf_file = GGUFFile::new(String::from(
-            "./models/tests/matmul/matmul_4x1.gguf",
-        ));
+        let mut gguf_file = GGUFFile::new(String::from("./models/tests/matmul/matmul_4x1.gguf"));
 
         let tensor_a = Tensor::from_gguf_file(String::from("matmul_4x1_tensor_a"), &mut gguf_file);
         let tensor_b = Tensor::from_gguf_file(String::from("matmul_4x1_tensor_b"), &mut gguf_file);
-        let tensor_x_real = Tensor::from_gguf_file(String::from("matmul_4x1_tensor_x"), &mut gguf_file);
+        let tensor_x_real =
+            Tensor::from_gguf_file(String::from("matmul_4x1_tensor_x"), &mut gguf_file);
         let tensor_x = tensor_a << tensor_b;
         compare_tensors(tensor_x, tensor_x_real);
     }
 
     #[test]
     pub fn matmul_1x4() {
-        let mut gguf_file = GGUFFile::new(String::from(
-            "./models/tests/matmul/matmul_1x4.gguf",
-        ));
+        let mut gguf_file = GGUFFile::new(String::from("./models/tests/matmul/matmul_1x4.gguf"));
 
         let tensor_a = Tensor::from_gguf_file(String::from("matmul_1x4_tensor_a"), &mut gguf_file);
         let tensor_b = Tensor::from_gguf_file(String::from("matmul_1x4_tensor_b"), &mut gguf_file);
-        let tensor_x_real = Tensor::from_gguf_file(String::from("matmul_1x4_tensor_x"), &mut gguf_file);
+        let tensor_x_real =
+            Tensor::from_gguf_file(String::from("matmul_1x4_tensor_x"), &mut gguf_file);
         let tensor_x = tensor_a << tensor_b;
         compare_tensors(tensor_x, tensor_x_real);
     }
 
     #[test]
     pub fn matmul_2x4() {
-        let mut gguf_file = GGUFFile::new(String::from(
-            "./models/tests/matmul/matmul_2x4.gguf",
-        ));
+        let mut gguf_file = GGUFFile::new(String::from("./models/tests/matmul/matmul_2x4.gguf"));
 
         let tensor_a = Tensor::from_gguf_file(String::from("matmul_2x4_tensor_a"), &mut gguf_file);
         let tensor_b = Tensor::from_gguf_file(String::from("matmul_2x4_tensor_b"), &mut gguf_file);
-        let tensor_x_real = Tensor::from_gguf_file(String::from("matmul_2x4_tensor_x"), &mut gguf_file);
+        let tensor_x_real =
+            Tensor::from_gguf_file(String::from("matmul_2x4_tensor_x"), &mut gguf_file);
         let tensor_x = tensor_a << tensor_b;
         compare_tensors(tensor_x, tensor_x_real);
     }
 
     #[test]
     pub fn matmul_3x4() {
-        let mut gguf_file = GGUFFile::new(String::from(
-            "./models/tests/matmul/matmul_3x4.gguf",
-        ));
+        let mut gguf_file = GGUFFile::new(String::from("./models/tests/matmul/matmul_3x4.gguf"));
 
         let tensor_a = Tensor::from_gguf_file(String::from("matmul_3x4_tensor_a"), &mut gguf_file);
         let tensor_b = Tensor::from_gguf_file(String::from("matmul_3x4_tensor_b"), &mut gguf_file);
-        let tensor_x_real = Tensor::from_gguf_file(String::from("matmul_3x4_tensor_x"), &mut gguf_file);
+        let tensor_x_real =
+            Tensor::from_gguf_file(String::from("matmul_3x4_tensor_x"), &mut gguf_file);
         let tensor_x = tensor_a << tensor_b;
         compare_tensors(tensor_x, tensor_x_real);
     }
 
     #[test]
     pub fn matmul_1x2() {
-        let mut gguf_file = GGUFFile::new(String::from(
-            "./models/tests/matmul/matmul_1x2.gguf",
-        ));
+        let mut gguf_file = GGUFFile::new(String::from("./models/tests/matmul/matmul_1x2.gguf"));
 
         let tensor_a = Tensor::from_gguf_file(String::from("matmul_1x2_tensor_a"), &mut gguf_file);
         let tensor_b = Tensor::from_gguf_file(String::from("matmul_1x2_tensor_b"), &mut gguf_file);
-        let tensor_x_real = Tensor::from_gguf_file(String::from("matmul_1x2_tensor_x"), &mut gguf_file);
+        let tensor_x_real =
+            Tensor::from_gguf_file(String::from("matmul_1x2_tensor_x"), &mut gguf_file);
         let tensor_x = tensor_a << tensor_b;
         compare_tensors(tensor_x, tensor_x_real);
     }
 
     #[test]
     pub fn matmul_2x2() {
-        let mut gguf_file = GGUFFile::new(String::from(
-            "./models/tests/matmul/matmul_2x2.gguf",
-        ));
+        let mut gguf_file = GGUFFile::new(String::from("./models/tests/matmul/matmul_2x2.gguf"));
 
         let tensor_a = Tensor::from_gguf_file(String::from("matmul_2x2_tensor_a"), &mut gguf_file);
         let tensor_b = Tensor::from_gguf_file(String::from("matmul_2x2_tensor_b"), &mut gguf_file);
-        let tensor_x_real = Tensor::from_gguf_file(String::from("matmul_2x2_tensor_x"), &mut gguf_file);
+        let tensor_x_real =
+            Tensor::from_gguf_file(String::from("matmul_2x2_tensor_x"), &mut gguf_file);
         let tensor_x = tensor_a << tensor_b;
         compare_tensors(tensor_x, tensor_x_real);
     }
 
     #[test]
     pub fn matmul_3x2() {
-        let mut gguf_file = GGUFFile::new(String::from(
-            "./models/tests/matmul/matmul_3x2.gguf",
-        ));
+        let mut gguf_file = GGUFFile::new(String::from("./models/tests/matmul/matmul_3x2.gguf"));
 
         let tensor_a = Tensor::from_gguf_file(String::from("matmul_3x2_tensor_a"), &mut gguf_file);
         let tensor_b = Tensor::from_gguf_file(String::from("matmul_3x2_tensor_b"), &mut gguf_file);
-        let tensor_x_real = Tensor::from_gguf_file(String::from("matmul_3x2_tensor_x"), &mut gguf_file);
+        let tensor_x_real =
+            Tensor::from_gguf_file(String::from("matmul_3x2_tensor_x"), &mut gguf_file);
         let tensor_x = tensor_a << tensor_b;
         compare_tensors(tensor_x, tensor_x_real);
     }
 
     #[test]
     pub fn matmul_3x1() {
-        let mut gguf_file = GGUFFile::new(String::from(
-            "./models/tests/matmul/matmul_3x1.gguf",
-        ));
+        let mut gguf_file = GGUFFile::new(String::from("./models/tests/matmul/matmul_3x1.gguf"));
 
         let tensor_a = Tensor::from_gguf_file(String::from("matmul_3x1_tensor_a"), &mut gguf_file);
         let tensor_b = Tensor::from_gguf_file(String::from("matmul_3x1_tensor_b"), &mut gguf_file);
-        let tensor_x_real = Tensor::from_gguf_file(String::from("matmul_3x1_tensor_x"), &mut gguf_file);
+        let tensor_x_real =
+            Tensor::from_gguf_file(String::from("matmul_3x1_tensor_x"), &mut gguf_file);
         let tensor_x = tensor_a << tensor_b;
         compare_tensors(tensor_x, tensor_x_real);
     }
-
 }

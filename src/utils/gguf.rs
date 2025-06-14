@@ -199,7 +199,6 @@ impl GGUFFile {
         ];
         let number_of_tensor = u64::from_le_bytes(array_of_bytes);
 
-
         // As well as how many kv pairs
         let mut number_of_keyvalue_pairs = [0; 8];
         let _number_of_key_value_error = f.read_exact(&mut number_of_keyvalue_pairs);
@@ -214,7 +213,6 @@ impl GGUFFile {
             number_of_keyvalue_pairs[7],
         ];
         let number_of_keyvalue_pairs = u64::from_le_bytes(array_of_bytes);
-
 
         // Read in as many of the kv pairs as we have
         let mut key_value_pairs = HashMap::new();
@@ -251,7 +249,6 @@ impl GGUFFile {
             key_value_pairs.insert(key, value);
         }
 
-
         // Read into the meta data for the tensors
         // IMPORTANT
         // this does not read in the data of the weights of the tensors itself
@@ -276,7 +273,7 @@ impl GGUFFile {
         let position = f.stream_position().unwrap();
         let padding = align_offset(position) - position;
 
-        // to save us effort later, seek to the end of padding, and then save that cursor position 
+        // to save us effort later, seek to the end of padding, and then save that cursor position
         // so when we want to read the weights of a tensor in, we know where to start
         f.seek_relative(padding as i64);
         GGUFFile {
@@ -292,26 +289,28 @@ impl GGUFFile {
     }
 
     pub fn get_weight_for_tensor(&self, name: String) -> Vec<f32> {
-        
         let tensor_meta_data = &self.tensors[&name];
-        
+
         // open the file and move the seek position to the start of the data porition + the offset
         // offset is relative to the data_start
         let mut f = File::open(self.path.as_str()).unwrap();
-        f.seek(std::io::SeekFrom::Start(self.data_start  + tensor_meta_data.offset));
-        let  mut count_of_data = 1;
+        f.seek(std::io::SeekFrom::Start(
+            self.data_start + tensor_meta_data.offset,
+        ));
+        let mut count_of_data = 1;
         for d in &tensor_meta_data.dimensions {
             count_of_data *= d;
         }
 
-
-
         // The data is stored as u8, so we need to read in 4 times the count of data
-        // as each f32 is a u8 
+        // as each f32 is a u8
         let mut data = vec![0; (count_of_data * 4) as usize];
 
         let _result = f.read_exact(&mut data);
 
-        return data.chunks(4).map(|chunks|f32::from_le_bytes([chunks[0], chunks[1], chunks[2], chunks[3]])).collect();
+        return data
+            .chunks(4)
+            .map(|chunks| f32::from_le_bytes([chunks[0], chunks[1], chunks[2], chunks[3]]))
+            .collect();
     }
 }

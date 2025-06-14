@@ -1,4 +1,3 @@
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Shape {
     dimension: [usize; 4], // Right to left, the length of up to 4 dimensions, Capping at 4 since that is the most we will encounter
@@ -143,11 +142,10 @@ impl Shape {
     /// * 'a' - Left hand shape
     /// * 'b' - Right hand shape
     pub fn matmul_broadcast(a: Shape, b: Shape) -> (Shape, Shape) {
-
         let mut a_new_shape = vec![1, 1, 1, 1];
         let mut b_new_shape = vec![1, 1, 1, 1];
 
-        // it is simplier if we assume that all matrix multiplication simply happens as 4x4 
+        // it is simplier if we assume that all matrix multiplication simply happens as 4x4
         // So first lets fill out dummy shapes with those dimensions we do have
         for (index, dimension) in a.dimensions().iter().rev().enumerate() {
             a_new_shape[3 - index] = *dimension;
@@ -158,11 +156,10 @@ impl Shape {
         // [1, 2, 3, 4] x [1, 2, 4, 1] then [1, 2, 3, 4] x [1, 2, 1, 4]
         if b.number_of_dimension() == 1 {
             b_new_shape[2] = b.dimensions()[0];
-        }
-        else {
+        } else {
             for (index, dimension) in b.dimensions().iter().rev().enumerate() {
                 b_new_shape[3 - index] = *dimension;
-            }    
+            }
         }
 
         // Next we want to broadcast just the first two dimensions of the four
@@ -173,8 +170,7 @@ impl Shape {
             panic!("None broadcastable shapes {:?} {:?}", a, b);
         }
 
-
-        // Broadcast them if we need to 
+        // Broadcast them if we need to
         if a_new_shape[0] == 1 || b_new_shape[0] == 1 {
             let a_first = a_new_shape[0];
             let b_first = b_new_shape[0];

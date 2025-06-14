@@ -1,7 +1,5 @@
 use crate::central::*;
-use std::{
-    ops::Add,
-};
+use std::ops::Add;
 
 use super::get_equation;
 use crate::utils::handle_broadcasting;
@@ -9,11 +7,9 @@ use crate::utils::handle_broadcasting;
 impl Add for Tensor {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
-
         // We want to make sure that the two operands can be added on a elementwise way
         // so we try to broadcast them together if they do not equal each other
         let (working_lfs, working_rhs) = handle_broadcasting(self, rhs);
-
 
         // We vend out the actual work to the equation, which in turn uses libs that take advantage of platform libs to speed it up
         let data = get_equation().add_tensors(working_lfs.id, working_rhs.id);
@@ -26,6 +22,7 @@ impl Add for Tensor {
     }
 }
 
+/// Handles calculating and passing back the gradient of an add operation
 pub fn backward_for_add(backprop_backet: BackproagationPacket) {
     if let Operation::Add(left_hand_side, right_hand_side) = backprop_backet.operation {
         // for the add operation, the gradient is simply the incoming gradient for both the left and right right operand
@@ -82,7 +79,6 @@ mod tests {
         }
     }
 
-
     #[test]
     pub fn basic_3d_brodcast() {
         let a = Tensor::element(Shape::new(vec![5, 5, 5]), 5.0);
@@ -134,13 +130,15 @@ mod tests {
     #[test]
     pub fn backprop_add_test() {
         let epsilon = 1e-5;
-        let mut gguf_file = GGUFFile::new(String::from(
-            "./models/tests/add/add_broadcast_test.gguf",
-        ));
+        let mut gguf_file =
+            GGUFFile::new(String::from("./models/tests/add/add_broadcast_test.gguf"));
 
-        let tensor_a = Tensor::from_gguf_file("add_broadcast_test_tensor_a".to_string(), &mut gguf_file);
-        let tensor_b = Tensor::from_gguf_file("add_broadcast_test_tensor_b".to_string(), &mut gguf_file);
-        let tensor_c_real = Tensor::from_gguf_file("add_broadcast_test_tensor_c".to_string(), &mut gguf_file);
+        let tensor_a =
+            Tensor::from_gguf_file("add_broadcast_test_tensor_a".to_string(), &mut gguf_file);
+        let tensor_b =
+            Tensor::from_gguf_file("add_broadcast_test_tensor_b".to_string(), &mut gguf_file);
+        let tensor_c_real =
+            Tensor::from_gguf_file("add_broadcast_test_tensor_c".to_string(), &mut gguf_file);
 
         let tensor_c = tensor_a + tensor_b;
         let tensor_c_item = tensor_c.item();
@@ -166,7 +164,6 @@ mod tests {
         assert!(e.grad()[0] == 1.0);
     }
 
-    
     //TODO: undo this comment once we have operations for reducing multidimension arrays to
     // single values
     #[test]
@@ -201,5 +198,4 @@ mod tests {
             assert!(datum == 1.0);
         }
     }
-    
 }

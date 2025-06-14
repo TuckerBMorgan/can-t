@@ -1,10 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
-use super::{add_op, mul_op, pow_op, shape::*, sum_op, InternalTensor, Operation, TensorID};
+use super::{
+    InternalTensor, Operation, TensorID, add_op, mul_op, pow_op, reshape, shape::*, sum_op,
+};
 use crate::utils::*;
 use ndarray::ArrayD;
-use rand_distr::{Distribution, Normal};
 use ndarray::Axis;
+use rand_distr::{Distribution, Normal};
 
 //#[cfg(target_os = "windows")]
 //use cant_cpu::prelude::*;
@@ -163,7 +165,7 @@ impl Equation {
     /// Takes two tensors are flat buffers and preforms matmul on them and returns the result
     /// # Arugments
     /// 'a' - the first tensor
-    /// 'b' - The seconf tensor 
+    /// 'b' - The seconf tensor
     pub fn matmul_tensor(&self, a: TensorID, b: TensorID) -> Vec<f32> {
         // Get the left side of the add
         let left_data = extract_tensor_data!(self.tensor_record, a, self.data);
@@ -272,7 +274,7 @@ impl Equation {
     pub fn get_data_flat_buffer(&self, tensor_id: TensorID) -> &[f32] {
         return extract_tensor_data!(self.tensor_record, tensor_id, self.data);
     }
- 
+
     /// Copies data into the grad of tensor_id
     /// # Arugments
     /// 'tensor_id' - Id of for the loopup on the tensor
@@ -330,7 +332,7 @@ impl Equation {
                     let input_dim = dimensions[dimensions.len() - 1 - index];
                     // Find those ones that we had to inflate during the broadcast
                     let original_dim = if index < from_shape.len() {
-                        from_shape[dimensions.len() - 1 -index]
+                        from_shape[dimensions.len() - 1 - index]
                     } else {
                         1
                     };
@@ -348,15 +350,15 @@ impl Equation {
             }
             Operation::Sum(_, _, _, _) => {
                 sum_op::backward_for_sum(packet);
-            },
-            Operation::Pow(base, power) => {
+            }
+            Operation::Pow(_base, _power) => {
                 pow_op::backward_for_pow(packet);
-            },
+            }
             Operation::Matmul(_left, _right) => {
                 panic!("Time to implement matmul backwrad");
-            },
-            Operation::Reshape(from, shape) => {
-                panic!("Time to implement reshape backwards");
+            }
+            Operation::Reshape(_from, _shape) => {
+                reshape::backward_for_reshape(packet);
             }
         }
     }
