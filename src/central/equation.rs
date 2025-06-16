@@ -1,7 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
+use super::backward_for_matmul;
 use super::{
-    InternalTensor, Operation, TensorID, add_op, mul_op, pow_op, reshape, shape::*, sum_op,
+    InternalTensor, Operation, TensorID, add_op, mul_op, pow_op, reshape, shape::*, sum_op, matmul_op
 };
 use crate::utils::*;
 use ndarray::ArrayD;
@@ -203,6 +204,15 @@ impl Equation {
         return tensor_matmul(left_data, a_shape, right_data, b_shape);
     }
 
+    /// takes two matrices as flat vectors and preforms matmul of them
+    /// 'a' - the flat array of the first matrix
+    /// 'a_shape' - the shape of a
+    /// 'b' - the flat array of the second matrix
+    /// 'b_shape' - the shape of b
+    pub fn matmul_vector(&self, a: &[f32], a_shape: [usize;4], b:&[f32], b_shape: [usize;4]) -> Vec<f32>{
+        return tensor_matmul(a, a_shape, b, b_shape);
+    }
+
     /// Takes two tensors as flat buffers, adds them together at an elementwise level and returns the result
     /// # Arguments
     /// * 'a' : The first tensor
@@ -275,6 +285,17 @@ impl Equation {
         return extract_tensor_data!(self.tensor_record, tensor_id, self.data);
     }
 
+    /// Helper function to get the shape of a tensor, without getting the entire tensor
+    /// # Arguments
+    /// 'tensor_id' - the tensor you are getting the shape for
+    pub fn get_tensor_shape(&self, tensor_id: TensorID) -> Shape {
+        return self.tensor_record[&tensor_id].shape;
+    }
+ 
+    pub fn swap_axes(&self, data: &mut [f32], dimensions: [usize;4], first_axes: usize, second_axes: usize) {
+        
+    }
+
     /// Copies data into the grad of tensor_id
     /// # Arugments
     /// 'tensor_id' - Id of for the loopup on the tensor
@@ -328,11 +349,11 @@ impl Equation {
                 let mut result = self.get_grad(incoming_grad);
 
                 // Loop over all of the dimensions
-                for index in 0..dimensions.len() {
-                    let input_dim = dimensions[dimensions.len() - 1 - index];
+                for index in 0..from_shape.len() {
+                    let input_dim = dimensions[from_shape.len() - 1 - index];
                     // Find those ones that we had to inflate during the broadcast
                     let original_dim = if index < from_shape.len() {
-                        from_shape[dimensions.len() - 1 - index]
+                        from_shape[from_shape.len() - 1 - index]
                     } else {
                         1
                     };
@@ -355,7 +376,7 @@ impl Equation {
                 pow_op::backward_for_pow(packet);
             }
             Operation::Matmul(_left, _right) => {
-                panic!("Time to implement matmul backwrad");
+                matmul_op::backward_for_matmul(packet);
             }
             Operation::Reshape(_from, _shape) => {
                 reshape::backward_for_reshape(packet);

@@ -1,5 +1,5 @@
 use super::get_equation;
-use crate::central::*;
+use crate::{central::*, utils::padding_dimenions_to_four};
 use std::ops::Shl;
 
 impl Shl for Tensor {
@@ -34,8 +34,57 @@ impl Shl for Tensor {
         return return_tensor;
     }
 }
+
+pub fn backward_for_matmul(backprop_backet: BackproagationPacket) {
+    if let Operation::Matmul(left_hand_side, right_hand_side) = backprop_backet.operation {
+        // Get the grad, it stays the same
+        let grad = backprop_backet.equation.get_grad(backprop_backet.incoming_grad).to_owned();
+        let grad_dimensions_length = grad.shape().len();
+        let mut grad_dimensions_reformed = grad.shape().to_vec();
+
+        // Pad out the shape so it 4 long, adding a one does not change the matrix
+        let added_dimensions = 4 - grad_dimensions_length;
+        for _ in 0..added_dimensions {
+            grad_dimensions_reformed.insert(0, 1);
+        }        
+
+        // Then get the left and right hand side
+        // reshape it to 4ds 
+        // These are both COPY opeartions, which will cause allocations hitches
+        let mut left_hand_weights = backprop_backet.equation.get_data_flat_buffer(left_hand_side).to_vec();
+        let left_hand_shape = backprop_backet.equation.get_tensor_shape(left_hand_side);
+        let padded_left_hand_shape = padding_dimenions_to_four(left_hand_shape.dimensions());
+
+        let mut right_hand_weights = backprop_backet.equation.get_data_flat_buffer(right_hand_side).to_vec();
+        let right_hand_shape = backprop_backet.equation.get_tensor_shape(right_hand_side);
+        let padded_right_hand_shape = padding_dimenions_to_four(right_hand_shape.dimensions());
+        // Treat them all as if they where 4d matrices, makes everything that comes after simpler
+        // and because we are not actually adding or removing elements, it results in the same opeartions
+        // ex: a matrixes of size [4] is the equivilent to one of size [4, 1] or [1, 4]
+        backprop_backet.equation.swap_axes(&mut left_hand_weights, padded_left_hand_shape, 2, 3);        
+        backprop_backet.equation.swap_axes(&mut right_hand_weights,padded_right_hand_shape , 2, 3);
+
+        // everything wants know sized arrays, so just making it quick here
+        let grad_dimensions_reformed : [usize;4] = [grad_dimensions_reformed[0], grad_dimensions_reformed[1], grad_dimensions_reformed[2], grad_dimensions_reformed[3]];
+        let grad_as_vec = grad.into_raw_vec();
+
+        // we hand off actually doing the math to matmul vector as then it can vend out to platform code, and we don't need to pollute this code with that
+        let left_hand_result = backprop_backet.equation.matmul_vector(&grad_as_vec, grad_dimensions_reformed, &right_hand_weights, padded_right_hand_shape);
+        let right_hand_result = backprop_backet.equation.matmul_vector(&left_hand_weights, padded_left_hand_shape, &grad_as_vec, grad_dimensions_reformed);
+
+        // Finally add the grad to the tensors
+        backprop_backet.equation.add_tensor_grad(left_hand_side, left_hand_result);
+        backprop_backet.equation.add_tensor_grad(right_hand_side, right_hand_result);
+
+    }
+    else {
+        panic!("Wrong opeartions for matmul backward");
+    }
+}
 #[cfg(test)]
 mod tests {
+    use ndarray::ArrayD;
+
     use crate::central::{Shape, Tensor};
     use crate::utils::GGUFFile;
 
@@ -189,5 +238,26 @@ mod tests {
             Tensor::from_gguf_file(String::from("matmul_3x1_tensor_x"), &mut gguf_file);
         let tensor_x = tensor_a << tensor_b;
         compare_tensors(tensor_x, tensor_x_real);
+    }
+
+    #[test]
+    pub fn matmul_backward_test_basic() {
+        let epsilon = 1e-5;
+        let mut gguf_file = GGUFFile::new(String::from("./models/tests/matmul/matmul_backward_test_basic.gguf"));
+
+        let tensor_a = Tensor::from_gguf_file(String::from("matmul_backward_test_basic_tensor_a"), &mut gguf_file);
+        let tensor_a_grad_real = Tensor::from_gguf_file(String::from("matmul_backward_test_basic_tensor_a_grad"), &mut gguf_file);
+        let tensor_b = Tensor::from_gguf_file(String::from("matmul_backward_test_basic_tensor_b"), &mut gguf_file);
+        let tensor_x_real =
+            Tensor::from_gguf_file(String::from("matmul_backward_test_basic_tensor_c"), &mut gguf_file);
+        let tensor_x = tensor_a << tensor_b;
+        compare_tensors(tensor_x, tensor_x_real);
+        tensor_x.backward();
+
+        let tensor_a_real_grad_item = tensor_a_grad_real.item();
+        let together = tensor_a_real_grad_item.iter().zip(tensor_a.grad());
+        for (a, b) in together {
+            assert!(approx_equal(*a, b, epsilon));
+        }
     }
 }

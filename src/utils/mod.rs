@@ -33,3 +33,63 @@ pub fn handle_broadcasting(lhs: Tensor, rhs: Tensor) -> (Tensor, Tensor) {
 
     return (working_lfs, working_rhs);
 }
+
+pub fn padding_dimenions_to_four(in_dimension: Vec<usize>) -> [usize;4]{
+    assert!(in_dimension.len() <= 4);
+    assert!(in_dimension.len() != 0);
+
+    let mut return_dimension = [1, 1, 1, 1];
+
+    for (index, dinension) in in_dimension.iter().rev().enumerate() {
+        return_dimension[3 - index] = *dinension;
+    }
+
+    return return_dimension;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::padding_dimenions_to_four;
+
+    #[test]
+    pub fn padding_test() {
+        let initial_array = vec![1];
+        let after_change = padding_dimenions_to_four(initial_array);
+        assert!(after_change[0] == 1);
+        assert!(after_change[1] == 1);
+        assert!(after_change[2] == 1);
+        assert!(after_change[3] == 1);
+    }
+
+    #[test]
+    pub fn padding_test_2() {
+        let initial_array = vec![4, 1];
+        let after_change = padding_dimenions_to_four(initial_array);
+        assert!(after_change[0] == 1);
+        assert!(after_change[1] == 1);
+        assert!(after_change[2] == 4);
+        assert!(after_change[3] == 1);
+    }
+
+
+    #[test]
+    pub fn padding_test_3() {
+        let initial_array = vec![3, 4, 1];
+        let after_change = padding_dimenions_to_four(initial_array);
+        assert!(after_change[0] == 1);
+        assert!(after_change[1] == 3);
+        assert!(after_change[2] == 4);
+        assert!(after_change[3] == 1);
+    }
+
+    #[test]
+    pub fn padding_test_4() {
+        let initial_array = vec![3, 3, 4, 1];
+        let after_change = padding_dimenions_to_four(initial_array);
+        assert!(after_change[0] == 3);
+        assert!(after_change[1] == 3);
+        assert!(after_change[2] == 4);
+        assert!(after_change[3] == 1);
+    }
+
+}

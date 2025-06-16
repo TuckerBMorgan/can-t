@@ -37,6 +37,9 @@ pub fn backward_for_add(backprop_backet: BackproagationPacket) {
             .equation
             .add_tensor_grad(left_hand_side, grad.to_vec());
     }
+    else {
+        panic!("Wrong opeartion for backwards add");
+    }
 }
 
 #[cfg(test)]
