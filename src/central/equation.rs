@@ -2,7 +2,8 @@ use std::collections::{HashMap, HashSet};
 
 use super::backward_for_matmul;
 use super::{
-    InternalTensor, Operation, TensorID, add_op, mul_op, pow_op, reshape, shape::*, sum_op, matmul_op
+    InternalTensor, Operation, TensorID, add_op, matmul_op, mul_op, pow_op, reshape, shape::*,
+    sum_op,
 };
 use crate::utils::*;
 use ndarray::ArrayD;
@@ -209,7 +210,13 @@ impl Equation {
     /// 'a_shape' - the shape of a
     /// 'b' - the flat array of the second matrix
     /// 'b_shape' - the shape of b
-    pub fn matmul_vector(&self, a: &[f32], a_shape: [usize;4], b:&[f32], b_shape: [usize;4]) -> Vec<f32>{
+    pub fn matmul_vector(
+        &self,
+        a: &[f32],
+        a_shape: [usize; 4],
+        b: &[f32],
+        b_shape: [usize; 4],
+    ) -> Vec<f32> {
         return tensor_matmul(a, a_shape, b, b_shape);
     }
 
@@ -291,9 +298,55 @@ impl Equation {
     pub fn get_tensor_shape(&self, tensor_id: TensorID) -> Shape {
         return self.tensor_record[&tensor_id].shape;
     }
- 
-    pub fn swap_axes(&self, data: &mut [f32], dimensions: [usize;4], first_axes: usize, second_axes: usize) {
-        
+
+    pub fn swap_axes(&self, data: &mut [f32], dimensions: [usize; 4], axis1: usize, axis2: usize) {
+        // Do some double checking
+        assert!(axis1 < 4 && axis2 < 4, "axis out of bounds");
+        if axis1 == axis2 {
+            return;
+        }
+
+        // scratch pad
+        let mut tmp = vec![0.0f32; data.len()];
+
+        // Make a copy of the dimensions, so we can do some swapping latter
+        let orig_dims = dimensions;
+        let mut new_dims = orig_dims;
+        new_dims.swap(axis1, axis2);
+
+        let mut strides = [0usize; 4];
+        strides[3] = 1;
+        for i in (0..3).rev() {
+            strides[i] = strides[i + 1] * orig_dims[i + 1];
+        }
+
+        let mut new_stride = [0usize; 4];
+        new_stride[3] = 1;
+        for i in (0..3).rev() {
+            new_stride[i] = new_stride[i + 1] * new_dims[i + 1];
+        }
+
+        for i0 in 0..orig_dims[0] {
+            for i1 in 0..orig_dims[1] {
+                for i2 in 0..orig_dims[2] {
+                    for i3 in 0..orig_dims[3] {
+                        let orig_idx =
+                            i0 * strides[0] + i1 * strides[1] + i2 * strides[2] + i3 * strides[3];
+
+                        let mut idx = [i0, i1, i2, i3];
+                        idx.swap(axis1, axis2);
+                        let new_idx = idx[0] * new_stride[0]
+                            + idx[1] * new_stride[1]
+                            + idx[2] * new_stride[2]
+                            + idx[3] * new_stride[3];
+
+                        tmp[new_idx] = data[orig_idx];
+                    }
+                }
+            }
+        }
+
+        data.copy_from_slice(&tmp);
     }
 
     /// Copies data into the grad of tensor_id
@@ -345,12 +398,14 @@ impl Equation {
             Operation::BroadCast(from, to_shape) => {
                 let from_grad = self.get_grad(from);
                 let from_shape = from_grad.shape();
+                let from_shape = padding_dimenions_to_four(from_shape.to_vec());
                 let dimensions = to_shape.dimensions();
+                let dimensions = padding_dimenions_to_four(dimensions);
                 let mut result = self.get_grad(incoming_grad);
 
                 // Loop over all of the dimensions
                 for index in 0..from_shape.len() {
-                    let input_dim = dimensions[from_shape.len() - 1 - index];
+                    let input_dim = dimensions[dimensions.len() - 1 - index];
                     // Find those ones that we had to inflate during the broadcast
                     let original_dim = if index < from_shape.len() {
                         from_shape[from_shape.len() - 1 - index]
@@ -363,7 +418,6 @@ impl Equation {
                         result = result.sum_axis(Axis(dimensions.len() - 1 - index));
                     }
                 }
-
                 self.add_tensor_grad(from, result.to_owned().into_raw_vec());
             }
             Operation::Mul(_left_hand_side, _right_hand_side) => {

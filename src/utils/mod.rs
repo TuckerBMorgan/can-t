@@ -34,7 +34,7 @@ pub fn handle_broadcasting(lhs: Tensor, rhs: Tensor) -> (Tensor, Tensor) {
     return (working_lfs, working_rhs);
 }
 
-pub fn padding_dimenions_to_four(in_dimension: Vec<usize>) -> [usize;4]{
+pub fn padding_dimenions_to_four(in_dimension: Vec<usize>) -> [usize; 4] {
     assert!(in_dimension.len() <= 4);
     assert!(in_dimension.len() != 0);
 
@@ -71,7 +71,6 @@ mod tests {
         assert!(after_change[3] == 1);
     }
 
-
     #[test]
     pub fn padding_test_3() {
         let initial_array = vec![3, 4, 1];
@@ -91,5 +90,4 @@ mod tests {
         assert!(after_change[2] == 4);
         assert!(after_change[3] == 1);
     }
-
 }

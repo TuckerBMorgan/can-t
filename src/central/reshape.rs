@@ -50,7 +50,6 @@ mod tests {
         }
     }
 
-
     #[test]
     pub fn basic_reshape_test() {
         let test = Tensor::element(Shape::new(vec![1, 2, 3, 4]), 4.0);
@@ -74,16 +73,25 @@ mod tests {
     #[test]
     pub fn basic_reshape_backward_test() {
         let epsilon = 1e-5;
-        let mut gguf_file = GGUFFile::new(String::from("./models/tests/reshape/reshape_backward.gguf"));
+        let mut gguf_file =
+            GGUFFile::new(String::from("./models/tests/reshape/reshape_backward.gguf"));
 
-        let tensor_a = Tensor::from_gguf_file(String::from("reshape_backward_tensor_a"), &mut gguf_file);
-        let tensor_a_real_grad = Tensor::from_gguf_file(String::from("reshape_backward_tensor_a_grad"), &mut gguf_file);
-        let tensor_b_real = Tensor::from_gguf_file(String::from("reshape_backward_tensor_b"), &mut gguf_file);
-        let tensor_b_real_grad = Tensor::from_gguf_file(String::from("reshape_backward_tensor_b_grad"), &mut gguf_file);
+        let tensor_a =
+            Tensor::from_gguf_file(String::from("reshape_backward_tensor_a"), &mut gguf_file);
+        let tensor_a_real_grad = Tensor::from_gguf_file(
+            String::from("reshape_backward_tensor_a_grad"),
+            &mut gguf_file,
+        );
+        let tensor_b_real =
+            Tensor::from_gguf_file(String::from("reshape_backward_tensor_b"), &mut gguf_file);
+        let tensor_b_real_grad = Tensor::from_gguf_file(
+            String::from("reshape_backward_tensor_b_grad"),
+            &mut gguf_file,
+        );
         let tensor_c_real =
             Tensor::from_gguf_file(String::from("reshape_backward_tensor_c"), &mut gguf_file);
         let tensor_b = tensor_a.reshape(Shape::new(vec![4]));
-        let tensor_c = tensor_b.sum(vec![0], true);        
+        let tensor_c = tensor_b.sum(vec![0], true);
         tensor_c.backward();
         compare_tensors(tensor_b, tensor_b_real);
         compare_tensors(tensor_c, tensor_c_real);
@@ -99,6 +107,5 @@ mod tests {
         for (a, b) in together {
             assert!(approx_equal(*a, b, epsilon));
         }
-
     }
 }
