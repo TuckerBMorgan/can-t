@@ -13,4 +13,5 @@ pub enum Operation {
     Pow(TensorID, TensorID), // The tensor we raised to a power, a tensor that holds the value of that power for later
     Matmul(TensorID, TensorID), // Left side operand tensor, right side operand tensor
     Reshape(TensorID, Shape), // The tensor we are shaping from, the Shape we moved to
+    Exp(TensorID)
 }

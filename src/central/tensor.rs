@@ -61,6 +61,9 @@ impl InternalTensor {
             }
             Operation::Reshape(from, _shape) => {
                 return vec![*from];
+            },
+            Operation::Exp(from) => {
+                return vec![*from];
             }
         }
     }
@@ -210,6 +213,20 @@ impl Tensor {
             "You may only pass back a loss of size 1"
         );
         get_equation().backward(self.id);
+    }
+
+    pub fn exp(&self) -> Tensor {
+        let data: Vec<f32> = self
+        .item()
+        .iter()
+        .map(|x| x.exp())
+        .collect();
+
+        return Tensor::create_tensor_data_and_shape_and_operation(
+            self.shape, 
+            data, 
+            Operation::Exp(self.id)
+        );
     }
 }
 

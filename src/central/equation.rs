@@ -281,7 +281,7 @@ impl Equation {
     /// Gets the underlaying backing storage of the tensor, util function for working with grad of a tensor
     /// # Arguments
     /// 'tensor_id' - The tensor we are working with
-    pub fn get_grad_flat_buffer(&mut self, tensor_id: TensorID) -> &[f32] {
+    pub fn get_grad_flat_buffer(&self, tensor_id: TensorID) -> &[f32] {
         return extract_tensor_grad!(self.tensor_record, tensor_id, self.grad);
     }
 
@@ -434,6 +434,12 @@ impl Equation {
             }
             Operation::Reshape(_from, _shape) => {
                 reshape::backward_for_reshape(packet);
+            },
+            Operation::Exp(from) => {
+                let data = self.get_data_flat_buffer(incoming_grad);
+                let grad = self.get_grad_flat_buffer(incoming_grad);
+                let result = self.mul_vector(data, grad);
+                self.add_tensor_grad(from, result);
             }
         }
     }

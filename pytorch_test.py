@@ -30,16 +30,16 @@ tensor_c.backward()
 
 # ----- write everything -----
 writer = GGUFWriter(
-    "./models/tests/matmul/matmul_backward_test_4x1.gguf",
-    "matmul_backward_test_4x1",
+    "./models/tests/matmul/matmul_backward_test_3x4.gguf",
+    "matmul_backward_test_3x4",
 )
 
-add_tensor_safe(writer, "matmul_backward_test_4x1_tensor_a", tensor_a)
-add_tensor_safe(writer, "matmul_backward_test_4x1_tensor_a_grad", tensor_a.grad)
-add_tensor_safe(writer, "matmul_backward_test_4x1_tensor_b", tensor_b)
-add_tensor_safe(writer, "matmul_backward_test_4x1_middle_sum_grad", middle_sum.grad)
-add_tensor_safe(writer, "matmul_backward_test_4x1_first_sum_grad", first_sum.grad)
-add_tensor_safe(writer, "matmul_backward_test_4x1_tensor_c", tensor_c)
+add_tensor_safe(writer, "matmul_backward_test_3x4_tensor_a", tensor_a)
+add_tensor_safe(writer, "matmul_backward_test_3x4_tensor_a_grad", tensor_a.grad)
+add_tensor_safe(writer, "matmul_backward_test_3x4_tensor_b", tensor_b)
+add_tensor_safe(writer, "matmul_backward_test_3x4_middle_sum_grad", middle_sum.grad)
+add_tensor_safe(writer, "matmul_backward_test_3x4_first_sum_grad", first_sum.grad)
+add_tensor_safe(writer, "matmul_backward_test_3x4_tensor_c", tensor_c)
 
 writer.write_header_to_file()
 writer.write_kv_data_to_file()
