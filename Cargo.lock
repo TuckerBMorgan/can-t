@@ -38,6 +38,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "cant_cpu",
+ "cant_metal",
  "lazy_static",
  "ndarray",
  "rand",

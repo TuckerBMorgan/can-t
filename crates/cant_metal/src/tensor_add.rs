@@ -3,7 +3,7 @@ use std::mem;
 
 pub fn tensor_add(a: &[f32], b: &[f32]) -> Vec<f32> {
     // Init the metal library (this will compile the shader code)
-    const METAL_SHADER: &str = include_str!("../shaders/add.msl");
+    const METAL_SHADER: &str = include_str!("../shaders/add.metal");
     let device = Device::system_default().expect("No Metal device found");
     let library = device
         .new_library_with_source(METAL_SHADER, &CompileOptions::new())
