@@ -2,7 +2,7 @@ use ndarray::ArrayD;
 
 use crate::utils::GGUFFile;
 
-use super::{Operation, Shape, get_equation, operation};
+use super::{Operation, Shape, get_equation};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TensorID {
@@ -65,6 +65,21 @@ impl InternalTensor {
             Operation::Exp(from) => {
                 return vec![*from];
             }
+            Operation::Select(source, indices) => {
+                return vec![*source, *indices];
+            }
+            Operation::Tanh(source) => {
+                return vec![*source];
+            }
+            Operation::Mean(source, _, _) => {
+                return vec![*source];
+            }
+            Operation::Std(source, _, _) => {
+                return vec![*source];
+            }
+            Operation::CrossEntropy(logits, targets) => {
+                return vec![*logits, *targets];
+            }
         }
     }
 }
@@ -110,6 +125,18 @@ impl Tensor {
     /// * 'shape' - The shape of the allocated tensor
     pub fn zeros(shape: Shape) -> Tensor {
         let id = get_equation().allocate_zero_tensor(shape);
+        Tensor {
+            id,
+            shape,
+            operation: Operation::Nop,
+        }
+    }
+
+    /// Allocates a new tensor with provided shape, all with 1s
+    /// # Arugments
+    /// * 'shape' - The shape of the allocated tensor
+    pub fn ones(shape: Shape) -> Tensor {
+        let id = get_equation().allocate_ones_tensor(shape);
         Tensor {
             id,
             shape,
@@ -227,6 +254,13 @@ impl Tensor {
             data, 
             Operation::Exp(self.id)
         );
+    }
+
+    /// Performs a select operation on the tensor using indices from another tensor
+    /// # Arguments
+    /// * 'indices' - TensorID of the indices tensor containing which rows to select
+    pub fn select(&self, indices: TensorID) -> Tensor {
+        panic!("Implement select operation");
     }
 }
 

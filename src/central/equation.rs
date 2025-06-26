@@ -2,9 +2,10 @@ use std::collections::{HashMap, HashSet};
 
 use super::backward_for_matmul;
 use super::{
-    InternalTensor, Operation, TensorID, add_op, matmul_op, mul_op, pow_op, reshape, shape::*,
-    sum_op,
+    InternalTensor, Operation, TensorID, add_op, cross_entropy_op, matmul_op, mean_op, mul_op, pow_op, reshape, select_op, shape::*,
+    std_op, sum_op, tanh_op,
 };
+use crate::central::index::Indexable;
 use crate::utils::*;
 use ndarray::ArrayD;
 use ndarray::Axis;
@@ -104,6 +105,14 @@ impl Equation {
     /// * 'shape' - the shape of the tensor. shape.total_size * 2 memory will be allocated(data and grad)
     pub fn allocate_zero_tensor(&mut self, shape: Shape) -> TensorID {
         let zero = vec![0.0; shape.total_size()];
+        return self.allocate_tensor(shape, zero, Operation::Nop);
+    }
+
+    /// Allocates a tensor, and returns the ID of it, so it can be looked up later, is all ones
+    /// # Arguments
+    /// * 'shape' - the shape of the tensor. shape.total_size * 2 memory will be allocated(data and grad)
+    pub fn allocate_ones_tensor(&mut self, shape: Shape) -> TensorID {
+        let zero = vec![1.0; shape.total_size()];
         return self.allocate_tensor(shape, zero, Operation::Nop);
     }
 
@@ -254,6 +263,14 @@ impl Equation {
         return result_data;
     }
 
+    /// Performs a select operation (embedding lookup) on tensors
+    /// # Arguments
+    /// * 'source_id' : The source tensor to select from (embedding matrix)
+    /// * 'indices_id' : The indices tensor containing which rows to select
+    pub fn select_tensor(&self, source_id: TensorID, indices_id: TensorID) -> Vec<f32> {
+        panic!("sdsd");
+    }
+
     /// Returns the underlaying data of a tensor, as an array
     /// # Arugments
     /// 'id' - Id for lookup of the tensor
@@ -299,6 +316,7 @@ impl Equation {
         return self.tensor_record[&tensor_id].shape;
     }
 
+    /// Helper function swap around two axis
     pub fn swap_axes(&self, data: &mut [f32], dimensions: [usize; 4], axis1: usize, axis2: usize) {
         // Do some double checking
         assert!(axis1 < 4 && axis2 < 4, "axis out of bounds");
@@ -360,6 +378,7 @@ impl Equation {
             self.grad[internal_tensor.grad_start_index + i] = grad[i];
         }
     }
+
     /// Adds new grad into the grad of tensor_id
     /// # Arugments
     /// 'tensor_id' - Id of for the loopup on the tensor
@@ -369,6 +388,34 @@ impl Equation {
         assert!(internal_tensor.shape.total_size() == grad.len());
         for i in 0..internal_tensor.shape.total_size() {
             self.grad[internal_tensor.grad_start_index + i] += grad[i];
+        }
+    }
+
+    pub fn set_single_value(&mut self, tensor_id: TensorID, index: Indexable, value: f32) {
+        let internal_tensor = &self.tensor_record[&tensor_id];
+        let mut final_index;
+        match index {
+            Indexable::Quadruable(a, b, c, d) => {
+                let mut current_shape = internal_tensor.shape.dimensions();
+                let missing_indices = 4 - current_shape.len();
+                for _ in 0..missing_indices {
+                    current_shape.insert(0, 1);
+                }
+
+                // Calculate strides for row-major order
+                let stride_0 = current_shape[1] * current_shape[2] * current_shape[3];
+                let stride_1 = current_shape[2] * current_shape[3];
+                let stride_2 = current_shape[3];
+                let stride_3 = 1;
+                
+                final_index = a * stride_0 + b * stride_1 + c * stride_2 + d * stride_3;
+
+                final_index += internal_tensor.data_start_index;
+                self.data[final_index] = value;
+            },
+            _ => {
+                panic!("Should not be calling set_single_value with anything other then a quadruable indexable");
+            }
         }
     }
 
@@ -440,6 +487,21 @@ impl Equation {
                 let grad = self.get_grad_flat_buffer(incoming_grad);
                 let result = self.mul_vector(data, grad);
                 self.add_tensor_grad(from, result);
+            }
+            Operation::Select(_source, _indices) => {
+                select_op::backward_for_select(packet);
+            }
+            Operation::Tanh(_source) => {
+                tanh_op::backward_for_tanh(packet);
+            }
+            Operation::Mean(_, _, _) => {
+                mean_op::backward_for_mean(packet);
+            }
+            Operation::Std(_, _, _) => {
+                std_op::backward_for_std(packet);
+            }
+            Operation::CrossEntropy(_, _) => {
+                cross_entropy_op::backward_for_cross_entropy(packet);
             }
         }
     }

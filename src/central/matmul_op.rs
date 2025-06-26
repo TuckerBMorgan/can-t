@@ -122,7 +122,6 @@ pub fn backward_for_matmul(backprop_backet: BackproagationPacket) {
 }
 #[cfg(test)]
 mod tests {
-    use ndarray::ArrayD;
 
     use crate::central::{Shape, Tensor};
     use crate::utils::GGUFFile;

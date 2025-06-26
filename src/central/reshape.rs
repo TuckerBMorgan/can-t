@@ -1,4 +1,3 @@
-use super::get_equation;
 use crate::central::*;
 
 impl Tensor {
