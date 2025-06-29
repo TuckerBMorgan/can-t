@@ -255,13 +255,6 @@ impl Tensor {
             Operation::Exp(self.id)
         );
     }
-
-    /// Performs a select operation on the tensor using indices from another tensor
-    /// # Arguments
-    /// * 'indices' - TensorID of the indices tensor containing which rows to select
-    pub fn select(&self, indices: TensorID) -> Tensor {
-        panic!("Implement select operation");
-    }
 }
 
 #[cfg(test)]

@@ -132,7 +132,6 @@ mod tests {
     use crate::central::Shape;
     use crate::central::Tensor;
     use crate::utils::GGUFFile;
-    use crate::central::Indexable;
     
     #[test]
     fn batch_norm_simple_test() {
@@ -175,13 +174,13 @@ mod tests {
 
         for _i in 0..max_steps {
           //  zero_all_grads();
-            let mut test_index_tensor = Tensor::zeros(Shape::new(vec![BATCH_SIZE, 3]));
+            let test_index_tensor = Tensor::zeros(Shape::new(vec![BATCH_SIZE, 3]));
             for b in 0..BATCH_SIZE {
                 test_index_tensor.set_index([b, 0].into(), xtr[b][0] as f32);
                 test_index_tensor.set_index([b, 1].into(), xtr[b][1] as f32);
                 test_index_tensor.set_index([b, 2].into(), xtr[b][2] as f32);
             }
-            let test = c.view(Indexable::FromTensor(test_index_tensor.id));
+            let test = c.select(test_index_tensor.id);
             let reshape = test.reshape(Shape::new(vec![BATCH_SIZE, 30]));
             let hpreact = reshape << w1;
 

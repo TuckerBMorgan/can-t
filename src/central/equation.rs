@@ -263,14 +263,6 @@ impl Equation {
         return result_data;
     }
 
-    /// Performs a select operation (embedding lookup) on tensors
-    /// # Arguments
-    /// * 'source_id' : The source tensor to select from (embedding matrix)
-    /// * 'indices_id' : The indices tensor containing which rows to select
-    pub fn select_tensor(&self, source_id: TensorID, indices_id: TensorID) -> Vec<f32> {
-        panic!("sdsd");
-    }
-
     /// Returns the underlaying data of a tensor, as an array
     /// # Arugments
     /// 'id' - Id for lookup of the tensor

@@ -14,7 +14,6 @@ mod tanh_op;
 mod sum_op;
 mod tensor;
 mod index;
-mod view;
 
 pub use add_op::*;
 pub use cross_entropy_op::*;
@@ -34,7 +33,6 @@ use std::sync::{Mutex, MutexGuard};
 pub use sum_op::*;
 pub use tensor::*;
 pub use index::*;
-pub use view::*;
 
 lazy_static! {
     static ref SINGLETON_INSTANCE: Mutex<Equation> = Mutex::new(Equation::new());

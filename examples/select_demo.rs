@@ -51,15 +51,15 @@ fn main() {
                  i, result_data[[i, 0]], result_data[[i, 1]], result_data[[i, 2]]);
     }
     
-    // Method 2: Using the view method with tensor indexing (PyTorch-like)
-    let result_view = embedding_matrix.view(Indexable::FromTensor(indices.id));
-    println!("\nUsing view() method (PyTorch-like interface):");
-    println!("Result shape: {:?}", result_view.shape.dimensions());
+    // Method 2: Using the select method with tensor indexing (PyTorch-like)
+    let result_select = embedding_matrix.select(indices.id);
+    println!("\nUsing select() method (PyTorch-like interface):");
+    println!("Result shape: {:?}", result_select.shape.dimensions());
     
-    let view_data = result_view.item();
+    let select_data = result_select.item();
     for i in 0..4 {
         println!("  Selected row {}: [{:.1}, {:.1}, {:.1}]", 
-                 i, view_data[[i, 0]], view_data[[i, 1]], view_data[[i, 2]]);
+                 i, select_data[[i, 0]], select_data[[i, 1]], select_data[[i, 2]]);
     }
     
     // Verify both methods produce the same results
