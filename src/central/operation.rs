@@ -16,7 +16,7 @@ pub enum Operation {
     Exp(TensorID),
     Select(TensorID, TensorID), // Source tensor, indices tensor
     Tanh(TensorID), // Source tensor
-    Mean(TensorID, [usize; 4], usize), // Source tensor, axes, num_axes
+    Mean(TensorID, [isize; 4], usize), // Source tensor, axes, num_axes
     Std(TensorID, [usize; 4], usize), // Source tensor, axes, num_axes
     CrossEntropy(TensorID, TensorID), // Logits tensor, targets tensor
 }
