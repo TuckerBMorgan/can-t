@@ -5,6 +5,5 @@ kernel void add_arrays(device const float* inA,
 {
     // the for-loop is replaced with a collection of threads, each of which
     // calls this function.
-    if (index >= array_length) return;  // Bounds check
     result[index] = inA[index] + inB[index];
 }

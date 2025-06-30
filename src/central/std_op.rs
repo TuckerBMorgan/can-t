@@ -57,7 +57,7 @@ impl Tensor {
             for (index, this_axis) in axes.iter().enumerate() {
                 as_ndarray = as_ndarray.sum_axis(Axis(*this_axis - index));
             }
-            let test = as_ndarray.map(|x|(x / total_count as f32).sqrt());
+            let std = as_ndarray.map(|x|(x / total_count as f32).sqrt());
 
             // Fix up the shape (this is a ndarray vs cant issue)
             let output_shape = if as_ndarray.shape().is_empty() {
@@ -67,7 +67,7 @@ impl Tensor {
             };
             
 
-            (test, output_shape) 
+            (std, output_shape) 
         };
         let mut copied_axes = [0, 0, 0, 0];
         for (i, axis) in axes.iter().enumerate() {
@@ -78,56 +78,83 @@ impl Tensor {
     }
 }
 
-/// Handles calculating and passing back the gradient of a std operation
-/// The gradient computation involves the derivative of standard deviation
-/// For σ = sqrt(Σ(x - μ)² / N), the gradient is: ∂σ/∂x_i = (1/σ) * (1/N) * (x_i - μ)
 pub fn backward_for_std(backprop_packet: BackproagationPacket) {
     if let Operation::Std(source_id, axes_array, num_axes) = backprop_packet.operation {
-        panic!("implement backwards for std");
+        let mut axes = vec![];
+        for i in 0..num_axes {
+            axes.push(axes_array[i]);
+        }
+
+        // Get original source data and shape
+        let source_data = backprop_packet.equation.get_data_flat_buffer(source_id);
+        let source_shape = backprop_packet.equation.get_tensor_shape(source_id);
+
+        // Compute mean (replicating forward pass logic)
+        let mut mean_tensor = backprop_packet.equation.get_item(source_id);
+        let mut total_count = 1;
+        for (index, &axis) in axes.iter().enumerate() {
+            total_count *= source_shape.dimensions()[axis];
+            mean_tensor = mean_tensor.sum_axis(Axis(axis - index));
+        }
+        let mean_vec: Vec<f32> = mean_tensor.iter().map(|&x| x / total_count as f32).collect();
+
+        // Broadcast mean back to source shape for element-wise operations
+        let mut mean_dims = source_shape.dimensions();
+        for &axis in &axes {
+            mean_dims[axis] = 1;
+        }
+        let mean_array = ArrayD::from_shape_vec(mean_dims.clone(), mean_vec).unwrap();
+        let broadcasted_mean = mean_array.broadcast(source_shape.as_ndarray_shape()).unwrap();
+
+        // Compute std (replicating forward pass)
+        let variance_data: Vec<f32> = source_data.iter()
+            .zip(broadcasted_mean.iter())
+            .map(|(x, mean)| (x - mean).powi(2))
+            .collect();
+
+        let mut var_tensor = ArrayD::from_shape_vec(source_shape.dimensions(), variance_data).unwrap();
+        for (index, &axis) in axes.iter().enumerate() {
+            var_tensor = var_tensor.sum_axis(Axis(axis - index));
+        }
+        let std_tensor = var_tensor.map(|x| (x / total_count as f32).sqrt());
+
+        // Broadcast std back to source shape
+        let std_vec: Vec<f32> = std_tensor.iter().cloned().collect();
+        let std_array = ArrayD::from_shape_vec(mean_dims.clone(), std_vec).unwrap();
+        let broadcasted_std = std_array.broadcast(source_shape.as_ndarray_shape()).unwrap();
+
+        let incoming_grad = backprop_packet.equation.get_grad(backprop_packet.incoming_grad);
+        let grad_vec: Vec<f32> = incoming_grad.iter().cloned().collect();
+      
+        // Use the same dims pattern as mean and std (with removed axes as size-1)
+        let grad_array = ArrayD::from_shape_vec(mean_dims.clone(), grad_vec).unwrap();
+        let broadcasted_dout = grad_array.broadcast(source_shape.as_ndarray_shape()).unwrap();
+
+        // Apply gradient formula: (∂L/∂σ) * (1/σ) * (1/N) * (x_i - μ)
+        let gradients: Vec<f32> = source_data.iter()
+            .zip(broadcasted_mean.iter())
+            .zip(broadcasted_std.iter())
+            .zip(broadcasted_dout.iter())
+            .map(|(((x, mean), std), dout)| {
+                if *std > 1e-8 {
+                    dout * (1.0 / std) * (1.0 / total_count as f32) * (x - mean)
+                } else {
+                    0.0  // Handle zero std case
+                }
+            })
+            .collect();
+
+        backprop_packet.equation.add_tensor_grad(source_id, gradients);
     } else {
         panic!("Wrong operation for backward std");
     }
 }
-
-// Helper function to convert flat index to multi-dimensional index
-fn unflatten_index(flat_idx: usize, shape: &[usize]) -> Vec<usize> {
-    let mut multi_idx = vec![0; shape.len()];
-    let mut remaining = flat_idx;
-    
-    for i in (0..shape.len()).rev() {
-        let stride = shape[i+1..].iter().product::<usize>();
-        multi_idx[i] = remaining / stride;
-        remaining %= stride;
-    }
-    
-    multi_idx
-}
-
-// Helper function to remove an axis from a multi-dimensional index
-fn remove_axis_from_index(multi_idx: &[usize], axis: usize) -> Vec<usize> {
-    let mut result = Vec::new();
-    for (i, &idx) in multi_idx.iter().enumerate() {
-        if i != axis {
-            result.push(idx);
-        }
-    }
-    result
-}
-
 #[cfg(test)]
 mod tests {
     use crate::central::{Shape, Tensor, Operation, get_equation};
 
     fn approx_equal(a: f32, b: f32, epsilon: f32) -> bool {
         (a - b).abs() <= epsilon
-    }
-
-    #[test]
-    fn sub_test_check() {
-        let a = vec![5.0, 4.0, 3.0, 2.0];
-        let b = vec![1.0, 1.0, 1.0, 1.0];
-        let result = get_equation().sub_vector(&a, &b);
-        println!("Result: {:?}", result);  
     }
 
     #[test]
@@ -145,7 +172,6 @@ mod tests {
         assert_eq!(result.shape.dimensions(), vec![1]);
         
         let result_data = result.item();
-        println!("{:?}", result_data[[0]]);
         // Standard deviation of [1,2,3,4] = sqrt(((1-2.5)^2 + (2-2.5)^2 + (3-2.5)^2 + (4-2.5)^2)/4)
         // = sqrt((2.25 + 0.25 + 0.25 + 2.25)/4) = sqrt(5/4) = sqrt(1.25) ≈ 1.118
         assert!(approx_equal(result_data[[0]], 1.118034, 1e-5));
@@ -523,7 +549,7 @@ mod tests {
             assert!(approx_equal(gradients[[i]], 0.0, 1e-6));
         }
     }
-
+    
     #[test]
     fn std_empty_axes_backward_test() {
         // Test backward pass with empty axes (no std computed)
