@@ -77,7 +77,39 @@ impl Tensor {
 /// at the positions specified by the indices tensor
 pub fn backward_for_select(backprop_packet: BackproagationPacket) {
     if let Operation::Select(source_id, indices_id) = backprop_packet.operation {
-        panic!("backwards for select needs work");
+        // step 1 allocate a slab memory the size of the source_id grad
+        // step 2 addset sections of it with the right grad
+        // step 3 add that whole thing to the original grad
+        let original_shape = backprop_packet.equation.get_tensor_shape(source_id);
+        let total_size = original_shape.total_size();
+        let mut grad_slab = vec![0.0;total_size];
+        let indices = backprop_packet.equation.get_data_flat_buffer(indices_id);
+        let incoming_grad_slab = backprop_packet.equation.get_grad_flat_buffer(backprop_packet.incoming_grad);
+
+        // Caluclate how much of the information we need to copy over
+        let mut total_shape_of_single_select = 1;
+        if original_shape.dimensions().len() != 1 {
+            // We are only selecting the outer most dimension, so so we skip that when we calcuate this shape
+            for dim in original_shape.dimensions().iter().skip(1) {
+                total_shape_of_single_select *= *dim;
+            }
+        }
+
+        let indices : Vec<usize> = indices.iter().map(|x|*x as usize).collect();
+        for (index, indices) in indices.iter().enumerate() {
+            // Index is the index of the element within in indices
+            // Indices is the index from the source id that we selected
+            // So we want to look up incoming_grad[index] and then set
+
+            let anchor_point = index * total_shape_of_single_select;
+            let origin_anchor_point = *indices * total_shape_of_single_select;
+            for i in 0..total_shape_of_single_select {
+                grad_slab[origin_anchor_point + i] += incoming_grad_slab[anchor_point  + i];
+            }
+        }
+
+        backprop_packet.equation.add_tensor_grad(source_id, grad_slab);
+
     } else {
         panic!("Wrong operation for backward select");
     }
@@ -341,16 +373,16 @@ mod tests {
         let gradients = embedding.grad();
         
         // Row 0 was selected once -> gradient = 1.0 for each element
-        assert!(approx_equal(gradients[0], 1.0, 1e-6));
-        assert!(approx_equal(gradients[1], 1.0, 1e-6));
+        assert!(approx_equal(gradients[[0, 0]], 1.0, 1e-6));
+        assert!(approx_equal(gradients[[0, 1]], 1.0, 1e-6));
         
         // Row 1 was never selected -> gradient = 0.0 for each element
-        assert!(approx_equal(gradients[2], 0.0, 1e-6));
-        assert!(approx_equal(gradients[3], 0.0, 1e-6));
+        assert!(approx_equal(gradients[[1, 0]], 0.0, 1e-6));
+        assert!(approx_equal(gradients[[1, 1]], 0.0, 1e-6));
         
         // Row 2 was selected once -> gradient = 1.0 for each element
-        assert!(approx_equal(gradients[4], 1.0, 1e-6));
-        assert!(approx_equal(gradients[5], 1.0, 1e-6));
+        assert!(approx_equal(gradients[[2, 0]], 1.0, 1e-6));
+        assert!(approx_equal(gradients[[2, 1]], 1.0, 1e-6));
     }
 
     #[test]
@@ -375,16 +407,16 @@ mod tests {
         let gradients = embedding.grad();
         
         // Row 0 was selected twice -> gradients should accumulate = 2.0 each
-        assert!(approx_equal(gradients[0], 2.0, 1e-6));
-        assert!(approx_equal(gradients[1], 2.0, 1e-6));
+        assert!(approx_equal(gradients[[0, 0]], 2.0, 1e-6));
+        assert!(approx_equal(gradients[[0, 1]], 2.0, 1e-6));
         
         // Row 1 was selected once -> gradient = 1.0 each
-        assert!(approx_equal(gradients[2], 1.0, 1e-6));
-        assert!(approx_equal(gradients[3], 1.0, 1e-6));
+        assert!(approx_equal(gradients[[1, 0]], 1.0, 1e-6));
+        assert!(approx_equal(gradients[[1, 1]], 1.0, 1e-6));
         
         // Row 2 was never selected -> gradient = 0.0 each
-        assert!(approx_equal(gradients[4], 0.0, 1e-6));
-        assert!(approx_equal(gradients[5], 0.0, 1e-6));
+        assert!(approx_equal(gradients[[2, 0]], 0.0, 1e-6));
+        assert!(approx_equal(gradients[[2, 1]], 0.0, 1e-6));
     }
 
     #[test]
@@ -412,20 +444,20 @@ mod tests {
         let gradients = embedding.grad();
         
         // Row 0 selected twice (batch 0 pos 0, batch 1 pos 1) -> gradient = 2.0 each
-        assert!(approx_equal(gradients[0], 2.0, 1e-6));
-        assert!(approx_equal(gradients[1], 2.0, 1e-6));
+        assert!(approx_equal(gradients[[0, 0]], 2.0, 1e-6));
+        assert!(approx_equal(gradients[[0, 1]], 2.0, 1e-6));
         
         // Row 1 selected once (batch 0 pos 1) -> gradient = 1.0 each
-        assert!(approx_equal(gradients[2], 1.0, 1e-6));
-        assert!(approx_equal(gradients[3], 1.0, 1e-6));
+        assert!(approx_equal(gradients[[1, 0]], 1.0, 1e-6));
+        assert!(approx_equal(gradients[[1, 1]], 1.0, 1e-6));
         
         // Row 2 selected once (batch 1 pos 0) -> gradient = 1.0 each
-        assert!(approx_equal(gradients[4], 1.0, 1e-6));
-        assert!(approx_equal(gradients[5], 1.0, 1e-6));
+        assert!(approx_equal(gradients[[2, 0]], 1.0, 1e-6));
+        assert!(approx_equal(gradients[[2, 1]], 1.0, 1e-6));
         
         // Row 3 never selected -> gradient = 0.0 each
-        assert!(approx_equal(gradients[6], 0.0, 1e-6));
-        assert!(approx_equal(gradients[7], 0.0, 1e-6));
+        assert!(approx_equal(gradients[[3, 0]], 0.0, 1e-6));
+        assert!(approx_equal(gradients[[3, 1]], 0.0, 1e-6));
     }
 
     #[test]
@@ -456,23 +488,24 @@ mod tests {
         
         // Embedding: Each selected element gradient = 2.0 (from scale factor)
         // Row 0 selected -> gradient = 2.0 each
-        assert!(approx_equal(embedding_gradients[0], 2.0, 1e-6));
-        assert!(approx_equal(embedding_gradients[1], 2.0, 1e-6));
+        assert!(approx_equal(embedding_gradients[[0, 0]], 2.0, 1e-6));
+        assert!(approx_equal(embedding_gradients[[0, 1]], 2.0, 1e-6));
         
         // Row 1 not selected -> gradient = 0.0 each
-        assert!(approx_equal(embedding_gradients[2], 0.0, 1e-6));
-        assert!(approx_equal(embedding_gradients[3], 0.0, 1e-6));
+        assert!(approx_equal(embedding_gradients[[1, 0]], 0.0, 1e-6));
+        assert!(approx_equal(embedding_gradients[[1, 1]], 0.0, 1e-6));
         
         // Row 2 selected -> gradient = 2.0 each
-        assert!(approx_equal(embedding_gradients[4], 2.0, 1e-6));
-        assert!(approx_equal(embedding_gradients[5], 2.0, 1e-6));
+        assert!(approx_equal(embedding_gradients[[2, 0]], 2.0, 1e-6));
+        assert!(approx_equal(embedding_gradients[[2, 1]], 2.0, 1e-6));
         
-        // Scale tensor: gradient = sum of selected embeddings values
-        // selected values: [1,2] from row 0 + [5,6] from row 2 = [1,2,5,6]
-        let expected_scale_grad = 1.0 + 2.0 + 5.0 + 6.0;  // Sum of selected values
-        for &actual_grad in scale_gradients.iter() {
-            assert!(approx_equal(actual_grad, expected_scale_grad / 4.0, 1e-6));  // Divided by 4 elements
-        }
+        // Scale tensor: gradient = selected values element-wise
+        // selected tensor: [[1.0, 2.0], [5.0, 6.0]]
+        // So scale gradients should be: [[1.0, 2.0], [5.0, 6.0]]
+        assert!(approx_equal(scale_gradients[[0, 0]], 1.0, 1e-6));  // First selected embedding value
+        assert!(approx_equal(scale_gradients[[0, 1]], 2.0, 1e-6));  // Second selected embedding value
+        assert!(approx_equal(scale_gradients[[1, 0]], 5.0, 1e-6));  // Third selected embedding value  
+        assert!(approx_equal(scale_gradients[[1, 1]], 6.0, 1e-6));  // Fourth selected embedding value
     }
 
     #[test]
@@ -512,28 +545,31 @@ mod tests {
         let gradients = embedding.grad();
         
         // Token 0 appears 2 times -> each element gets gradient 2.0
-        assert!(approx_equal(gradients[0], 2.0, 1e-6));   // embedding[0][0]
-        assert!(approx_equal(gradients[1], 2.0, 1e-6));   // embedding[0][1]
-        assert!(approx_equal(gradients[2], 2.0, 1e-6));   // embedding[0][2]
+        assert!(approx_equal(gradients[[0, 0]], 2.0, 1e-6));   // embedding[0][0]
+        assert!(approx_equal(gradients[[0, 1]], 2.0, 1e-6));   // embedding[0][1]
+        assert!(approx_equal(gradients[[0, 2]], 2.0, 1e-6));   // embedding[0][2]
         
         // Token 1 appears 2 times -> each element gets gradient 2.0
-        assert!(approx_equal(gradients[3], 2.0, 1e-6));   // embedding[1][0]
-        assert!(approx_equal(gradients[4], 2.0, 1e-6));   // embedding[1][1]
-        assert!(approx_equal(gradients[5], 2.0, 1e-6));   // embedding[1][2]
+        assert!(approx_equal(gradients[[1, 0]], 2.0, 1e-6));   // embedding[1][0]
+        assert!(approx_equal(gradients[[1, 1]], 2.0, 1e-6));   // embedding[1][1]
+        assert!(approx_equal(gradients[[1, 2]], 2.0, 1e-6));   // embedding[1][2]
         
         // Token 2 appears 1 time -> each element gets gradient 1.0
-        assert!(approx_equal(gradients[6], 1.0, 1e-6));   // embedding[2][0]
-        assert!(approx_equal(gradients[7], 1.0, 1e-6));   // embedding[2][1]
-        assert!(approx_equal(gradients[8], 1.0, 1e-6));   // embedding[2][2]
+        assert!(approx_equal(gradients[[2, 0]], 1.0, 1e-6));   // embedding[2][0]
+        assert!(approx_equal(gradients[[2, 1]], 1.0, 1e-6));   // embedding[2][1]
+        assert!(approx_equal(gradients[[2, 2]], 1.0, 1e-6));   // embedding[2][2]
         
         // Token 3 appears 1 time -> each element gets gradient 1.0
-        assert!(approx_equal(gradients[9], 1.0, 1e-6));   // embedding[3][0]
-        assert!(approx_equal(gradients[10], 1.0, 1e-6));  // embedding[3][1]
-        assert!(approx_equal(gradients[11], 1.0, 1e-6));  // embedding[3][2]
+        assert!(approx_equal(gradients[[3, 0]], 1.0, 1e-6));   // embedding[3][0]
+        assert!(approx_equal(gradients[[3, 1]], 1.0, 1e-6));   // embedding[3][1]
+        assert!(approx_equal(gradients[[3, 2]], 1.0, 1e-6));   // embedding[3][2]
         
         // Tokens 4 and 5 never selected -> gradient 0.0
-        for i in 12..18 {
-            assert!(approx_equal(gradients[i], 0.0, 1e-6));
-        }
+        assert!(approx_equal(gradients[[4, 0]], 0.0, 1e-6));   // embedding[4][0]
+        assert!(approx_equal(gradients[[4, 1]], 0.0, 1e-6));   // embedding[4][1]
+        assert!(approx_equal(gradients[[4, 2]], 0.0, 1e-6));   // embedding[4][2]
+        assert!(approx_equal(gradients[[5, 0]], 0.0, 1e-6));   // embedding[5][0]
+        assert!(approx_equal(gradients[[5, 1]], 0.0, 1e-6));   // embedding[5][1]
+        assert!(approx_equal(gradients[[5, 2]], 0.0, 1e-6));   // embedding[5][2]
     }
 }
