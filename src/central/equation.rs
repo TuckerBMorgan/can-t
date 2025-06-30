@@ -172,6 +172,7 @@ impl Equation {
         let result_data = tensor_add(left_data, right_data);
         return result_data;
     }
+    
 
     /// Takes two tensors are flat buffers and preforms matmul on them and returns the result
     /// # Arugments
@@ -236,6 +237,16 @@ impl Equation {
     pub fn add_vector(&self, a: &[f32], b: &[f32]) -> Vec<f32> {
         // Preform the operation of the platform vended version of tensor_add
         let result_data = tensor_add(a, b);
+        return result_data;
+    }
+
+    /// Takes two tensors as flat buffers, subs them together at an elementwise level and returns the result
+    /// # Arguments
+    /// * 'a' : The first tensor
+    /// * 'b' : the second tensor
+    pub fn sub_vector(&self, a: &[f32], b: &[f32]) -> Vec<f32> {
+        // Preform the operation of the platform vended version of tensor_add
+        let result_data = tensor_sub(a, b);
         return result_data;
     }
 

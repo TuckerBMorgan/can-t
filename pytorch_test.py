@@ -2,6 +2,11 @@ from gguf import GGUFWriter
 import torch
 import torch.nn.functional as F
 
+
+test = torch.tensor(((1.0, 2.0, 3.0), (4.0, 5.0, 6.0)))
+print(test.std((0, 1)))
+
+exit()
 def add_tensor_safe(writer: GGUFWriter, name: str, t: torch.Tensor) -> None:
     """
     Add a tensor to the GGUF file guaranteeing it always has at least one dim.
