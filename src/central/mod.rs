@@ -14,6 +14,8 @@ mod tanh_op;
 mod sum_op;
 mod tensor;
 mod index;
+mod softmax_op;
+mod log;
 
 pub use add_op::*;
 pub use cross_entropy_op::*;
@@ -33,6 +35,8 @@ use std::sync::{Mutex, MutexGuard};
 pub use sum_op::*;
 pub use tensor::*;
 pub use index::*;
+pub use softmax_op::*;
+pub use log::*;
 
 lazy_static! {
     static ref SINGLETON_INSTANCE: Mutex<Equation> = Mutex::new(Equation::new());
@@ -45,6 +49,23 @@ pub fn get_equation() -> MutexGuard<'static, Equation> {
         match lock {
             Ok(equation) => {
                 return equation;
+            }
+            Err(_) => {
+                continue;
+            }
+        }
+    }
+}
+
+
+pub fn zero_all_grads() {
+    loop {
+        let lock = SINGLETON_INSTANCE.lock();
+
+        match lock {
+            Ok(mut equation) => {
+                equation.zero_grad();
+                return;
             }
             Err(_) => {
                 continue;

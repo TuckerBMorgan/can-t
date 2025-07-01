@@ -21,6 +21,9 @@ open target/llvm-cov/html/index.html
 
 # Format code (required before commits)
 rustfmt src/**/*.rs crates/**/*.rs
+
+# Generate documentation
+cargo doc --no-deps --document-private-items --open
 ```
 
 ## Architecture

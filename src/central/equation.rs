@@ -2,10 +2,11 @@ use std::collections::{HashMap, HashSet};
 
 use super::backward_for_matmul;
 use super::{
-    InternalTensor, Operation, TensorID, add_op, cross_entropy_op, matmul_op, mean_op, mul_op, pow_op, reshape, select_op, shape::*,
+    InternalTensor, Operation, TensorID, add_op, cross_entropy_op, log, matmul_op, mean_op, mul_op, pow_op, reshape, select_op, shape::*,
     std_op, sum_op, tanh_op,
 };
 use crate::central::index::Indexable;
+use crate::central::softmax_op;
 use crate::utils::*;
 use ndarray::ArrayD;
 use ndarray::Axis;
@@ -502,9 +503,12 @@ impl Equation {
             }
             Operation::Std(_, _, _) => {
                 std_op::backward_for_std(packet);
+            },
+            Operation::Softmax(_, _) => {
+                softmax_op::backward_for_softmax(packet);
             }
-            Operation::CrossEntropy(_, _) => {
-                cross_entropy_op::backward_for_cross_entropy(packet);
+            Operation::Log(_) => {
+                log::backwards_for_log(packet);
             }
         }
     }
@@ -558,5 +562,10 @@ impl Equation {
         }
 
         self.end_timer(String::from("backwards_prop"));
+    }
+
+    // Zeroes out the grad, important to call before calling backwards on a value
+    pub fn zero_grad(&mut self) {
+        self.grad = vec![0.0;self.grad.len()];
     }
 }

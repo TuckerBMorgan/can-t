@@ -18,5 +18,6 @@ pub enum Operation {
     Tanh(TensorID), // Source tensor
     Mean(TensorID, [isize; 4], usize), // Source tensor, axes, num_axes
     Std(TensorID, [usize; 4], usize), // Source tensor, axes, num_axes
-    CrossEntropy(TensorID, TensorID), // Logits tensor, targets tensor
+    Softmax(TensorID, usize), // Source tensor, axis
+    Log(TensorID), // source tensor
 }

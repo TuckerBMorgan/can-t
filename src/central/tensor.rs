@@ -16,6 +16,7 @@ pub struct InternalTensor {
     pub data_start_index: usize, // where the equation.data this tensors data starts
     pub grad_start_index: usize, // where in equation.grad this tensors grad starts
     pub operation: Operation, // Ther operation that created this tensor, Nop for an allocation
+    pub requires_grad: bool
 }
 
 impl InternalTensor {
@@ -32,6 +33,7 @@ impl InternalTensor {
             data_start_index,
             grad_start_index,
             operation,
+            requires_grad: false
         }
     }
 
@@ -76,9 +78,12 @@ impl InternalTensor {
             }
             Operation::Std(source, _, _) => {
                 return vec![*source];
+            },
+            Operation::Softmax(source, _) => {
+                return vec![*source];
             }
-            Operation::CrossEntropy(logits, targets) => {
-                return vec![*logits, *targets];
+            Operation::Log(source) => {
+                return vec![*source];
             }
         }
     }
@@ -89,6 +94,7 @@ pub struct Tensor {
     pub id: TensorID, // The unique id for this tensor, ties it to the InternalTensor that can be used to look up the data
     pub shape: Shape, // The shape of the tensor
     operation: Operation, // The operation that created this Tensor(Nop for basic allocations)
+    requires_grad: bool
 }
 
 impl Tensor {
@@ -101,6 +107,7 @@ impl Tensor {
             id,
             shape,
             operation: Operation::Nop,
+            requires_grad: false
         }
     }
 
@@ -129,6 +136,7 @@ impl Tensor {
             id,
             shape,
             operation: Operation::Nop,
+            requires_grad: false
         }
     }
 
@@ -141,6 +149,7 @@ impl Tensor {
             id,
             shape,
             operation: Operation::Nop,
+            requires_grad: false
         }
     }
 
@@ -154,6 +163,7 @@ impl Tensor {
             id,
             shape,
             operation: Operation::Nop,
+            requires_grad: false
         }
     }
 
@@ -166,6 +176,7 @@ impl Tensor {
             id,
             shape,
             operation: Operation::Nop,
+            requires_grad: false
         }
     }
 
@@ -191,6 +202,7 @@ impl Tensor {
             id,
             shape,
             operation: operation,
+            requires_grad: false
         };
     }
 
@@ -231,6 +243,10 @@ impl Tensor {
             data,
             Operation::BroadCast(self.id, shape),
         );
+    }
+
+    pub fn set_requires_grad(&mut self, new_requires_grad: bool) {
+        self.requires_grad = new_requires_grad;
     }
 
     /// sends this node backwards though the network, adding to the grad of every node that feeds into this one

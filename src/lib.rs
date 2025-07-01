@@ -159,21 +159,27 @@ mod tests {
         let (_cte, _yte) = build_batch_norm_dataset_from_subset(&names[n2..], &stoi);
 
         let mut c = Tensor::from_gguf_file("bigram_simple_C".to_string(), &mut gguf_file);
+        c.set_requires_grad(true);
         let mut w1 = Tensor::from_gguf_file("bigram_simple_W1".to_string(), &mut gguf_file);
+        w1.set_requires_grad(true);
         let mut w2 = Tensor::from_gguf_file("bigram_simple_W2".to_string(), &mut gguf_file);
+        w2.set_requires_grad(true);
         let mut b2 = Tensor::from_gguf_file("bigram_simple_b2".to_string(), &mut gguf_file);
+        b2.set_requires_grad(true);
 
         let mut bngain = Tensor::ones(Shape::new(vec![1, n_hidden]));
+        bngain.set_requires_grad(true);
         let mut bnbiases = Tensor::zeros(Shape::new(vec![1, n_hidden]));
-
+        bnbiases.set_requires_grad(true);
         let mut bnmean_running = Tensor::zeros(Shape::new(vec![1, n_hidden]));
-
+        bnmean_running.set_requires_grad(true);
         let mut bnvar_running = Tensor::ones(Shape::new(vec![1, n_hidden]));
+        bnvar_running.set_requires_grad(true);
 
         let max_steps = 2;
 
         for _i in 0..max_steps {
-          //  zero_all_grads();
+            zero_all_grads();
             let test_index_tensor = Tensor::zeros(Shape::new(vec![BATCH_SIZE, 3]));
             for b in 0..BATCH_SIZE {
                 test_index_tensor.set_index([b, 0].into(), xtr[b][0] as f32);
@@ -194,7 +200,7 @@ mod tests {
             let h = hpreact_norm.tanh();
             let logits = (h << w2) + b2;
 
-            let mut test_ytrue_onehot = Tensor::element(Shape::new(vec![BATCH_SIZE, 27]), 0.0);
+            let test_ytrue_onehot = Tensor::element(Shape::new(vec![BATCH_SIZE, 27]), 0.0);
             for b in 0..BATCH_SIZE {
                 test_ytrue_onehot.set_index([b, ytr[b]].into(), 1.0);
             }
