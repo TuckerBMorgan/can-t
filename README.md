@@ -80,10 +80,6 @@ open target/llvm-cov/html/index.html
 - **macOS**: Full CPU and Metal GPU acceleration support
 - **Other platforms**: CPU-only support via ndarray backend
 
-## Development Philosophy
-
-This project was developed without AI coding assistance to maximize learning and understanding of machine learning concepts. The focus is on educational value and clear implementation over performance optimization.
-
 ## License
 
 MIT License

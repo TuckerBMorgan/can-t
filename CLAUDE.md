@@ -68,6 +68,5 @@ cargo doc --no-deps --document-private-items --open
 ## Development Notes
 
 - Uses Rust 2024 edition
-- No AI coding tools were used in development (intentional learning constraint)
 - Project focuses on educational value over production readiness
 - Metal acceleration only available on macOS
