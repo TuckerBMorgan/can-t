@@ -24,85 +24,87 @@ fn valid_shape(a: [usize; 4], b: [usize; 4]) {
 }
 
 pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize; 4]) -> Vec<f32> {
-    // Validate that the input shapes are compatible
-    valid_shape(a_shape, b_shape);
+    objc::rc::autoreleasepool(|| {
+        // Validate that the input shapes are compatible
+        valid_shape(a_shape, b_shape);
 
-    // the shape of the resultant matrix
-    // we already know that is it a valid shape
-    let result_shape = [a_shape[0], b_shape[1], a_shape[2], b_shape[3]];
+        // the shape of the resultant matrix
+        // we already know that is it a valid shape
+        let result_shape = [a_shape[0], b_shape[1], a_shape[2], b_shape[3]];
 
-    // Pull out the function we need
-    let function = METAL_LIBRARY
-        .get_function("batchedMatMul", None)
-        .expect("Function not found");
+        // Pull out the function we need
+        let function = METAL_LIBRARY
+            .get_function("batchedMatMul", None)
+            .expect("Function not found");
 
-    // Start to setup our compute pipeline
-    let queue = METAL_DEVICE.new_command_queue();
-    let command_buffer = queue.new_command_buffer();
-    let encoder = command_buffer.new_compute_command_encoder();
+        // Start to setup our compute pipeline
+        let queue = METAL_DEVICE.new_command_queue();
+        let command_buffer = queue.new_command_buffer();
+        let encoder = command_buffer.new_compute_command_encoder();
 
-    // Create and copy over our buffers on the metal device
-    let a_buffer = METAL_DEVICE.new_buffer_with_data(
-        a.as_ptr() as *const _,
-        (a.len() * mem::size_of::<f32>()) as u64,
-        MTLResourceOptions::StorageModeShared,
-    );
-    let b_buffer = METAL_DEVICE.new_buffer_with_data(
-        b.as_ptr() as *const _,
-        (b.len() * mem::size_of::<f32>()) as u64,
-        MTLResourceOptions::StorageModeShared,
-    );
-    let mut result_shape_total = 1;
-    for d in result_shape {
-        result_shape_total *= d;
-    }
-    let mut c_data = vec![0.0;result_shape_total];
-    let c_buffer = METAL_DEVICE.new_buffer_with_data(
-        c_data.as_mut_ptr() as *const _,
-        (result_shape_total * mem::size_of::<f32>()) as u64,
-        MTLResourceOptions::StorageModeShared,
-    );
+        // Create and copy over our buffers on the metal device
+        let a_buffer = METAL_DEVICE.new_buffer_with_data(
+            a.as_ptr() as *const _,
+            (a.len() * mem::size_of::<f32>()) as u64,
+            MTLResourceOptions::StorageModeShared,
+        );
+        let b_buffer = METAL_DEVICE.new_buffer_with_data(
+            b.as_ptr() as *const _,
+            (b.len() * mem::size_of::<f32>()) as u64,
+            MTLResourceOptions::StorageModeShared,
+        );
+        let mut result_shape_total = 1;
+        for d in result_shape {
+            result_shape_total *= d;
+        }
+        let mut c_data = vec![0.0;result_shape_total];
+        let c_buffer = METAL_DEVICE.new_buffer_with_data(
+            c_data.as_mut_ptr() as *const _,
+            (result_shape_total * mem::size_of::<f32>()) as u64,
+            MTLResourceOptions::StorageModeShared,
+        );
 
-    // M, N, K, B2
-    let mut dimensions = [a_shape[2] as u32, b_shape[3] as u32,a_shape[3] as u32, a_shape[1] as u32];
-    let dimensions_buffer = METAL_DEVICE.new_buffer_with_data(dimensions.as_mut_ptr() as *const _, (4 * mem::size_of::<u32>()) as u64,  MTLResourceOptions::StorageModeShared);
+        // M, N, K, B2
+        let mut dimensions = [a_shape[2] as u32, b_shape[3] as u32,a_shape[3] as u32, a_shape[1] as u32];
+        let dimensions_buffer = METAL_DEVICE.new_buffer_with_data(dimensions.as_mut_ptr() as *const _, (4 * mem::size_of::<u32>()) as u64,  MTLResourceOptions::StorageModeShared);
 
-    // Setup the compute grid
-    let compute_pipeline = METAL_DEVICE
-        .new_compute_pipeline_state_with_function(&function)
-        .unwrap();
-    encoder.set_compute_pipeline_state(&compute_pipeline);
-    encoder.set_buffer(0, Some(&a_buffer), 0);
-    encoder.set_buffer(1, Some(&b_buffer), 0);
-    encoder.set_buffer(2, Some(&c_buffer), 0);
-    encoder.set_buffer(3, Some(&dimensions_buffer), 0);
+        // Setup the compute grid
+        let compute_pipeline = METAL_DEVICE
+            .new_compute_pipeline_state_with_function(&function)
+            .unwrap();
+        encoder.set_compute_pipeline_state(&compute_pipeline);
+        encoder.set_buffer(0, Some(&a_buffer), 0);
+        encoder.set_buffer(1, Some(&b_buffer), 0);
+        encoder.set_buffer(2, Some(&c_buffer), 0);
+        encoder.set_buffer(3, Some(&dimensions_buffer), 0);
 
-    let b1 = a_shape[0];
-    let b2 = b_shape[1];
-    let n = dimensions[1];
-    let m = dimensions[0];
+        let b1 = a_shape[0];
+        let b2 = b_shape[1];
+        let n = dimensions[1];
+        let m = dimensions[0];
 
-    let tile_x = 8;
-    let tile_y = 8;
-    
-    let threads_per_group = MTLSize::new(tile_x, tile_y, 1);
-    
-    let num_batches = (b1 * b2) as u64;
-    let thread_groups_x = (n as u64 + tile_x - 1) / tile_x;
-    let thread_groups_y = (m as u64 + tile_y - 1) / tile_y;
-    let thread_groups_z = num_batches;
-    
-    let thread_groups = MTLSize::new(thread_groups_x, thread_groups_y, thread_groups_z);
+        let tile_x = 8;
+        let tile_y = 8;
+        
+        let threads_per_group = MTLSize::new(tile_x, tile_y, 1);
+        
+        let num_batches = (b1 * b2) as u64;
+        let thread_groups_x = (n as u64 + tile_x - 1) / tile_x;
+        let thread_groups_y = (m as u64 + tile_y - 1) / tile_y;
+        let thread_groups_z = num_batches;
+        
+        let thread_groups = MTLSize::new(thread_groups_x, thread_groups_y, thread_groups_z);
 
-    // Kick off the shader call
-    encoder.dispatch_thread_groups(thread_groups, threads_per_group);
-    encoder.end_encoding();
-    command_buffer.commit();
-    command_buffer.wait_until_completed();
+        // Kick off the shader call
+        encoder.dispatch_thread_groups(thread_groups, threads_per_group);
+        encoder.end_encoding();
+        command_buffer.commit();
+        command_buffer.wait_until_completed();
 
-    // Copy the data back
-    let c_ptr = c_buffer.contents() as *const f32;
-    let c_slice = unsafe { std::slice::from_raw_parts(c_ptr, c_data.len()) };
+        // Copy the data back
+        let c_ptr = c_buffer.contents() as *const f32;
+        let c_slice = unsafe { std::slice::from_raw_parts(c_ptr, c_data.len()) };
 
-    return c_slice.to_vec();
+        c_slice.to_vec()
+    })
 }

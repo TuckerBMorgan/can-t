@@ -176,9 +176,9 @@ mod tests {
         let mut bnvar_running = Tensor::ones(Shape::new(vec![1, n_hidden]));
         bnvar_running.set_requires_grad(true);
 
-        let max_steps = 30;
+        let max_steps = 100;
 
-        for _i in 0..max_steps {
+        for i in 0..max_steps {
             zero_all_grads();
             let test_index_tensor = Tensor::zeros(Shape::new(vec![BATCH_SIZE, 3]));
             for b in 0..BATCH_SIZE {
@@ -207,7 +207,7 @@ mod tests {
 
             // Cross-entropy loss computation and backward pass
             let loss = logits.cross_entropy_loss(test_ytrue_onehot);
-            println!("Loss: {}", loss.item()[[0]]);
+            println!("step {} Loss: {}", i + 1, loss.item()[[0]]);
             loss.backward();
             
             // For now just test that the select operation worked

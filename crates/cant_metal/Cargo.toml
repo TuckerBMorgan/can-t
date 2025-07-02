@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 metal = "0.30.0"
 lazy_static = "1.4.0"
+objc = "0.2"
