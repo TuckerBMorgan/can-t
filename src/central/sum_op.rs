@@ -92,6 +92,7 @@ pub fn backward_for_sum(backprop_backet: BackproagationPacket) {
         panic!("backward_for_sum called with the wrong operation");
     }
 }
+
 #[cfg(test)]
 mod tests {
     use crate::{central::*, utils::GGUFFile};

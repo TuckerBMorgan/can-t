@@ -120,6 +120,7 @@ pub fn backward_for_matmul(backprop_backet: BackproagationPacket) {
         panic!("Wrong opeartions for matmul backward");
     }
 }
+
 #[cfg(test)]
 mod tests {
 

@@ -73,3 +73,7 @@ pub fn zero_all_grads() {
         }
     }
 }
+
+pub fn update_parameters(learning_rate: f32) {
+    get_equation().update_parameters(learning_rate);
+}

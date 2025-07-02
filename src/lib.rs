@@ -176,7 +176,7 @@ mod tests {
         let mut bnvar_running = Tensor::ones(Shape::new(vec![1, n_hidden]));
         bnvar_running.set_requires_grad(true);
 
-        let max_steps = 2;
+        let max_steps = 30;
 
         for _i in 0..max_steps {
             zero_all_grads();
@@ -211,10 +211,10 @@ mod tests {
             loss.backward();
             
             // For now just test that the select operation worked
-            println!("Select operation in view worked! Shape: {:?}", test.shape.dimensions());
-          //  update_parameters(-0.01);
+           // println!("Select operation in view worked! Shape: {:?}", test.shape.dimensions());
+            update_parameters(-0.01);
         }
-        println!("w1 grad {:?}", w1.grad());
+     //   println!("w1 grad {:?}", w1.grad());
     }
  
 }

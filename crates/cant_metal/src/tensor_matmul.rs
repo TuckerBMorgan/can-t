@@ -1,5 +1,7 @@
 use metal::*;
 use std::mem;
+use crate::*;
+
 /// Takes two tensors as flat buffers, and preforms matrix multiplication upon them
 /// It makes an assumption that all of them are 4d.
 /// This is to make things simpler, it is up to the caller to render the shape correctly
@@ -29,30 +31,23 @@ pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize;
     // we already know that is it a valid shape
     let result_shape = [a_shape[0], b_shape[1], a_shape[2], b_shape[3]];
 
-    // Init the metal library (this will compile the shader code)
-    const METAL_SHADER: &str = include_str!("../shaders/matmul.metal");
-    let device = Device::system_default().expect("No Metal device found");
-    let library = device
-        .new_library_with_source(METAL_SHADER, &CompileOptions::new())
-        .expect("Failed to compile Metal shader");
-
     // Pull out the function we need
-    let function = library
+    let function = METAL_LIBRARY
         .get_function("batchedMatMul", None)
         .expect("Function not found");
 
     // Start to setup our compute pipeline
-    let queue = device.new_command_queue();
+    let queue = METAL_DEVICE.new_command_queue();
     let command_buffer = queue.new_command_buffer();
     let encoder = command_buffer.new_compute_command_encoder();
 
     // Create and copy over our buffers on the metal device
-    let a_buffer = device.new_buffer_with_data(
+    let a_buffer = METAL_DEVICE.new_buffer_with_data(
         a.as_ptr() as *const _,
         (a.len() * mem::size_of::<f32>()) as u64,
         MTLResourceOptions::StorageModeShared,
     );
-    let b_buffer = device.new_buffer_with_data(
+    let b_buffer = METAL_DEVICE.new_buffer_with_data(
         b.as_ptr() as *const _,
         (b.len() * mem::size_of::<f32>()) as u64,
         MTLResourceOptions::StorageModeShared,
@@ -62,7 +57,7 @@ pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize;
         result_shape_total *= d;
     }
     let mut c_data = vec![0.0;result_shape_total];
-    let c_buffer = device.new_buffer_with_data(
+    let c_buffer = METAL_DEVICE.new_buffer_with_data(
         c_data.as_mut_ptr() as *const _,
         (result_shape_total * mem::size_of::<f32>()) as u64,
         MTLResourceOptions::StorageModeShared,
@@ -70,10 +65,10 @@ pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize;
 
     // M, N, K, B2
     let mut dimensions = [a_shape[2] as u32, b_shape[3] as u32,a_shape[3] as u32, a_shape[1] as u32];
-    let dimensions_buffer = device.new_buffer_with_data(dimensions.as_mut_ptr() as *const _, (4 * mem::size_of::<u32>()) as u64,  MTLResourceOptions::StorageModeShared);
+    let dimensions_buffer = METAL_DEVICE.new_buffer_with_data(dimensions.as_mut_ptr() as *const _, (4 * mem::size_of::<u32>()) as u64,  MTLResourceOptions::StorageModeShared);
 
     // Setup the compute grid
-    let compute_pipeline = device
+    let compute_pipeline = METAL_DEVICE
         .new_compute_pipeline_state_with_function(&function)
         .unwrap();
     encoder.set_compute_pipeline_state(&compute_pipeline);

@@ -149,6 +149,7 @@ pub fn backward_for_std(backprop_packet: BackproagationPacket) {
         panic!("Wrong operation for backward std");
     }
 }
+
 #[cfg(test)]
 mod tests {
     use crate::central::{Shape, Tensor, Operation, get_equation};

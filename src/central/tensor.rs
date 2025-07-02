@@ -247,6 +247,7 @@ impl Tensor {
 
     pub fn set_requires_grad(&mut self, new_requires_grad: bool) {
         self.requires_grad = new_requires_grad;
+        get_equation().set_is_grequires_grad(self.id, new_requires_grad);
     }
 
     /// sends this node backwards though the network, adding to the grad of every node that feeds into this one

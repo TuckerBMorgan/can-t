@@ -453,20 +453,22 @@ impl Equation {
                 let dimensions = to_shape.dimensions();
                 let dimensions = padding_dimenions_to_four(dimensions);
                 let mut result = self.get_grad(incoming_grad);
-
-                // Loop over all of the dimensions
+          
+                // Sum dimensions from right to left (highest index first)
+                // This avoids the indexing problem since we're always summing the rightmost broadcasted dims
                 for index in 0..from_shape.len() {
                     let input_dim = dimensions[dimensions.len() - 1 - index];
-                    // Find those ones that we had to inflate during the broadcast
                     let original_dim = if index < from_shape.len() {
                         from_shape[from_shape.len() - 1 - index]
                     } else {
                         1
                     };
-                    // And sum over those dimensions, reducing the grad from the larger
-                    // dim to the a single value
+          
                     if original_dim == 1 && input_dim != 1 {
-                        result = result.sum_axis(Axis(dimensions.len() - 1 - index));
+                        // Always sum the last dimension that was broadcasted
+                        // Since we're going right to left, this is always the rightmost expanded dim
+                        let current_axis = result.ndim() - 1 - index;
+                        result = result.sum_axis(Axis(current_axis));
                     }
                 }
                 self.add_tensor_grad(from, result.to_owned().into_raw_vec());
@@ -567,5 +569,21 @@ impl Equation {
     // Zeroes out the grad, important to call before calling backwards on a value
     pub fn zero_grad(&mut self) {
         self.grad = vec![0.0;self.grad.len()];
+    }
+
+    pub fn update_parameters(&mut self, learning_rate:f32) {
+        for (_k,v) in &self.tensor_record {
+            if v.requires_grad {
+                for i in 0..v.shape.total_size() {
+                    let grad_anchor_point = v.grad_start_index;
+                    let data_anchor_point = v.data_start_index;
+                    self.data[data_anchor_point + i] += learning_rate * self.grad[grad_anchor_point + i];
+                }
+            }
+        }
+    }
+
+    pub fn set_is_grequires_grad(&mut self, tensor_id: TensorID, requires_grad: bool) {
+        self.tensor_record.get_mut(&tensor_id).unwrap().requires_grad = requires_grad;
     }
 }

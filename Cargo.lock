@@ -58,6 +58,7 @@ dependencies = [
 name = "cant_metal"
 version = "0.1.0"
 dependencies = [
+ "lazy_static",
  "metal",
 ]
 
