@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use super::backward_for_matmul;
 use super::{
     InternalTensor, Operation, TensorID, add_op, cross_entropy_op, log, matmul_op, mean_op, mul_op, pow_op, reshape, select_op, shape::*,
-    std_op, sum_op, tanh_op,
+    std_op, sum_op, tanh_op, transpose_op,
 };
 use crate::central::index::Indexable;
 use crate::central::softmax_op;
@@ -517,6 +517,9 @@ impl Equation {
             }
             Operation::Log(_) => {
                 log::backwards_for_log(packet);
+            },
+            Operation::Transpose(_, _, _) => {
+                transpose_op::backwards_for_transpose(packet);
             }
         }
     }

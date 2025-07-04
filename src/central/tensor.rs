@@ -1,3 +1,4 @@
+
 use ndarray::ArrayD;
 
 use crate::utils::GGUFFile;
@@ -83,6 +84,9 @@ impl InternalTensor {
                 return vec![*source];
             }
             Operation::Log(source) => {
+                return vec![*source];
+            },
+            Operation::Transpose(source, _, _) => {
                 return vec![*source];
             }
         }

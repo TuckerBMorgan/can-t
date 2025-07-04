@@ -16,6 +16,7 @@ mod tensor;
 mod index;
 mod softmax_op;
 mod log;
+mod transpose_op;
 
 pub use add_op::*;
 pub use cross_entropy_op::*;
@@ -37,6 +38,7 @@ pub use tensor::*;
 pub use index::*;
 pub use softmax_op::*;
 pub use log::*;
+pub use transpose_op::*;
 
 lazy_static! {
     static ref SINGLETON_INSTANCE: Mutex<Equation> = Mutex::new(Equation::new());

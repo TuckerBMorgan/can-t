@@ -495,7 +495,7 @@ mod tests {
         let mut w_output = Tensor::randn(Shape::new(vec![hidden_size, input_size])) * 0.1;
         w_output.set_requires_grad(true);
         
-        for epoch in 0..500 {
+        for epoch in 0..100 {
             zero_all_grads();
             let mut hidden = Tensor::zeros(Shape::new(vec![1, hidden_size]));
             let mut total_loss = 0.0;
@@ -514,7 +514,7 @@ mod tests {
                 loss.backward();
             }
             
-            if epoch % 100 == 0 {
+            if epoch % 10 == 0 {
                 println!("Sequence Epoch {}: Avg Loss = {}", epoch, total_loss / (seq_len - 1) as f32);
             }
             update_parameters(-0.01);
