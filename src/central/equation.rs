@@ -130,13 +130,19 @@ impl Equation {
     /// # Arguments
     /// 'shape' - the shape of desired tensor
     pub fn allocate_random_tesnor(&mut self, shape: Shape) -> TensorID {
+        let fan_in = if shape.dimensions().len() >= 2 { shape.dimensions()[0] } else { 1 };
+        let fan_out = if shape.dimensions().len() >= 2 { shape.dimensions()[1] } else { shape.total_size() };
+        let std_dev = (2.0 / (fan_in + fan_out) as f32).sqrt();
+  
         let mut rng = rand::thread_rng();
-        let normal = Normal::new(0.0, 0.01).unwrap();
+        let normal = Normal::new(0.0, std_dev as f64).unwrap();
         let data: Vec<f32> = (0..shape.total_size())
-            .map(|_| normal.sample(&mut rng))
+            .map(|_| normal.sample(&mut rng) as f32)
             .collect();
-        return self.allocate_tensor(shape, data, Operation::Nop);
+        self.allocate_tensor(shape, data, Operation::Nop)
     }
+
+    
 
     /// Allocated a tensor id, this is unique id for each tensor, used to look in up later
     fn allocate_tensor_id(&mut self) -> TensorID {
@@ -571,6 +577,9 @@ impl Equation {
         self.grad = vec![0.0;self.grad.len()];
     }
 
+    /// Updates all parameters for all tensor that are marked for needed gradients(set_requires_grad)
+    /// Arguments
+    /// 'learning_rate': a singe learning rate applied to all parameters
     pub fn update_parameters(&mut self, learning_rate:f32) {
         for (_k,v) in &self.tensor_record {
             if v.requires_grad {
@@ -583,6 +592,10 @@ impl Equation {
         }
     }
 
+    /// Helper function for setting the internal tensor to know if it needs gradient or not
+    /// # Arguments
+    /// 'tensor_id' : which Tensor we are setting
+    /// 'requires_grad' : what we are setting the bool too
     pub fn set_is_grequires_grad(&mut self, tensor_id: TensorID, requires_grad: bool) {
         self.tensor_record.get_mut(&tensor_id).unwrap().requires_grad = requires_grad;
     }

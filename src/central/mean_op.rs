@@ -85,7 +85,8 @@ pub fn backward_for_mean(backprop_packet: BackproagationPacket) {
                 n *= original_shape.dimensions()[axes_array[i] as usize];
             }
         }
-        // we then scale the grad down by 1/count, since each contributed "equally" output
+        // The gradient should be distributed equally: ∂loss/∂x_i = ∂loss/∂mean * (1/n)
+        // We need to divide by n to get the correct mean gradient
         let scaled_grad: Vec<f32> = result.iter().map(|&g| g / n as f32).collect();
 
         backprop_packet.equation.add_tensor_grad(source_id, scaled_grad);

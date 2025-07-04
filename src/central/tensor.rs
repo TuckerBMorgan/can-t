@@ -180,6 +180,15 @@ impl Tensor {
         }
     }
 
+    /// Creates a tensor from a vector of data with specified shape
+    /// # Arguments
+    /// * 'data' - The vector of f32 values to populate the tensor
+    /// * 'shape_dims' - The dimensions of the tensor as a vector (e.g., vec![2, 3] for 2x3 matrix)
+    pub fn from_vec(data: Vec<f32>, shape_dims: Vec<usize>) -> Tensor {
+        let shape = Shape::new(shape_dims);
+        Self::create_tensor_data_and_shape_and_operation(shape, data, Operation::Nop)
+    }
+
     /// Utility function for create a tensor with data, shape and operation
     /// # Arugments
     /// 'shape' - the shape of the tensor
