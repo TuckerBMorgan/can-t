@@ -1,6 +1,6 @@
 use crate::central::*;
 
-pub trait Model {
-    fn forward(&mut self, input: Tensor);
+pub trait Layer {
+    fn forward(&mut self, inputs: Tensor) -> Tensor;
     fn get_parameters(&self) -> Vec<TensorID>;
 }

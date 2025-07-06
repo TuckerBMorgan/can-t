@@ -294,7 +294,7 @@ impl GGUFFile {
         // open the file and move the seek position to the start of the data porition + the offset
         // offset is relative to the data_start
         let mut f = File::open(self.path.as_str()).unwrap();
-        f.seek(std::io::SeekFrom::Start(
+        let _ = f.seek(std::io::SeekFrom::Start(
             self.data_start + tensor_meta_data.offset,
         ));
         let mut count_of_data = 1;

@@ -2,6 +2,7 @@ use crate::central::{get_equation, BackproagationPacket, Operation, Shape, Tenso
 
 impl Tensor {
 
+    // helper function to actually swap the data of two axes
     fn swap_axes(data: &[f32], shape: &Vec<usize>, axis1: usize, axis2: usize) -> Vec<f32> {
         let mut output_data = vec![0.0; data.len()];
         let ndims = shape.len();
@@ -37,8 +38,11 @@ impl Tensor {
         output_data
     }
 
+    /// Swaps two provides axis for a tensor
+    /// # Arguments
+    /// 'first_index' : first index we are swapping
+    /// 'second_index' : second index we are swapping
     pub fn transpose(&self, first_index: usize, second_index: usize) -> Tensor {
-        
         let data =  {
             let equation = get_equation();
             let data_as_flat_buffer = equation.get_data_flat_buffer(self.id);

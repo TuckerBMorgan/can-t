@@ -1,8 +1,9 @@
 use crate::central::*;
 
 impl Tensor {
+    /// Returns the natural log(ln, not log10) of each element
+    /// it uses natural log because that is what pytorch does when you call .log on a tensor
     pub fn log(&self) -> Tensor {
-//        let singleton =;
         let data =  get_equation()
             .get_item(self.id)
             .clone()
@@ -15,14 +16,18 @@ impl Tensor {
 
 pub fn backwards_for_log(backprop_packet: BackproagationPacket) {
     if let Operation::Log(source_id) = backprop_packet.operation {
+        
+        // The derivative of log is nice and simple, just 1 / x
         let mut input = backprop_packet.equation.get_item(source_id);
         input.map_inplace(|x|*x = 1.0 / (*x));
+
+        // And then mul the incoming grad
         let incoming_grad = backprop_packet.equation.get_grad(backprop_packet.incoming_grad);
         let contribution = incoming_grad * input;
         backprop_packet.equation.add_tensor_grad(source_id, contribution.to_owned().into_raw_vec());
     }
     else {
-        panic!("--");
+        panic!("Wrong operation called for backwards_for_log");
     }
 }
 

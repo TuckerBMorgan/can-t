@@ -258,6 +258,8 @@ impl Tensor {
         );
     }
 
+    /// Helper function to set the requires_grad bool, also sets the 
+    /// internal tensor as well
     pub fn set_requires_grad(&mut self, new_requires_grad: bool) {
         self.requires_grad = new_requires_grad;
         get_equation().set_is_grequires_grad(self.id, new_requires_grad);
@@ -272,6 +274,7 @@ impl Tensor {
         get_equation().backward(self.id);
     }
 
+    // Each element is returned as e ^ x
     pub fn exp(&self) -> Tensor {
         let data: Vec<f32> = self
         .item()

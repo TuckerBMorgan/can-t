@@ -22,6 +22,7 @@ impl Add for Tensor {
     }
 }
 
+/// overload the Add with f32 operator, it creates a little tensor to hold it
 impl Add<f32> for Tensor {
     type Output = Self;
     fn add(self, rhs: f32) -> Self::Output {
@@ -63,7 +64,7 @@ impl Sub<f32> for Tensor {
 }
 
 
-
+/// Overload F32 + tensor, flips it around to use existing add op
 impl Add<Tensor> for f32 {
     type Output = Tensor;
     fn add(self, rhs: Tensor) -> Self::Output {
