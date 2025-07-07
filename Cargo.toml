@@ -21,3 +21,5 @@ members = [
     "crates/cant_cpu", "crates/cant_metal",
 ]
 
+[profile.release]
+debug = true

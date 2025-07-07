@@ -41,7 +41,7 @@ impl From<Vec<Box<dyn Layer>>> for Sequential {
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use ndarray::ArrayD;
     fn approx_equal(a: f32, b: f32, epsilon: f32) -> bool {
         (a - b).abs() < epsilon
     }
@@ -306,13 +306,16 @@ mod tests {
                 ..
             } = MnistBuilder::new()
                 .label_format_digit()
-                .training_set_length(1000)  // Small subset for fast testing
-                .test_set_length(200)
+              //  .training_set_length(1000)  // Small subset for fast testing
+             //   .test_set_length(200)
                 .finalize();
-            
-            let train_images = preprocess_images(trn_img, 1000);
+            println!("Preprocess images, train");
+            let train_images = preprocess_images(trn_img, 60000);
+            println!("Preprocess labels, train");
             let train_labels = preprocess_labels(trn_lbl);
-            let test_images = preprocess_images(tst_img, 200);
+            println!("Preprocess images, test");
+            let test_images = preprocess_images(tst_img, 10000);
+            println!("Preprocess images, test");
             let test_labels = preprocess_labels(tst_lbl);
             
             (train_images, train_labels, test_images, test_labels)
@@ -341,18 +344,30 @@ mod tests {
         }
         
         // Extract batch from tensor by copying rows
-        fn extract_batch(tensor: &Tensor, start_idx: usize, end_idx: usize) -> Tensor {
+        fn extract_batch(tensor: &ArrayD<f32>, features: usize, start_idx: usize, end_idx: usize) -> Tensor {
             let batch_size = end_idx - start_idx;
-            let features = tensor.shape.dimensions()[1];
-            let data = tensor.item();
-            
-            let mut batch_data = Vec::new();
+            let features = features;
+            let data = tensor;
+      
+            // Pre-allocate the exact size needed
+            let mut batch_data = Vec::with_capacity(batch_size * features);
+      
+            // Use slice copying for better performance
             for i in start_idx..end_idx {
-                for j in 0..features {
-                    batch_data.push(data[[i, j]]);
+                let row_start = i * features;
+                let row_end = row_start + features;
+      
+                // Copy entire row at once (more efficient than element-by-element)
+                if let Some(flat_data) = data.as_slice() {
+                    batch_data.extend_from_slice(&flat_data[row_start..row_end]);
+                } else {
+                    // Fallback to element access
+                    for j in 0..features {
+                        batch_data.push(data[[i, j]]);
+                    }
                 }
             }
-            
+      
             Tensor::from_vec(batch_data, vec![batch_size, features])
         }
         
@@ -374,7 +389,7 @@ mod tests {
                     }
                 }
                 
-                // Find true class (argmax of one-hot)
+                // Find true class (argmax owf one-hot)
                 let mut true_class = 0;
                 for j in 0..10 {
                     if target_data[[i, j]] == 1.0 {
@@ -390,16 +405,16 @@ mod tests {
             
             correct as f32 / num_samples as f32
         }
-        
+        println!("Starting loading data");
         // Load MNIST data
         let (train_images, train_labels, test_images, test_labels) = load_mnist_data();
-        
+        println!("Finished loading data");
         // Create MNIST classifier model: 784 -> 128 -> 64 -> 10
         let mut model = Sequential::new(vec![
             Box::new(Linear::new(784, 128, true)),
-            Box::new(TanhLayer::new()),
+            Box::new(ReLU::new()),
             Box::new(Linear::new(128, 64, true)),
-            Box::new(TanhLayer::new()),
+            Box::new(ReLU::new()),
             Box::new(Linear::new(64, 10, true)),
         ]);
         
@@ -410,12 +425,18 @@ mod tests {
         }
         
         let batch_size = 32;
-        let epochs = 100;
-        
+        let epochs = 2;
+
         let mut initial_loss = 0.0;
         let mut final_loss = 0.0;
         let learning_rates = lerp_array(0.1, 0.01, epochs);
         // Training loop
+        let train_images_array_d = train_images.item();
+        let train_features = train_images.shape.dimensions()[1];
+
+        let test_images_array_d = train_labels.item();
+        let test_features = train_labels.shape.dimensions()[1];
+
         for epoch in 0..epochs {
             let mut total_loss = 0.0;
             let num_samples = train_images.shape.dimensions()[0];
@@ -428,8 +449,8 @@ mod tests {
                 let start_idx = batch_idx * batch_size;
                 let end_idx = std::cmp::min(start_idx + batch_size, num_samples);
                 
-                let batch_images = extract_batch(&train_images, start_idx, end_idx);
-                let batch_labels = extract_batch(&train_labels, start_idx, end_idx);
+                let batch_images = extract_batch(&train_images_array_d, train_features, start_idx, end_idx);
+                let batch_labels = extract_batch(&test_images_array_d, test_features, start_idx, end_idx);
                 
                 // Forward pass
                 let outputs = model.forward(batch_images);
@@ -471,7 +492,7 @@ mod tests {
                "Model should achieve > 15% accuracy, got {:.2}%", accuracy * 100.0);
         
         // Basic sanity checks
-        assert_eq!(test_outputs.shape.dimensions(), vec![200, 10]);
+        assert_eq!(test_outputs.shape.dimensions(), vec![10000, 10]);
         
         // Verify outputs are finite
         let output_data = test_outputs.item();
