@@ -1,6 +1,6 @@
+use crate::*;
 use metal::*;
 use std::mem;
-use crate::*;
 
 /// Takes two tensors as flat buffers, and preforms matrix multiplication upon them
 /// It makes an assumption that all of them are 4d.
@@ -57,7 +57,7 @@ pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize;
         for d in result_shape {
             result_shape_total *= d;
         }
-        let mut c_data = vec![0.0;result_shape_total];
+        let mut c_data = vec![0.0; result_shape_total];
         let c_buffer = METAL_DEVICE.new_buffer_with_data(
             c_data.as_mut_ptr() as *const _,
             (result_shape_total * mem::size_of::<f32>()) as u64,
@@ -65,8 +65,17 @@ pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize;
         );
 
         // M, N, K, B2
-        let mut dimensions = [a_shape[2] as u32, b_shape[3] as u32,a_shape[3] as u32, a_shape[1] as u32];
-        let dimensions_buffer = METAL_DEVICE.new_buffer_with_data(dimensions.as_mut_ptr() as *const _, (4 * mem::size_of::<u32>()) as u64,  MTLResourceOptions::StorageModeShared);
+        let mut dimensions = [
+            a_shape[2] as u32,
+            b_shape[3] as u32,
+            a_shape[3] as u32,
+            a_shape[1] as u32,
+        ];
+        let dimensions_buffer = METAL_DEVICE.new_buffer_with_data(
+            dimensions.as_mut_ptr() as *const _,
+            (4 * mem::size_of::<u32>()) as u64,
+            MTLResourceOptions::StorageModeShared,
+        );
 
         // Setup the compute grid
         let compute_pipeline = METAL_DEVICE
@@ -85,14 +94,14 @@ pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize;
 
         let tile_x = 8;
         let tile_y = 8;
-        
+
         let threads_per_group = MTLSize::new(tile_x, tile_y, 1);
-        
+
         let num_batches = (b1 * b2) as u64;
         let thread_groups_x = (n as u64 + tile_x - 1) / tile_x;
         let thread_groups_y = (m as u64 + tile_y - 1) / tile_y;
         let thread_groups_z = num_batches;
-        
+
         let thread_groups = MTLSize::new(thread_groups_x, thread_groups_y, thread_groups_z);
 
         // Kick off the shader call

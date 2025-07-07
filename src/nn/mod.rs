@@ -1,13 +1,15 @@
-mod model;
+mod gpt_block;
 mod layer;
 mod linear;
-mod tanh;
-mod sequential;
+mod model;
 mod relu;
+mod sequential;
+mod tanh;
 
-pub use model::*;
+pub use gpt_block::*;
 pub use layer::*;
 pub use linear::*;
-pub use tanh::*;
-pub use sequential::*;
+pub use model::*;
 pub use relu::*;
+pub use sequential::*;
+pub use tanh::*;

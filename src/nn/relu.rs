@@ -1,15 +1,11 @@
 use crate::central::*;
 use crate::nn::*;
 
-pub struct ReLU {
-
-}
+pub struct ReLU {}
 
 impl ReLU {
     pub fn new() -> ReLU {
-        ReLU {  
-            
-        }
+        ReLU {}
     }
 }
 

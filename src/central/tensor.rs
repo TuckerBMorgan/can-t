@@ -1,4 +1,3 @@
-
 use ndarray::ArrayD;
 
 use crate::utils::GGUFFile;
@@ -17,7 +16,7 @@ pub struct InternalTensor {
     pub data_start_index: usize, // where the equation.data this tensors data starts
     pub grad_start_index: usize, // where in equation.grad this tensors grad starts
     pub operation: Operation, // Ther operation that created this tensor, Nop for an allocation
-    pub requires_grad: bool
+    pub requires_grad: bool,
 }
 
 impl InternalTensor {
@@ -34,7 +33,7 @@ impl InternalTensor {
             data_start_index,
             grad_start_index,
             operation,
-            requires_grad: false
+            requires_grad: false,
         }
     }
 
@@ -64,7 +63,7 @@ impl InternalTensor {
             }
             Operation::Reshape(from, _shape) => {
                 return vec![*from];
-            },
+            }
             Operation::Exp(from) => {
                 return vec![*from];
             }
@@ -79,16 +78,16 @@ impl InternalTensor {
             }
             Operation::Std(source, _, _) => {
                 return vec![*source];
-            },
+            }
             Operation::Softmax(source, _) => {
                 return vec![*source];
             }
             Operation::Log(source) => {
                 return vec![*source];
-            },
+            }
             Operation::Transpose(source, _, _) => {
                 return vec![*source];
-            },
+            }
             Operation::RELU(source) => {
                 return vec![*source];
             }
@@ -101,7 +100,7 @@ pub struct Tensor {
     pub id: TensorID, // The unique id for this tensor, ties it to the InternalTensor that can be used to look up the data
     pub shape: Shape, // The shape of the tensor
     operation: Operation, // The operation that created this Tensor(Nop for basic allocations)
-    requires_grad: bool
+    requires_grad: bool,
 }
 
 impl Tensor {
@@ -114,7 +113,7 @@ impl Tensor {
             id,
             shape,
             operation: Operation::Nop,
-            requires_grad: false
+            requires_grad: false,
         }
     }
 
@@ -143,7 +142,7 @@ impl Tensor {
             id,
             shape,
             operation: Operation::Nop,
-            requires_grad: false
+            requires_grad: false,
         }
     }
 
@@ -156,7 +155,7 @@ impl Tensor {
             id,
             shape,
             operation: Operation::Nop,
-            requires_grad: false
+            requires_grad: false,
         }
     }
 
@@ -170,7 +169,7 @@ impl Tensor {
             id,
             shape,
             operation: Operation::Nop,
-            requires_grad: false
+            requires_grad: false,
         }
     }
 
@@ -183,7 +182,7 @@ impl Tensor {
             id,
             shape,
             operation: Operation::Nop,
-            requires_grad: false
+            requires_grad: false,
         }
     }
 
@@ -218,7 +217,7 @@ impl Tensor {
             id,
             shape,
             operation: operation,
-            requires_grad: false
+            requires_grad: false,
         };
     }
 
@@ -261,7 +260,7 @@ impl Tensor {
         );
     }
 
-    /// Helper function to set the requires_grad bool, also sets the 
+    /// Helper function to set the requires_grad bool, also sets the
     /// internal tensor as well
     pub fn set_requires_grad(&mut self, new_requires_grad: bool) {
         self.requires_grad = new_requires_grad;
@@ -279,16 +278,12 @@ impl Tensor {
 
     // Each element is returned as e ^ x
     pub fn exp(&self) -> Tensor {
-        let data: Vec<f32> = self
-        .item()
-        .iter()
-        .map(|x| x.exp())
-        .collect();
+        let data: Vec<f32> = self.item().iter().map(|x| x.exp()).collect();
 
         return Tensor::create_tensor_data_and_shape_and_operation(
-            self.shape, 
-            data, 
-            Operation::Exp(self.id)
+            self.shape,
+            data,
+            Operation::Exp(self.id),
         );
     }
 }

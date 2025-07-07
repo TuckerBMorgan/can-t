@@ -548,5 +548,4 @@ mod tests {
             assert!(approx_equal(*a, b, epsilon), "a {} b {}", a, b);
         }
     }
-    
 }

@@ -14,12 +14,12 @@ pub enum Operation {
     Matmul(TensorID, TensorID), // Left side operand tensor, right side operand tensor
     Reshape(TensorID, Shape), // The tensor we are shaping from, the Shape we moved to
     Exp(TensorID),
-    Select(TensorID, TensorID), // Source tensor, indices tensor
-    Tanh(TensorID), // Source tensor
+    Select(TensorID, TensorID),        // Source tensor, indices tensor
+    Tanh(TensorID),                    // Source tensor
     Mean(TensorID, [isize; 4], usize), // Source tensor, axes, num_axes
-    Std(TensorID, [usize; 4], usize), // Source tensor, axes, num_axes
-    Softmax(TensorID, usize), // Source tensor, axis
-    Log(TensorID), // source tensor,
+    Std(TensorID, [usize; 4], usize),  // Source tensor, axes, num_axes
+    Softmax(TensorID, usize),          // Source tensor, axis
+    Log(TensorID),                     // source tensor,
     Transpose(TensorID, usize, usize), // Source, First Index, Second Index
-    RELU(TensorID)
+    RELU(TensorID),
 }

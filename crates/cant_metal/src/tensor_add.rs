@@ -1,6 +1,6 @@
+use crate::*;
 use metal::*;
 use std::mem;
-use crate::*;
 
 pub fn tensor_add(a: &[f32], b: &[f32]) -> Vec<f32> {
     objc::rc::autoreleasepool(|| {

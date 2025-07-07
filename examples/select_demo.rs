@@ -1,9 +1,9 @@
-/* 
+/*
 use cant::central::*;
 
 fn main() {
     println!("Select Operation Demo - Embedding Layer Example");
-    
+
     // Create a simple embedding matrix with vocabulary size 5 and embedding dimension 3
     // Each row represents the embedding for a token
     let embedding_matrix = Tensor::create_tensor_data_and_shape_and_operation(
@@ -22,46 +22,46 @@ fn main() {
         ],
         Operation::Nop,
     );
-    
+
     println!("Embedding matrix shape: {:?}", embedding_matrix.shape.dimensions());
     println!("Embedding matrix data:");
     let embedding_data = embedding_matrix.item();
     for i in 0..5 {
-        println!("  Token {}: [{:.1}, {:.1}, {:.1}]", 
+        println!("  Token {}: [{:.1}, {:.1}, {:.1}]",
                  i, embedding_data[[i, 0]], embedding_data[[i, 1]], embedding_data[[i, 2]]);
     }
-    
+
     // Create indices tensor - selecting tokens [1, 3, 0, 2]
     let indices = Tensor::create_tensor_data_and_shape_and_operation(
         Shape::new(vec![4]),
         vec![1.0, 3.0, 0.0, 2.0],
         Operation::Nop,
     );
-    
+
     println!("\nSelecting tokens with indices: [1, 3, 0, 2]");
-    
+
     // Method 1: Using the select method directly
     let result_direct = embedding_matrix.select(indices.id);
     println!("\nUsing select() method:");
     println!("Result shape: {:?}", result_direct.shape.dimensions());
-    
+
     let result_data = result_direct.item();
     for i in 0..4 {
-        println!("  Selected row {}: [{:.1}, {:.1}, {:.1}]", 
+        println!("  Selected row {}: [{:.1}, {:.1}, {:.1}]",
                  i, result_data[[i, 0]], result_data[[i, 1]], result_data[[i, 2]]);
     }
-    
+
     // Method 2: Using the select method with tensor indexing (PyTorch-like)
     let result_select = embedding_matrix.select(indices.id);
     println!("\nUsing select() method (PyTorch-like interface):");
     println!("Result shape: {:?}", result_select.shape.dimensions());
-    
+
     let select_data = result_select.item();
     for i in 0..4 {
-        println!("  Selected row {}: [{:.1}, {:.1}, {:.1}]", 
+        println!("  Selected row {}: [{:.1}, {:.1}, {:.1}]",
                  i, select_data[[i, 0]], select_data[[i, 1]], select_data[[i, 2]]);
     }
-    
+
     // Verify both methods produce the same results
     println!("\nVerifying both methods produce identical results...");
     let mut same = true;
@@ -74,19 +74,17 @@ fn main() {
         }
         if !same { break; }
     }
-    
+
     if same {
         println!("✓ Both methods produce identical results!");
     } else {
         println!("✗ Methods produce different results!");
     }
-    
+
     println!("\nSelect operation successfully implemented!");
     println!("This enables PyTorch-like embedding layer functionality in Cant ML library.");
 }
 
 */
 
-fn main() {
-    
-}
+fn main() {}

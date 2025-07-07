@@ -63,7 +63,6 @@ impl Sub<f32> for Tensor {
     }
 }
 
-
 /// Overload F32 + tensor, flips it around to use existing add op
 impl Add<Tensor> for f32 {
     type Output = Tensor;

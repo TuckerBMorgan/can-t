@@ -2,8 +2,8 @@ use std::collections::{HashMap, HashSet};
 
 use super::backward_for_matmul;
 use super::{
-    InternalTensor, Operation, TensorID, add_op, cross_entropy_op, log, matmul_op, mean_op, mul_op, pow_op, reshape, select_op, shape::*,
-    std_op, sum_op, tanh_op, transpose_op,
+    InternalTensor, Operation, TensorID, add_op, cross_entropy_op, log, matmul_op, mean_op, mul_op,
+    pow_op, reshape, select_op, shape::*, std_op, sum_op, tanh_op, transpose_op,
 };
 use crate::central::index::Indexable;
 use crate::central::{relu_op, softmax_op};
@@ -130,10 +130,18 @@ impl Equation {
     /// # Arguments
     /// 'shape' - the shape of desired tensor
     pub fn allocate_random_tesnor(&mut self, shape: Shape) -> TensorID {
-        let fan_in = if shape.dimensions().len() >= 2 { shape.dimensions()[0] } else { 1 };
-        let fan_out = if shape.dimensions().len() >= 2 { shape.dimensions()[1] } else { shape.total_size() };
+        let fan_in = if shape.dimensions().len() >= 2 {
+            shape.dimensions()[0]
+        } else {
+            1
+        };
+        let fan_out = if shape.dimensions().len() >= 2 {
+            shape.dimensions()[1]
+        } else {
+            shape.total_size()
+        };
         let std_dev = (2.0 / (fan_in + fan_out) as f32).sqrt();
-  
+
         let mut rng = rand::thread_rng();
         let normal = Normal::new(0.0, std_dev as f64).unwrap();
         let data: Vec<f32> = (0..shape.total_size())
@@ -141,8 +149,6 @@ impl Equation {
             .collect();
         self.allocate_tensor(shape, data, Operation::Nop)
     }
-
-    
 
     /// Allocated a tensor id, this is unique id for each tensor, used to look in up later
     fn allocate_tensor_id(&mut self) -> TensorID {
@@ -179,7 +185,6 @@ impl Equation {
         let result_data = tensor_add(left_data, right_data);
         return result_data;
     }
-    
 
     /// Takes two tensors are flat buffers and preforms matmul on them and returns the result
     /// # Arugments
@@ -417,14 +422,16 @@ impl Equation {
                 let stride_1 = current_shape[2] * current_shape[3];
                 let stride_2 = current_shape[3];
                 let stride_3 = 1;
-                
+
                 final_index = a * stride_0 + b * stride_1 + c * stride_2 + d * stride_3;
 
                 final_index += internal_tensor.data_start_index;
                 self.data[final_index] = value;
-            },
+            }
             _ => {
-                panic!("Should not be calling set_single_value with anything other then a quadruable indexable");
+                panic!(
+                    "Should not be calling set_single_value with anything other then a quadruable indexable"
+                );
             }
         }
     }
@@ -459,7 +466,7 @@ impl Equation {
                 let dimensions = to_shape.dimensions();
                 let dimensions = padding_dimenions_to_four(dimensions);
                 let mut result = self.get_grad(incoming_grad);
-          
+
                 // Sum dimensions from right to left (highest index first)
                 // This avoids the indexing problem since we're always summing the rightmost broadcasted dims
                 for index in 0..from_shape.len() {
@@ -469,7 +476,7 @@ impl Equation {
                     } else {
                         1
                     };
-          
+
                     if original_dim == 1 && input_dim != 1 {
                         // Always sum the last dimension that was broadcasted
                         // Since we're going right to left, this is always the rightmost expanded dim
@@ -493,7 +500,7 @@ impl Equation {
             }
             Operation::Reshape(_from, _shape) => {
                 reshape::backward_for_reshape(packet);
-            },
+            }
             Operation::Exp(from) => {
                 let data = self.get_data_flat_buffer(incoming_grad);
                 let grad = self.get_grad_flat_buffer(incoming_grad);
@@ -511,16 +518,16 @@ impl Equation {
             }
             Operation::Std(_, _, _) => {
                 std_op::backward_for_std(packet);
-            },
+            }
             Operation::Softmax(_, _) => {
                 softmax_op::backward_for_softmax(packet);
             }
             Operation::Log(_) => {
                 log::backwards_for_log(packet);
-            },
+            }
             Operation::Transpose(_, _, _) => {
                 transpose_op::backwards_for_transpose(packet);
-            },
+            }
             Operation::RELU(_) => {
                 relu_op::backward_for_relu(packet);
             }
@@ -583,19 +590,20 @@ impl Equation {
         for g in &mut self.grad {
             *g = 0.0;
         }
-//        self.grad = vec![0.0;self.grad.len()];
+        //        self.grad = vec![0.0;self.grad.len()];
     }
 
     /// Updates all parameters for all tensor that are marked for needed gradients(set_requires_grad)
     /// Arguments
     /// 'learning_rate': a singe learning rate applied to all parameters
-    pub fn update_parameters(&mut self, learning_rate:f32) {
-        for (_k,v) in &self.tensor_record {
+    pub fn update_parameters(&mut self, learning_rate: f32) {
+        for (_k, v) in &self.tensor_record {
             if v.requires_grad {
                 for i in 0..v.shape.total_size() {
                     let grad_anchor_point = v.grad_start_index;
                     let data_anchor_point = v.data_start_index;
-                    self.data[data_anchor_point + i] += learning_rate * self.grad[grad_anchor_point + i];
+                    self.data[data_anchor_point + i] +=
+                        learning_rate * self.grad[grad_anchor_point + i];
                 }
             }
         }
@@ -606,6 +614,9 @@ impl Equation {
     /// 'tensor_id' : which Tensor we are setting
     /// 'requires_grad' : what we are setting the bool too
     pub fn set_is_grequires_grad(&mut self, tensor_id: TensorID, requires_grad: bool) {
-        self.tensor_record.get_mut(&tensor_id).unwrap().requires_grad = requires_grad;
+        self.tensor_record
+            .get_mut(&tensor_id)
+            .unwrap()
+            .requires_grad = requires_grad;
     }
 }

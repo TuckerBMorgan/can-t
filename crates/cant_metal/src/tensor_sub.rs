@@ -1,6 +1,6 @@
+use crate::*;
 use metal::*;
 use std::mem;
-use crate::*;
 
 pub fn tensor_sub(a: &[f32], b: &[f32]) -> Vec<f32> {
     objc::rc::autoreleasepool(|| {
@@ -33,10 +33,10 @@ pub fn tensor_sub(a: &[f32], b: &[f32]) -> Vec<f32> {
         );
 
         // Fixed version
-        let array_length = a.len() as u32;  // Single u32 value
+        let array_length = a.len() as u32; // Single u32 value
         let array_length_buffer = METAL_DEVICE.new_buffer_with_data(
             &array_length as *const u32 as *const _,
-            mem::size_of::<u32>() as u64,  // 4 bytes, not 1 byte
+            mem::size_of::<u32>() as u64, // 4 bytes, not 1 byte
             MTLResourceOptions::StorageModeShared,
         );
 
@@ -50,8 +50,8 @@ pub fn tensor_sub(a: &[f32], b: &[f32]) -> Vec<f32> {
         encoder.set_buffer(2, Some(&c_buffer), 0);
         encoder.set_buffer(3, Some(&array_length_buffer), 0);
 
-        let threads_per_group = MTLSize::new(256, 1, 1);  // 256 threads per threadgroup (good balance)
-        let thread_groups = MTLSize::new((a.len() as u64 + 255) / 256, 1, 1);  // Ceiling division
+        let threads_per_group = MTLSize::new(256, 1, 1); // 256 threads per threadgroup (good balance)
+        let thread_groups = MTLSize::new((a.len() as u64 + 255) / 256, 1, 1); // Ceiling division
 
         // Kick off the shader call
         encoder.dispatch_thread_groups(thread_groups, threads_per_group);
