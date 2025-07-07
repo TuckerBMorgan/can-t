@@ -12,6 +12,9 @@ Cant is a machine learning library written in Rust that aims to provide PyTorch-
 # Run tests
 cargo test
 
+# Run tests with output visible (no capture)
+cargo test -- --nocapture
+
 # Build the project
 cargo build
 

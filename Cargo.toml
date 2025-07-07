@@ -12,6 +12,7 @@ cant_cpu = {path = "crates/cant_cpu"}
 anyhow = "1.0.98"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = { version = "1.0.140", features = ["arbitrary_precision"] }
+mnist = { version = "0.5", features = ["download"] }
 
 cant_metal = {path = "crates/cant_metal"}
 
@@ -19,3 +20,4 @@ cant_metal = {path = "crates/cant_metal"}
 members = [
     "crates/cant_cpu", "crates/cant_metal",
 ]
+

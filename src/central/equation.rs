@@ -577,7 +577,10 @@ impl Equation {
 
     // Zeroes out the grad, important to call before calling backwards on a value
     pub fn zero_grad(&mut self) {
-        self.grad = vec![0.0;self.grad.len()];
+        for g in &mut self.grad {
+            *g = 0.0;
+        }
+//        self.grad = vec![0.0;self.grad.len()];
     }
 
     /// Updates all parameters for all tensor that are marked for needed gradients(set_requires_grad)
