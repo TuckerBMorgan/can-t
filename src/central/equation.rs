@@ -6,7 +6,7 @@ use super::{
     std_op, sum_op, tanh_op, transpose_op,
 };
 use crate::central::index::Indexable;
-use crate::central::softmax_op;
+use crate::central::{relu_op, softmax_op};
 use crate::utils::*;
 use ndarray::ArrayD;
 use ndarray::Axis;
@@ -520,6 +520,9 @@ impl Equation {
             },
             Operation::Transpose(_, _, _) => {
                 transpose_op::backwards_for_transpose(packet);
+            },
+            Operation::RELU(_) => {
+                relu_op::backward_for_relu(packet);
             }
         }
     }

@@ -88,6 +88,9 @@ impl InternalTensor {
             },
             Operation::Transpose(source, _, _) => {
                 return vec![*source];
+            },
+            Operation::RELU(source) => {
+                return vec![*source];
             }
         }
     }

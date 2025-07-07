@@ -21,4 +21,5 @@ pub enum Operation {
     Softmax(TensorID, usize), // Source tensor, axis
     Log(TensorID), // source tensor,
     Transpose(TensorID, usize, usize), // Source, First Index, Second Index
+    RELU(TensorID)
 }
