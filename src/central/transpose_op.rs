@@ -97,7 +97,6 @@ pub fn backwards_for_transpose(packet: BackproagationPacket) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::central::*;
 
     fn approx_equal(a: f32, b: f32, epsilon: f32) -> bool {
@@ -123,6 +122,16 @@ mod tests {
         assert!(approx_equal(result[[0, 1]], 4.0, 1e-6)); // (1,0) -> (0,1)
         assert!(approx_equal(result[[1, 1]], 5.0, 1e-6)); // (1,1) -> (1,1)
         assert!(approx_equal(result[[2, 1]], 6.0, 1e-6)); // (1,2) -> (2,1)
+    }
+
+    fn first() {
+        let mut a = Vec::new();
+        show(&mut a);
+        a.push(10.0);
+    }
+
+    fn show(list:&mut Vec<f32>) {
+        list.push(0.0);
     }
 
     #[test]

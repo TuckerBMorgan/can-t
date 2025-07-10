@@ -5,6 +5,7 @@ mod model;
 mod relu;
 mod sequential;
 mod tanh;
+mod layer_norm;
 
 pub use gpt_block::*;
 pub use layer::*;
@@ -13,3 +14,4 @@ pub use model::*;
 pub use relu::*;
 pub use sequential::*;
 pub use tanh::*;
+pub use layer_norm::*;

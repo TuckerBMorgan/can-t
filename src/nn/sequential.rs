@@ -26,6 +26,8 @@ impl Model for Sequential {
         for layer in &self.layers {
             parameters.extend(layer.get_parameters());
         }
+        
+
         return parameters;
     }
 }
@@ -399,10 +401,9 @@ mod tests {
 
             correct as f32 / num_samples as f32
         }
-        println!("Starting loading data");
+
         // Load MNIST data
         let (train_images, train_labels, test_images, test_labels) = load_mnist_data();
-        println!("Finished loading data");
         // Create MNIST classifier model: 784 -> 128 -> 64 -> 10
         let mut model = Sequential::new(vec![
             Box::new(Linear::new(784, 128, true)),
@@ -509,5 +510,21 @@ mod tests {
                 );
             }
         }
+    }
+
+
+    #[test]
+    pub fn celeb_a_dcgan_test() {
+        let batch_size = 128;
+        let image_size = 64;
+        let number_of_channels = 3;
+        let size_of_latent_z_vector = 100;
+        let number_of_feature_maps_generator = 64;
+        let number_of_feature_maps_discriminator = 64;
+        let number_of_training_epochs = 5;
+        let learning_rate = 0.0020;
+        let beta_1 = 0.5;
+
+
     }
 }

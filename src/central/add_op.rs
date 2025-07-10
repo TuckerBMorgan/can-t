@@ -214,7 +214,7 @@ mod tests {
         assert!(d.grad()[0] == 1.0);
         assert!(e.grad()[0] == 1.0);
     }
-
+    
     //TODO: undo this comment once we have operations for reducing multidimension arrays to
     // single values
     #[test]

@@ -20,6 +20,7 @@ pub struct InternalTensor {
 }
 
 impl InternalTensor {
+
     pub fn new(
         id: TensorID,
         shape: Shape,
