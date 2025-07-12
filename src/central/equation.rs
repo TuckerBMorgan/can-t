@@ -6,7 +6,7 @@ use super::{
     pow_op, reshape, select_op, shape::*, std_op, sum_op, tanh_op, transpose_op,
 };
 use crate::central::index::Indexable;
-use crate::central::{relu_op, softmax_op};
+use crate::central::{backwards_for_mask_fill, relu_op, softmax_op};
 use crate::utils::*;
 use ndarray::ArrayD;
 use ndarray::Axis;
@@ -530,6 +530,9 @@ impl Equation {
             }
             Operation::RELU(_) => {
                 relu_op::backward_for_relu(packet);
+            },
+            Operation::MaskFill(_, _, _) => {
+                backwards_for_mask_fill(packet);
             }
         }
     }

@@ -22,4 +22,5 @@ pub enum Operation {
     Log(TensorID),                     // source tensor,
     Transpose(TensorID, usize, usize), // Source, First Index, Second Index
     RELU(TensorID),
+    MaskFill(TensorID, TensorID, isize) // Source, Mask, Value
 }

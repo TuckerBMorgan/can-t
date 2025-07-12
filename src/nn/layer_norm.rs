@@ -24,20 +24,28 @@ impl Layer for LayerNorm {
         // but with size 1 for the reduced dimension
         let input_dims = inputs.shape.dimensions();
         let mut mean_shape = input_dims.clone();
+
         mean_shape[last_dim] = 1;
         let mean_reshaped = mean.reshape(Shape::new(mean_shape.clone()));
 
+        // Center the data around the mean
         let centered = inputs - mean_reshaped.clone();
+
+        // take the square and the mean to get the variance
         let variance = centered.pow(2.0).mean(vec![last_dim]);
         
         // Reshape variance for broadcasting too
         let variance_reshaped = variance.reshape(Shape::new(mean_shape));
 
+        // add just a little to each element, to avoid a div by zero error
         let epsilon = 1e-5;
         let epsilon_tensor = Tensor::element(variance_reshaped.shape, epsilon);
         let std_dev = (variance_reshaped + epsilon_tensor).pow(0.5);
+        
+        // Normalize out centeded data, so it is more uniform pass to pass
         let normalized = centered / std_dev;
 
+        // Finally add in our learneable parameters
         let output = normalized * self.weight + self.bias;
         return output;
     }

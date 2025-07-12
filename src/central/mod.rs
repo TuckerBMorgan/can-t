@@ -18,6 +18,7 @@ mod sum_op;
 mod tanh_op;
 mod tensor;
 mod transpose_op;
+mod masked_fill;
 
 pub use add_op::*;
 pub use cross_entropy_op::*;
@@ -41,6 +42,7 @@ pub use sum_op::*;
 pub use tanh_op::*;
 pub use tensor::*;
 pub use transpose_op::*;
+pub use masked_fill::*;
 
 lazy_static! {
     static ref SINGLETON_INSTANCE: Mutex<Equation> = Mutex::new(Equation::new());

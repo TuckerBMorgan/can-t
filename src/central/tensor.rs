@@ -1,3 +1,4 @@
+
 use ndarray::ArrayD;
 
 use crate::utils::GGUFFile;
@@ -91,6 +92,9 @@ impl InternalTensor {
             }
             Operation::RELU(source) => {
                 return vec![*source];
+            },
+            Operation::MaskFill(source, _, _) => {
+                return  vec![*source];
             }
         }
     }
