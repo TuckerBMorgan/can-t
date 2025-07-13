@@ -19,8 +19,8 @@ pub enum Operation {
     Mean(TensorID, [isize; 4], usize), // Source tensor, axes, num_axes
     Std(TensorID, [usize; 4], usize),  // Source tensor, axes, num_axes
     Softmax(TensorID, usize),          // Source tensor, axis
-    Log(TensorID),                     // source tensor,
+    Log(TensorID),                     // Source tensor,
     Transpose(TensorID, usize, usize), // Source, First Index, Second Index
     RELU(TensorID),
-    MaskFill(TensorID, TensorID, isize) // Source, Mask, Value
+    MaskFill(TensorID, TensorID, isize), // Source, Mask, Value
 }

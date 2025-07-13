@@ -44,6 +44,7 @@ pub use tensor::*;
 pub use transpose_op::*;
 pub use masked_fill::*;
 
+
 lazy_static! {
     static ref SINGLETON_INSTANCE: Mutex<Equation> = Mutex::new(Equation::new());
 }

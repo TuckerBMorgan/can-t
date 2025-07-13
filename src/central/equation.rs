@@ -467,7 +467,7 @@ impl Equation {
                 let dimensions = padding_dimenions_to_four(dimensions);
                 let mut result = self.get_grad(incoming_grad);
 
-                // Sum dimensions from right to left, but account for changing tensor dimensions
+                // Sum dimensions from right to left, accounting for changing tensor dimensions
                 // We need to track how many dimensions we've already summed
                 let mut dims_summed = 0;
                 for index in 0..from_shape.len() {

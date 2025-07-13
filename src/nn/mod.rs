@@ -8,6 +8,7 @@ mod tanh;
 mod layer_norm;
 mod multihead_attention;
 mod scaled_dot_project_attention;
+mod embedding;
 
 pub use gpt_block::*;
 pub use layer::*;
@@ -19,3 +20,4 @@ pub use tanh::*;
 pub use layer_norm::*;
 pub use multihead_attention::*;
 pub use scaled_dot_project_attention::*;
+pub use embedding::*;
