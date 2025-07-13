@@ -467,8 +467,9 @@ impl Equation {
                 let dimensions = padding_dimenions_to_four(dimensions);
                 let mut result = self.get_grad(incoming_grad);
 
-                // Sum dimensions from right to left (highest index first)
-                // This avoids the indexing problem since we're always summing the rightmost broadcasted dims
+                // Sum dimensions from right to left, but account for changing tensor dimensions
+                // We need to track how many dimensions we've already summed
+                let mut dims_summed = 0;
                 for index in 0..from_shape.len() {
                     let input_dim = dimensions[dimensions.len() - 1 - index];
                     let original_dim = if index < from_shape.len() {
@@ -478,10 +479,15 @@ impl Equation {
                     };
 
                     if original_dim == 1 && input_dim != 1 {
-                        // Always sum the last dimension that was broadcasted
-                        // Since we're going right to left, this is always the rightmost expanded dim
-                        let current_axis = result.ndim() - 1 - index;
-                        result = result.sum_axis(Axis(current_axis));
+                        // Calculate the axis to sum, accounting for previously summed dimensions
+                        let axis_to_sum = if result.ndim() > index - dims_summed {
+                            result.ndim() - 1 - (index - dims_summed)
+                        } else {
+                            // Skip this if we've already reduced too many dimensions
+                            continue;
+                        };
+                        result = result.sum_axis(Axis(axis_to_sum));
+                        dims_summed += 1;
                     }
                 }
                 self.add_tensor_grad(from, result.to_owned().into_raw_vec());
