@@ -9,6 +9,7 @@ mod layer_norm;
 mod multihead_attention;
 mod scaled_dot_project_attention;
 mod embedding;
+mod gelu;
 
 pub use gpt_block::*;
 pub use layer::*;
@@ -21,3 +22,4 @@ pub use layer_norm::*;
 pub use multihead_attention::*;
 pub use scaled_dot_project_attention::*;
 pub use embedding::*;
+pub use gelu::*;

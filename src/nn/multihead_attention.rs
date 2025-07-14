@@ -39,6 +39,10 @@ impl MultiHeadAttention {
             mask
         }
     }
+
+    pub fn set_mask(&mut self, mask: Tensor) {
+        self.mask = Some(mask);
+    }
 }
 
 impl Layer for MultiHeadAttention {

@@ -15,7 +15,7 @@ impl Tensor {
             let zipped = base_data.iter().zip(mask_buffer);        
             let mut result = vec![0.0;base_data.len()];
             for (index, (base, mask)) in zipped.enumerate() {
-                if *mask == 0.0 {
+                if *mask == 1.0 {
                     result[index] = value;
                 }
                 else {
