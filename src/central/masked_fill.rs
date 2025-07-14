@@ -1,16 +1,19 @@
-use crate::central::*;
+use crate::{central::*, utils::handle_broadcasting};
 use ndarray::prelude::*;
 
 impl Tensor {
 
     pub fn masked_fill(&self, mask: Tensor, value: f32) -> Tensor {
+        let (local, mask) = handle_broadcasting(*self, mask);
+        println!("{:?}", local.item());
+        println!("{:?}", mask.item());
         let result  = {
             let equation = get_equation();
         
             // The mask and the data should be the same size
-            let base_data = equation.get_data_flat_buffer(self.id);
+            let base_data = equation.get_data_flat_buffer(local.id);
             let mask_buffer = equation.get_data_flat_buffer(mask.id);
-    
+
             // So it is easy to zip them together, and loop over the indices 
             let zipped = base_data.iter().zip(mask_buffer);        
             let mut result = vec![0.0;base_data.len()];
@@ -26,7 +29,7 @@ impl Tensor {
              result
         };
 
-        return Tensor::create_tensor_data_and_shape_and_operation(self.shape, result, Operation::MaskFill(self.id, mask.id, value as isize));
+        return Tensor::create_tensor_data_and_shape_and_operation(local.shape, result, Operation::MaskFill(local.id, mask.id, value as isize));
     }
 }
 
@@ -64,13 +67,13 @@ mod tests {
     fn test_masked_fill_basic() {
         // Test basic masked fill functionality
         let data = Tensor::from_vec(vec![1.0, 2.0, 3.0, 4.0], vec![4]);
-        let mask = Tensor::from_vec(vec![1.0, 0.0, 1.0, 0.0], vec![4]);
+        let mask = Tensor::from_vec(vec![0.0, 1.0, 0.0, 1.0], vec![4]);
         
         let result = data.masked_fill(mask, -999.0);
         
         assert_eq!(result.shape.dimensions(), vec![4]);
         let result_data = result.item();
-        
+
         // Where mask is 1.0, keep original values; where mask is 0.0, fill with -999.0
         assert!(approx_equal(result_data[[0]], 1.0, 1e-6));    // mask=1.0 -> keep original
         assert!(approx_equal(result_data[[1]], -999.0, 1e-6)); // mask=0.0 -> fill
@@ -82,7 +85,7 @@ mod tests {
     fn test_masked_fill_2d() {
         // Test masked fill with 2D tensors
         let data = Tensor::from_vec(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]);
-        let mask = Tensor::from_vec(vec![1.0, 0.0, 0.0, 1.0], vec![2, 2]);
+        let mask = Tensor::from_vec(vec![0.0, 1.0, 1.0, 0.0], vec![2, 2]);
         
         let result = data.masked_fill(mask, -100.0);
         
@@ -99,7 +102,7 @@ mod tests {
     fn test_masked_fill_all_mask_ones() {
         // Test when mask is all 1s (no filling should occur)
         let data = Tensor::from_vec(vec![5.0, 10.0, 15.0], vec![3]);
-        let mask = Tensor::from_vec(vec![1.0, 1.0, 1.0], vec![3]);
+        let mask = Tensor::from_vec(vec![0.0, 0.0, 0.0], vec![3]);
         
         let result = data.masked_fill(mask, -42.0);
         
@@ -116,7 +119,7 @@ mod tests {
     fn test_masked_fill_all_mask_zeros() {
         // Test when mask is all 0s (all filling should occur)
         let data = Tensor::from_vec(vec![5.0, 10.0, 15.0], vec![3]);
-        let mask = Tensor::from_vec(vec![0.0, 0.0, 0.0], vec![3]);
+        let mask = Tensor::from_vec(vec![1.0, 1.0, 1.0], vec![3]);
         
         let result = data.masked_fill(mask, 42.0);
         
@@ -132,45 +135,45 @@ mod tests {
     fn test_masked_fill_negative_fill_value() {
         // Test with negative fill value
         let data = Tensor::from_vec(vec![1.0, 2.0, 3.0, 4.0], vec![4]);
-        let mask = Tensor::from_vec(vec![0.0, 1.0, 0.0, 1.0], vec![4]);
+        let mask = Tensor::from_vec(vec![1.0, 0.0, 1.0, 0.0], vec![4]);
         
         let result = data.masked_fill(mask, -1.0);
         
         let result_data = result.item();
         
-        assert!(approx_equal(result_data[[0]], -1.0, 1e-6)); // mask=0.0 -> fill
-        assert!(approx_equal(result_data[[1]], 2.0, 1e-6));  // mask=1.0 -> keep
-        assert!(approx_equal(result_data[[2]], -1.0, 1e-6)); // mask=0.0 -> fill
-        assert!(approx_equal(result_data[[3]], 4.0, 1e-6));  // mask=1.0 -> keep
+        assert!(approx_equal(result_data[[0]], -1.0, 1e-6)); // mask=1.0 -> fill
+        assert!(approx_equal(result_data[[1]], 2.0, 1e-6));  // mask=0.0 -> keep
+        assert!(approx_equal(result_data[[2]], -1.0, 1e-6)); // mask=1.0 -> fill
+        assert!(approx_equal(result_data[[3]], 4.0, 1e-6));  // mask=0.0 -> keep
     }
 
     #[test]
     fn test_masked_fill_zero_fill_value() {
         // Test with zero as fill value
         let data = Tensor::from_vec(vec![10.0, 20.0, 30.0], vec![3]);
-        let mask = Tensor::from_vec(vec![1.0, 0.0, 1.0], vec![3]);
+        let mask = Tensor::from_vec(vec![0.0, 1.0, 0.0], vec![3]);
         
         let result = data.masked_fill(mask, 0.0);
         
         let result_data = result.item();
         
-        assert!(approx_equal(result_data[[0]], 10.0, 1e-6)); // mask=1.0 -> keep
-        assert!(approx_equal(result_data[[1]], 0.0, 1e-6));  // mask=0.0 -> fill with 0
-        assert!(approx_equal(result_data[[2]], 30.0, 1e-6)); // mask=1.0 -> keep
+        assert!(approx_equal(result_data[[0]], 10.0, 1e-6)); // mask=0.0 -> keep
+        assert!(approx_equal(result_data[[1]], 0.0, 1e-6));  // mask=1.0 -> fill with 0
+        assert!(approx_equal(result_data[[2]], 30.0, 1e-6)); // mask=0.0 -> keep
     }
 
     #[test]
     fn test_masked_fill_large_values() {
         // Test with large fill values for numerical stability
         let data = Tensor::from_vec(vec![1.0, 2.0], vec![2]);
-        let mask = Tensor::from_vec(vec![0.0, 1.0], vec![2]);
+        let mask = Tensor::from_vec(vec![1.0, 0.0], vec![2]);
         
         let result = data.masked_fill(mask, 1e6);
         
         let result_data = result.item();
         
-        assert!(approx_equal(result_data[[0]], 1e6, 1e-2));  // mask=0.0 -> fill with large value
-        assert!(approx_equal(result_data[[1]], 2.0, 1e-6)); // mask=1.0 -> keep original
+        assert!(approx_equal(result_data[[0]], 1e6, 1e-2));  // mask=1.0 -> fill with large value
+        assert!(approx_equal(result_data[[1]], 2.0, 1e-6)); // mask=0.0 -> keep original
     }
 
     #[test]
@@ -191,14 +194,14 @@ mod tests {
         let result_data = result.item();
         
         // Check specific positions
-        assert!(approx_equal(result_data[[0, 0, 0]], 1.0, 1e-6));  // mask=1.0 -> keep
-        assert!(approx_equal(result_data[[0, 0, 1]], -5.0, 1e-6)); // mask=0.0 -> fill
-        assert!(approx_equal(result_data[[0, 1, 0]], -5.0, 1e-6)); // mask=0.0 -> fill
-        assert!(approx_equal(result_data[[0, 1, 1]], 4.0, 1e-6));  // mask=1.0 -> keep
-        assert!(approx_equal(result_data[[1, 0, 0]], 5.0, 1e-6));  // mask=1.0 -> keep
-        assert!(approx_equal(result_data[[1, 0, 1]], -5.0, 1e-6)); // mask=0.0 -> fill
-        assert!(approx_equal(result_data[[1, 1, 0]], 7.0, 1e-6));  // mask=1.0 -> keep
-        assert!(approx_equal(result_data[[1, 1, 1]], -5.0, 1e-6)); // mask=0.0 -> fill
+        assert!(approx_equal(result_data[[0, 0, 0]], -5.0, 1e-6)); // mask=1.0 -> fill
+        assert!(approx_equal(result_data[[0, 0, 1]], 2.0, 1e-6));  // mask=0.0 -> keep
+        assert!(approx_equal(result_data[[0, 1, 0]], 3.0, 1e-6));  // mask=0.0 -> keep
+        assert!(approx_equal(result_data[[0, 1, 1]], -5.0, 1e-6)); // mask=1.0 -> fill
+        assert!(approx_equal(result_data[[1, 0, 0]], -5.0, 1e-6)); // mask=1.0 -> fill
+        assert!(approx_equal(result_data[[1, 0, 1]], 6.0, 1e-6));  // mask=0.0 -> keep
+        assert!(approx_equal(result_data[[1, 1, 0]], -5.0, 1e-6)); // mask=1.0 -> fill
+        assert!(approx_equal(result_data[[1, 1, 1]], 8.0, 1e-6));  // mask=0.0 -> keep
     }
 
     #[test]
@@ -209,9 +212,9 @@ mod tests {
             vec![3, 3]
         );
         
-        // Upper triangular mask (1s on and below diagonal, 0s above)
+        // Upper triangular mask (0s on and below diagonal, 1s above)
         let mask = Tensor::from_vec(
-            vec![1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0], 
+            vec![0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0], 
             vec![3, 3]
         );
         
@@ -235,26 +238,26 @@ mod tests {
 
     #[test]
     fn test_masked_fill_fractional_mask() {
-        // Test that only exact 0.0 values trigger filling
+        // Test that only exact 1.0 values trigger filling
         let data = Tensor::from_vec(vec![1.0, 2.0, 3.0, 4.0], vec![4]);
-        let mask = Tensor::from_vec(vec![0.1, 0.0, 0.99, 0.0], vec![4]);
+        let mask = Tensor::from_vec(vec![0.1, 1.0, 0.99, 1.0], vec![4]);
         
         let result = data.masked_fill(mask, -1.0);
         
         let result_data = result.item();
         
-        // Only exact 0.0 should trigger filling
-        assert!(approx_equal(result_data[[0]], 1.0, 1e-6));  // 0.1 != 0.0 -> keep
-        assert!(approx_equal(result_data[[1]], -1.0, 1e-6)); // 0.0 == 0.0 -> fill
-        assert!(approx_equal(result_data[[2]], 3.0, 1e-6));  // 0.99 != 0.0 -> keep
-        assert!(approx_equal(result_data[[3]], -1.0, 1e-6)); // 0.0 == 0.0 -> fill
+        // Only exact 1.0 should trigger filling
+        assert!(approx_equal(result_data[[0]], 1.0, 1e-6));  // 0.1 != 1.0 -> keep
+        assert!(approx_equal(result_data[[1]], -1.0, 1e-6)); // 1.0 == 1.0 -> fill
+        assert!(approx_equal(result_data[[2]], 3.0, 1e-6));  // 0.99 != 1.0 -> keep
+        assert!(approx_equal(result_data[[3]], -1.0, 1e-6)); // 1.0 == 1.0 -> fill
     }
 
     #[test]
     fn test_masked_fill_single_element() {
         // Test with single element tensors
         let data = Tensor::from_vec(vec![42.0], vec![1]);
-        let mask = Tensor::from_vec(vec![0.0], vec![1]);
+        let mask = Tensor::from_vec(vec![1.0], vec![1]);
         
         let result = data.masked_fill(mask, 99.0);
         
@@ -275,7 +278,7 @@ mod tests {
         for shape in shapes {
             let size = shape.iter().product::<usize>();
             let data: Vec<f32> = (0..size).map(|i| i as f32).collect();
-            let mask_data = vec![0.0; size]; // All zeros to trigger filling
+            let mask_data = vec![1.0; size]; // All ones to trigger filling
             
             let tensor = Tensor::from_vec(data, shape.clone());
             let mask = Tensor::from_vec(mask_data, shape.clone());

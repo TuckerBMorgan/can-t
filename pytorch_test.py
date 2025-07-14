@@ -131,9 +131,50 @@ def test_xor_network():
     
     return final_output.flatten().tolist()
 
+def test_masked_fill_basic():
+    """PyTorch equivalent of the Rust test_masked_fill_basic test"""
+    print("\n=== PyTorch Masked Fill Basic Test ===")
+    
+    # Test basic masked fill functionality - matching the actual Rust implementation
+    data = torch.tensor([1.0, 2.0, 3.0, 4.0])
+    mask = torch.tensor([False, True, False, True])  # Same as Rust test
+    
+    # Rust implementation: mask==1.0 means FILL, mask==0.0 means KEEP
+    # PyTorch: mask==True means FILL, mask==False means KEEP
+    # So we use mask directly (convert to boolean)
+
+    
+    result = data.masked_fill(mask, -999.0)
+    
+    print(f"Original data: {data}")
+    print(f"Original mask: {mask}")
+    print(f"PyTorch mask (boolean): {mask}")
+    print(f"Result: {result}")
+    
+    # Expected behavior (matching actual Rust implementation):
+    # Where mask is 0.0, keep original values; where mask is 1.0, fill with -999.0
+    expected = torch.tensor([1.0, -999.0, 3.0, -999.0])
+    print(f"Expected: {expected}")
+    
+    # Check results
+    tolerance = 1e-6
+    matches = torch.abs(result - expected) < tolerance
+    print(f"Matches expected: {matches}")
+    print(f"All match: {matches.all().item()}")
+    
+    # Individual checks (matching actual Rust behavior, not the wrong comments)
+    print(f"result[0] = {result[0]:.6f} (mask=0.0 -> keep original)")
+    print(f"result[1] = {result[1]:.6f} (mask=1.0 -> fill)")  
+    print(f"result[2] = {result[2]:.6f} (mask=0.0 -> keep original)")
+    print(f"result[3] = {result[3]:.6f} (mask=1.0 -> fill)")
+    
+    return result
+
 if __name__ == "__main__":
-    test_linear_regression()
-    test_xor_network()
+    test_masked_fill_basic()
+    exit()
+
+'''
 def add_tensor_safe(writer: GGUFWriter, name: str, t: torch.Tensor) -> None:
     """
     Add a tensor to the GGUF file guaranteeing it always has at least one dim.
@@ -219,3 +260,4 @@ writer.write_header_to_file()
 writer.write_kv_data_to_file()
 writer.write_tensors_to_file()
 
+'''
