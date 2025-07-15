@@ -8,8 +8,10 @@ pub struct LayerNorm {
 
 impl LayerNorm {
     pub fn new(num_features: usize) -> Self {
-        let weight = Tensor::ones(Shape::new(vec![num_features]));
-        let bias = Tensor::zeros(Shape::new(vec![num_features]));
+        let mut weight = Tensor::ones(Shape::new(vec![num_features]));
+        weight.set_requires_grad(true);
+        let mut bias = Tensor::zeros(Shape::new(vec![num_features]));
+        bias.set_requires_grad(true);
         LayerNorm { weight, bias }
     }
 }
@@ -41,7 +43,7 @@ impl Layer for LayerNorm {
         let epsilon = 1e-5;
         let epsilon_tensor = Tensor::element(variance_reshaped.shape, epsilon);
         let std_dev = (variance_reshaped + epsilon_tensor).pow(0.5);
-        
+
         // Normalize out centeded data, so it is more uniform pass to pass
         let normalized = centered / std_dev;
 
@@ -446,7 +448,6 @@ mod tests {
         loss.backward();
 
         let weight_grad = layer_norm.weight.grad();
-        println!("{:?}", weight_grad);
         let bias_grad = layer_norm.bias.grad();
         
         // Bias gradients should equal the normalized values (since d/d_bias = 1)
@@ -459,7 +460,6 @@ mod tests {
 
             // Weight gradient should be non-zero and finite
             assert!(weight_grad[[i]].is_finite());
-            println!("{:?}", weight_grad[[i]]);
             assert!(weight_grad[[i]].abs() > 1e-8, "Weight gradient should be non-zero");
         }
     }

@@ -22,7 +22,7 @@ impl ScaledDotProductAttention {
         let scores = match mask {
             Some(mask) => scores.masked_fill(mask, f32::NEG_INFINITY),
             None => scores
-        };
+        }; 
 
         let weights = scores.softmax(scores.shape.dimensions().len()-1);
         return weights << value;

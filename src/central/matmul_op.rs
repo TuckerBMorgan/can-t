@@ -102,6 +102,7 @@ pub fn backward_for_matmul(backprop_backet: BackproagationPacket) {
             &right_hand_weights,
             padded_right_hand_shape,
         );
+
         let right_hand_result = backprop_backet.equation.matmul_vector(
             &left_hand_weights,
             padded_left_hand_shape,

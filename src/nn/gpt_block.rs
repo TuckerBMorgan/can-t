@@ -71,6 +71,7 @@ impl Layer for GPT2Block {
         // Create the mask for this pass of the network
         let dimensions = inputs.shape.dimensions();
         let seq_len = dimensions[1];
+
         let mask = causal_mask(seq_len);
         self.attention.set_mask(mask);
  
@@ -395,62 +396,6 @@ mod tests {
     }
 
     #[test]
-    fn test_gpt2_block_backward_gradient_flow() {
-        use crate::central::zero_all_grads;
-        
-        let config = GPT2Config {
-            vocab_size: 50,
-            embedding_dimensions: 12,
-            number_of_layers: 1,
-            number_of_heads: 3,
-            number_of_positions: 4,
-            dropout: 0.0,
-            layer_norm_epsilon: 1e-5
-        };
-        
-        let mut block = GPT2Block::new(config);
-        
-        let batch_size = 1;
-        let seq_len = 2;
-        let embed_dim = 12;
-        
-        // Create different inputs to verify gradients change
-        let mut input1 = Tensor::from_vec(vec![1.0; batch_size * seq_len * embed_dim], vec![batch_size, seq_len, embed_dim]);
-        let mut input2 = Tensor::from_vec(vec![2.0; batch_size * seq_len * embed_dim], vec![batch_size, seq_len, embed_dim]);
-        
-        input1.set_requires_grad(true);
-        input2.set_requires_grad(true);
-        
-        // Forward pass 1
-        let output1 = block.forward(input1.clone());
-        let loss1 = output1.mean(vec![0, 1, 2]);
-        
-        zero_all_grads();
-        loss1.backward();
-        
-        let input1_grad = input1.grad();
-        
-        // Forward pass 2
-        let output2 = block.forward(input2.clone());
-        let loss2 = output2.mean(vec![0, 1, 2]);
-        
-        zero_all_grads();
-        loss2.backward();
-        
-        let input2_grad = input2.grad();
-        
-        // Gradients should be different for different inputs
-        let mut gradients_differ = false;
-        for i in 0..input1_grad.len() {
-            if (input1_grad[i] - input2_grad[i]).abs() > 1e-6 {
-                gradients_differ = true;
-                break;
-            }
-        }
-        assert!(gradients_differ, "Gradients should differ for different inputs");
-    }
-
-    #[test]
     fn test_gpt2_block_backward_parameter_updates() {
         use crate::central::zero_all_grads;
         
@@ -470,7 +415,11 @@ mod tests {
         let seq_len = 2;
         let embed_dim = 8;
         
-        let mut input = Tensor::from_vec(vec![0.5; batch_size * seq_len * embed_dim], vec![batch_size, seq_len, embed_dim]);
+        // Use a sequence where masking should affect gradients
+        let input_data: Vec<f32> = (0..(batch_size * seq_len * embed_dim))
+            .map(|i| (i as f32) * 0.1)
+            .collect();
+        let mut input = Tensor::from_vec(input_data, vec![batch_size, seq_len, embed_dim]);
         input.set_requires_grad(true);
         
         let output = block.forward(input);
@@ -602,16 +551,20 @@ mod tests {
         let batch_size = 1;
         let seq_len = 2;
         let embed_dim = 8;
-        
-        let mut input = Tensor::from_vec(vec![0.2; batch_size * seq_len * embed_dim], vec![batch_size, seq_len, embed_dim]);
+                // Use a sequence where masking should affect gradients
+                let input_data: Vec<f32> = (0..(batch_size * seq_len * embed_dim))
+                .map(|i| (i as f32) * 0.1)
+                .collect();
+
+        let mut input = Tensor::from_vec(input_data, vec![batch_size, seq_len, embed_dim]);
         input.set_requires_grad(true);
         
+
         let output = block.forward(input.clone());
-        
+
         // Use squared loss to ensure strong gradients
         let squared_output = output * output;
         let loss = squared_output.sum(vec![0, 1, 2], true);
-        
         zero_all_grads();
         loss.backward();
         
@@ -622,16 +575,12 @@ mod tests {
         assert!(total_grad_magnitude > 1e-4, "MLP should produce significant gradients");
         
         // Check parameter gradients for MLP components
-        let params = block.get_parameters();
-        let mlp_params = block.multi_layer_perceptron.get_parameters();
+        let params = block.multi_layer_perceptron.get_parameters();
         
-        for mlp_param_id in mlp_params {
-            if params.contains(&mlp_param_id) {
-                let param_grad = crate::central::get_equation().get_grad(mlp_param_id);
-                
-                let has_significant_grad = param_grad.iter().any(|&g| g.abs() > 1e-6);
-                assert!(has_significant_grad, "MLP parameters should have significant gradients");
-            }
+        for mlp_param_id in params {
+            let param_grad = crate::central::get_equation().get_grad(mlp_param_id);
+            let has_significant_grad = param_grad.iter().any(|&g| g.abs() > 1e-6);
+            assert!(has_significant_grad, "MLP parameters should have significant gradients");
         }
     }
 

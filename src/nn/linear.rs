@@ -8,10 +8,12 @@ pub struct Linear {
 
 impl Linear {
     pub fn new(in_features: usize, out_features: usize, has_bias: bool) -> Linear {
-        let weights = Tensor::randn(Shape::new(vec![in_features, out_features]));
+        let mut weights = Tensor::randn(Shape::new(vec![in_features, out_features]));
+        weights.set_requires_grad(true);
         let mut bias = None;
         if has_bias {
             bias = Some(Tensor::zeros(Shape::new(vec![out_features])));
+            bias.as_mut().unwrap().set_requires_grad(true);
         }
         Linear { weights, bias }
     }
@@ -271,5 +273,458 @@ mod tests {
         let result = output.item();
         assert!(result[[0, 0]].is_finite());
         assert!(result[[0, 1]].is_finite());
+    }
+
+    // ========== BACKWARD PASS TESTS ==========
+
+    #[test]
+    fn test_linear_backward_basic_with_bias() {
+        use crate::central::zero_all_grads;
+        
+        let mut layer = Linear::new(2, 3, true);
+        
+        // Set known weights and bias for predictable gradients
+        layer.weights = Tensor::from_vec(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0], vec![2, 3]);
+        layer.weights.set_requires_grad(true);
+        
+        layer.bias = Some(Tensor::from_vec(vec![0.1, 0.2, 0.3], vec![3]));
+        layer.bias.as_mut().unwrap().set_requires_grad(true);
+        
+        // Input with requires_grad
+        let mut input = Tensor::from_vec(vec![1.0, 2.0], vec![1, 2]);
+        input.set_requires_grad(true);
+        
+        let output = layer.forward(input.clone());
+        let loss = output.sum(vec![0, 1], true);
+        
+        zero_all_grads();
+        loss.backward();
+        
+        // Check input gradients
+        let input_grad = input.grad();
+        assert_eq!(input_grad.shape(), &[1, 2]);
+        
+        // Input gradient should be sum of weight columns (since loss = sum(output))
+        // grad_input = weights.sum(axis=1) = [1+2+3, 4+5+6] = [6, 15]
+        assert!(approx_equal(input_grad[[0, 0]], 6.0, 1e-5));
+        assert!(approx_equal(input_grad[[0, 1]], 15.0, 1e-5));
+        
+        // Check weight gradients
+        let weight_grad = layer.weights.grad();
+        assert_eq!(weight_grad.shape(), &[2, 3]);
+        
+        // Weight gradients: outer product of input and output gradient
+        // Since output gradient is [1, 1, 1] and input is [1, 2]:
+        // grad_weights = input.T @ output_grad = [[1], [2]] @ [[1, 1, 1]] = [[1, 1, 1], [2, 2, 2]]
+        assert!(approx_equal(weight_grad[[0, 0]], 1.0, 1e-5));
+        assert!(approx_equal(weight_grad[[0, 1]], 1.0, 1e-5));
+        assert!(approx_equal(weight_grad[[0, 2]], 1.0, 1e-5));
+        assert!(approx_equal(weight_grad[[1, 0]], 2.0, 1e-5));
+        assert!(approx_equal(weight_grad[[1, 1]], 2.0, 1e-5));
+        assert!(approx_equal(weight_grad[[1, 2]], 2.0, 1e-5));
+        
+        // Check bias gradients (should equal output gradients)
+        let bias_grad = layer.bias.as_ref().unwrap().grad();
+        assert_eq!(bias_grad.shape(), &[3]);
+        
+        // Bias gradient should be [1, 1, 1] since loss = sum(output)
+        assert!(approx_equal(bias_grad[[0]], 1.0, 1e-5));
+        assert!(approx_equal(bias_grad[[1]], 1.0, 1e-5));
+        assert!(approx_equal(bias_grad[[2]], 1.0, 1e-5));
+    }
+
+    #[test]
+    fn test_linear_backward_without_bias() {
+        use crate::central::zero_all_grads;
+        
+        let mut layer = Linear::new(3, 2, false);
+        
+        // Set known weights
+        layer.weights = Tensor::from_vec(vec![1.0, -1.0, 2.0, 0.0, -1.0, 3.0], vec![3, 2]);
+        layer.weights.set_requires_grad(true);
+        
+        let mut input = Tensor::from_vec(vec![1.0, 2.0, -1.0], vec![1, 3]);
+        input.set_requires_grad(true);
+        
+        let output = layer.forward(input.clone());
+        let loss = output.sum(vec![0, 1], true);
+        
+        zero_all_grads();
+        loss.backward();
+        
+        // Check input gradients
+        let input_grad = input.grad();
+        // grad_input = weights.sum(axis=1) = [1+(-1), 2+0, (-1)+3] = [0, 2, 2]
+        assert!(approx_equal(input_grad[[0, 0]], 0.0, 1e-5));
+        assert!(approx_equal(input_grad[[0, 1]], 2.0, 1e-5));
+        assert!(approx_equal(input_grad[[0, 2]], 2.0, 1e-5));
+        
+        // Check weight gradients
+        let weight_grad = layer.weights.grad();
+        // grad_weights = input.T @ output_grad = [[1], [2], [-1]] @ [[1, 1]] = [[1, 1], [2, 2], [-1, -1]]
+        assert!(approx_equal(weight_grad[[0, 0]], 1.0, 1e-5));
+        assert!(approx_equal(weight_grad[[0, 1]], 1.0, 1e-5));
+        assert!(approx_equal(weight_grad[[1, 0]], 2.0, 1e-5));
+        assert!(approx_equal(weight_grad[[1, 1]], 2.0, 1e-5));
+        assert!(approx_equal(weight_grad[[2, 0]], -1.0, 1e-5));
+        assert!(approx_equal(weight_grad[[2, 1]], -1.0, 1e-5));
+    }
+
+    #[test]
+    fn test_linear_backward_batch() {
+        use crate::central::zero_all_grads;
+        
+        let mut layer = Linear::new(2, 2, true);
+        
+        // Set simple weights for easy verification
+        layer.weights = Tensor::from_vec(vec![1.0, 0.0, 0.0, 1.0], vec![2, 2]); // Identity matrix
+        layer.weights.set_requires_grad(true);
+        
+        layer.bias = Some(Tensor::zeros(Shape::new(vec![2])));
+        layer.bias.as_mut().unwrap().set_requires_grad(true);
+        
+        // Batch input: 2 samples
+        let mut input = Tensor::from_vec(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]);
+        input.set_requires_grad(true);
+        
+        let output = layer.forward(input.clone());
+        let loss = output.sum(vec![0, 1], true);
+        
+        zero_all_grads();
+        loss.backward();
+        
+        // Check input gradients (sum across samples)
+        let input_grad = input.grad();
+        // Each input element should have gradient = sum of corresponding weight row
+        assert!(approx_equal(input_grad[[0, 0]], 1.0, 1e-5)); // First row, first col
+        assert!(approx_equal(input_grad[[0, 1]], 1.0, 1e-5)); // First row, second col  
+        assert!(approx_equal(input_grad[[1, 0]], 1.0, 1e-5)); // Second row, first col
+        assert!(approx_equal(input_grad[[1, 1]], 1.0, 1e-5)); // Second row, second col
+        
+        // Check bias gradients (sum across batch)
+        let bias_grad = layer.bias.as_ref().unwrap().grad();
+        // Each bias element should have gradient = batch_size (since each sample contributes 1)
+        assert!(approx_equal(bias_grad[[0]], 2.0, 1e-5)); // sum across batch for first output
+        assert!(approx_equal(bias_grad[[1]], 2.0, 1e-5)); // sum across batch for second output
+    }
+
+    #[test]
+    fn test_linear_backward_chained_layers() {
+        use crate::central::zero_all_grads;
+        
+        // Create a simple 2-layer network: 2 -> 3 -> 1
+        let mut layer1 = Linear::new(2, 3, true);
+        let mut layer2 = Linear::new(3, 1, true);
+        
+        // Set simple weights for predictable gradients
+        layer1.weights = Tensor::from_vec(vec![1.0, 0.0, 1.0, 1.0, 0.0, 1.0], vec![2, 3]);
+        layer1.weights.set_requires_grad(true);
+        layer1.bias = Some(Tensor::zeros(Shape::new(vec![3])));
+        layer1.bias.as_mut().unwrap().set_requires_grad(true);
+        
+        layer2.weights = Tensor::from_vec(vec![1.0, 1.0, 1.0], vec![3, 1]);
+        layer2.weights.set_requires_grad(true);
+        layer2.bias = Some(Tensor::zeros(Shape::new(vec![1])));
+        layer2.bias.as_mut().unwrap().set_requires_grad(true);
+        
+        let mut input = Tensor::from_vec(vec![1.0, 2.0], vec![1, 2]);
+        input.set_requires_grad(true);
+        
+        // Forward pass through both layers
+        let hidden = layer1.forward(input.clone());
+        let output = layer2.forward(hidden);
+        let loss = output.sum(vec![0, 1], true);
+        
+        zero_all_grads();
+        loss.backward();
+        
+        // Check that gradients flow through both layers
+        let input_grad = input.grad();
+        assert!(input_grad.iter().all(|&g| g.is_finite()));
+        assert!(input_grad.iter().any(|&g| g.abs() > 1e-6)); // Should have non-trivial gradients
+        
+        // Check layer1 gradients
+        let layer1_weight_grad = layer1.weights.grad();
+        assert!(layer1_weight_grad.iter().all(|&g| g.is_finite()));
+        assert!(layer1_weight_grad.iter().any(|&g| g.abs() > 1e-6));
+        
+        let layer1_bias_grad = layer1.bias.as_ref().unwrap().grad();
+        assert!(layer1_bias_grad.iter().all(|&g| g.is_finite()));
+        assert!(layer1_bias_grad.iter().any(|&g| g.abs() > 1e-6));
+        
+        // Check layer2 gradients
+        let layer2_weight_grad = layer2.weights.grad();
+        assert!(layer2_weight_grad.iter().all(|&g| g.is_finite()));
+        assert!(layer2_weight_grad.iter().any(|&g| g.abs() > 1e-6));
+        
+        let layer2_bias_grad = layer2.bias.as_ref().unwrap().grad();
+        assert!(layer2_bias_grad.iter().all(|&g| g.is_finite()));
+        assert!(layer2_bias_grad.iter().any(|&g| g.abs() > 1e-6));
+    }
+
+    #[test]
+    fn test_linear_backward_with_relu_activation() {
+        use crate::central::zero_all_grads;
+        
+        let mut layer1 = Linear::new(2, 3, true);
+        let mut layer2 = Linear::new(3, 1, true);
+        
+        // Set weights that will produce both positive and negative values for ReLU
+        layer1.weights = Tensor::from_vec(vec![1.0, -1.0, 2.0, -2.0, 1.0, -1.0], vec![2, 3]);
+        layer1.weights.set_requires_grad(true);
+        layer1.bias = Some(Tensor::from_vec(vec![0.5, -0.5, 1.0], vec![3]));
+        layer1.bias.as_mut().unwrap().set_requires_grad(true);
+        
+        layer2.weights = Tensor::from_vec(vec![1.0, 1.0, 1.0], vec![3, 1]);
+        layer2.weights.set_requires_grad(true);
+        layer2.bias = Some(Tensor::zeros(Shape::new(vec![1])));
+        layer2.bias.as_mut().unwrap().set_requires_grad(true);
+        
+        let mut input = Tensor::from_vec(vec![1.0, 1.0], vec![1, 2]);
+        input.set_requires_grad(true);
+        
+        // Forward: input -> linear1 -> relu -> linear2
+        let mut hidden_raw = layer1.forward(input.clone());
+        let hidden_relu = hidden_raw.relu(); // Apply ReLU activation
+        let output = layer2.forward(hidden_relu);
+        let loss = output.sum(vec![0, 1], true);
+        
+        zero_all_grads();
+        loss.backward();
+        
+        // Check that gradients exist and are reasonable
+        let input_grad = input.grad();
+        assert!(input_grad.iter().all(|&g| g.is_finite()));
+        
+        // ReLU should block some gradients where activations were negative
+        let layer1_weight_grad = layer1.weights.grad();
+        assert!(layer1_weight_grad.iter().all(|&g| g.is_finite()));
+        
+        // Some gradients might be zero due to ReLU blocking
+        let has_zero_grads = layer1_weight_grad.iter().any(|&g| g == 0.0);
+        let has_nonzero_grads = layer1_weight_grad.iter().any(|&g| g.abs() > 1e-6);
+        
+        // We should have at least some non-zero gradients
+        assert!(has_nonzero_grads, "Should have some non-zero gradients despite ReLU");
+    }
+
+    #[test]
+    fn test_linear_backward_with_tanh_activation() {
+        use crate::central::zero_all_grads;
+        
+        let mut layer1 = Linear::new(2, 2, true);
+        let mut layer2 = Linear::new(2, 1, false);
+        
+        // Set moderate weights to avoid tanh saturation
+        layer1.weights = Tensor::from_vec(vec![0.5, -0.5, 0.3, 0.7], vec![2, 2]);
+        layer1.weights.set_requires_grad(true);
+        layer1.bias = Some(Tensor::from_vec(vec![0.1, -0.1], vec![2]));
+        layer1.bias.as_mut().unwrap().set_requires_grad(true);
+        
+        layer2.weights = Tensor::from_vec(vec![1.0, -1.0], vec![2, 1]);
+        layer2.weights.set_requires_grad(true);
+        
+        let mut input = Tensor::from_vec(vec![1.0, -1.0], vec![1, 2]);
+        input.set_requires_grad(true);
+        
+        // Forward: input -> linear1 -> tanh -> linear2
+        let hidden_raw = layer1.forward(input.clone());
+        let hidden_tanh = hidden_raw.tanh(); // Apply tanh activation
+        let output = layer2.forward(hidden_tanh);
+        let loss = output.pow(2.0).sum(vec![0, 1], true); // Squared loss for stronger gradients
+        
+        zero_all_grads();
+        loss.backward();
+        
+        // Check that gradients flow through tanh
+        let input_grad = input.grad();
+        assert!(input_grad.iter().all(|&g| g.is_finite()));
+        assert!(input_grad.iter().any(|&g| g.abs() > 1e-6));
+        
+        // Tanh should modulate gradients but not block them completely
+        let layer1_weight_grad = layer1.weights.grad();
+        assert!(layer1_weight_grad.iter().all(|&g| g.is_finite()));
+        assert!(layer1_weight_grad.iter().any(|&g| g.abs() > 1e-6));
+        
+        // Check that tanh affects gradient magnitude (should be scaled by tanh derivative)
+        let layer1_bias_grad = layer1.bias.as_ref().unwrap().grad();
+        assert!(layer1_bias_grad.iter().all(|&g| g.is_finite()));
+        assert!(layer1_bias_grad.iter().any(|&g| g.abs() > 1e-6));
+    }
+
+    #[test]
+    fn test_linear_backward_deep_network() {
+        use crate::central::zero_all_grads;
+        
+        // Create a deeper network: 3 -> 4 -> 3 -> 2 -> 1
+        let mut layer1 = Linear::new(3, 4, true);
+        let mut layer2 = Linear::new(4, 3, true);
+        let mut layer3 = Linear::new(3, 2, true);
+        let mut layer4 = Linear::new(2, 1, true);
+        
+        // Initialize with small random-like weights
+        layer1.weights = Tensor::from_vec((0..12).map(|i| (i as f32) * 0.1 - 0.6).collect(), vec![3, 4]);
+        layer1.weights.set_requires_grad(true);
+        layer1.bias = Some(Tensor::from_vec(vec![0.1, -0.1, 0.05, -0.05], vec![4]));
+        layer1.bias.as_mut().unwrap().set_requires_grad(true);
+        
+        layer2.weights = Tensor::from_vec((0..12).map(|i| (i as f32) * 0.08 - 0.5).collect(), vec![4, 3]);
+        layer2.weights.set_requires_grad(true);
+        layer2.bias = Some(Tensor::from_vec(vec![0.02, -0.02, 0.03], vec![3]));
+        layer2.bias.as_mut().unwrap().set_requires_grad(true);
+        
+        layer3.weights = Tensor::from_vec(vec![0.3, -0.3, 0.2, -0.2, 0.1, -0.1], vec![3, 2]);
+        layer3.weights.set_requires_grad(true);
+        layer3.bias = Some(Tensor::from_vec(vec![0.01, -0.01], vec![2]));
+        layer3.bias.as_mut().unwrap().set_requires_grad(true);
+        
+        layer4.weights = Tensor::from_vec(vec![0.5, -0.5], vec![2, 1]);
+        layer4.weights.set_requires_grad(true);
+        layer4.bias = Some(Tensor::zeros(Shape::new(vec![1])));
+        layer4.bias.as_mut().unwrap().set_requires_grad(true);
+        
+        let mut input = Tensor::from_vec(vec![1.0, 0.5, -0.5], vec![1, 3]);
+        input.set_requires_grad(true);
+        
+        // Forward pass through deep network with activations
+        let h1 = layer1.forward(input.clone()).tanh();
+        let h2 = layer2.forward(h1).relu();
+        let h3 = layer3.forward(h2).tanh();
+        let output = layer4.forward(h3);
+        let loss = output.pow(2.0).sum(vec![0, 1], true);
+        
+        zero_all_grads();
+        loss.backward();
+        
+        // Check that gradients flow through all layers
+        let input_grad = input.grad();
+        assert!(input_grad.iter().all(|&g| g.is_finite()));
+        
+        // Verify each layer has meaningful gradients
+        let layers_and_names = vec![
+            (&layer1, "layer1"),
+            (&layer2, "layer2"), 
+            (&layer3, "layer3"),
+            (&layer4, "layer4"),
+        ];
+        
+        for (layer, name) in layers_and_names {
+            let weight_grad = layer.weights.grad();
+            assert!(
+                weight_grad.iter().all(|&g| g.is_finite()),
+                "{} weights should have finite gradients", name
+            );
+            
+            let bias_grad = layer.bias.as_ref().unwrap().grad();
+            assert!(
+                bias_grad.iter().all(|&g| g.is_finite()),
+                "{} bias should have finite gradients", name
+            );
+            
+            // Should have at least some non-trivial gradients
+            let has_significant_grad = weight_grad.iter().any(|&g| g.abs() > 1e-8) ||
+                                     bias_grad.iter().any(|&g| g.abs() > 1e-8);
+            assert!(
+                has_significant_grad,
+                "{} should have some significant gradients", name
+            );
+        }
+    }
+
+    #[test]
+    fn test_linear_backward_different_loss_functions() {
+        use crate::central::zero_all_grads;
+        
+        let mut layer = Linear::new(2, 2, true);
+        
+        // Set fixed weights for comparison
+        layer.weights = Tensor::from_vec(vec![1.0, 0.5, -0.5, 1.0], vec![2, 2]);
+        layer.weights.set_requires_grad(true);
+        layer.bias = Some(Tensor::from_vec(vec![0.1, -0.1], vec![2]));
+        layer.bias.as_mut().unwrap().set_requires_grad(true);
+        
+        let mut input = Tensor::from_vec(vec![1.0, 2.0], vec![1, 2]);
+        input.set_requires_grad(true);
+        
+        // Test 1: Sum loss
+        let output1 = layer.forward(input.clone());
+        let loss1 = output1.sum(vec![0, 1], true);
+        
+        zero_all_grads();
+        loss1.backward();
+        
+        let weight_grad1 = layer.weights.grad().iter().copied().collect::<Vec<f32>>();
+        let bias_grad1 = layer.bias.as_ref().unwrap().grad().iter().copied().collect::<Vec<f32>>();
+        
+        // Test 2: Mean loss (should produce different gradients)
+        let output2 = layer.forward(input.clone());
+        let loss2 = output2.mean(vec![0, 1]);
+        
+        zero_all_grads();
+        loss2.backward();
+        
+        let weight_grad2 = layer.weights.grad().iter().copied().collect::<Vec<f32>>();
+        let bias_grad2 = layer.bias.as_ref().unwrap().grad().iter().copied().collect::<Vec<f32>>();
+        
+        // Gradients should be different due to different loss functions
+        let weight_grads_differ = weight_grad1.iter().zip(weight_grad2.iter())
+            .any(|(g1, g2)| (g1 - g2).abs() > 1e-6);
+        let bias_grads_differ = bias_grad1.iter().zip(bias_grad2.iter())
+            .any(|(g1, g2)| (g1 - g2).abs() > 1e-6);
+        
+        assert!(weight_grads_differ || bias_grads_differ, 
+                "Different loss functions should produce different gradients");
+    }
+
+    #[test]
+    fn test_linear_backward_gradient_accumulation() {
+        use crate::central::zero_all_grads;
+        
+        let mut layer = Linear::new(2, 1, true);
+        
+        layer.weights = Tensor::from_vec(vec![1.0, -1.0], vec![2, 1]);
+        layer.weights.set_requires_grad(true);
+        layer.bias = Some(Tensor::from_vec(vec![0.5], vec![1]));
+        layer.bias.as_mut().unwrap().set_requires_grad(true);
+        
+        let mut input1 = Tensor::from_vec(vec![1.0, 2.0], vec![1, 2]);
+        input1.set_requires_grad(true);
+        let mut input2 = Tensor::from_vec(vec![2.0, 1.0], vec![1, 2]);
+        input2.set_requires_grad(true);
+        
+        zero_all_grads();
+        
+        // First forward/backward pass
+        let output1 = layer.forward(input1.clone());
+        let loss1 = output1.sum(vec![0, 1], true);
+        loss1.backward();
+        
+        let weight_grad_after_first = layer.weights.grad().iter().copied().collect::<Vec<f32>>();
+        let bias_grad_after_first = layer.bias.as_ref().unwrap().grad().iter().copied().collect::<Vec<f32>>();
+        
+        // Second forward/backward pass (should accumulate gradients)
+        let output2 = layer.forward(input2);
+        let loss2 = output2.sum(vec![0, 1], true);
+        loss2.backward();
+        
+        let weight_grad_after_second = layer.weights.grad().iter().copied().collect::<Vec<f32>>();
+        let bias_grad_after_second = layer.bias.as_ref().unwrap().grad().iter().copied().collect::<Vec<f32>>();
+        
+        // Gradients should have accumulated (increased in magnitude)
+        for i in 0..weight_grad_after_first.len() {
+            assert!(
+                weight_grad_after_second[i].abs() >= weight_grad_after_first[i].abs(),
+                "Weight gradients should accumulate: {} vs {}", 
+                weight_grad_after_second[i], weight_grad_after_first[i]
+            );
+        }
+        
+        for i in 0..bias_grad_after_first.len() {
+            assert!(
+                bias_grad_after_second[i].abs() >= bias_grad_after_first[i].abs(),
+                "Bias gradients should accumulate: {} vs {}", 
+                bias_grad_after_second[i], bias_grad_after_first[i]
+            );
+        }
     }
 }

@@ -5,8 +5,6 @@ impl Tensor {
 
     pub fn masked_fill(&self, mask: Tensor, value: f32) -> Tensor {
         let (local, mask) = handle_broadcasting(*self, mask);
-        println!("{:?}", local.item());
-        println!("{:?}", mask.item());
         let result  = {
             let equation = get_equation();
         
