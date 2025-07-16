@@ -1,5 +1,6 @@
 use crate::central::*;
 use crate::nn::*;
+use crate::utils::GGUFFile;
 
 pub struct Linear {
     weights: Tensor,
@@ -15,6 +16,29 @@ impl Linear {
             bias = Some(Tensor::zeros(Shape::new(vec![out_features])));
             bias.as_mut().unwrap().set_requires_grad(true);
         }
+        Linear { weights, bias }
+    }
+
+    /// Creates a Linear layer from a GGUF file by loading weight and bias tensors
+    /// # Arguments
+    /// * `weight_tensor_name` - The name of the weight tensor in the GGUF file
+    /// * `bias_tensor_name` - Optional name of the bias tensor in the GGUF file
+    /// * `gguf_file` - The GGUF file data structure to load from
+    pub fn from_gguf_file(
+        weight_tensor_name: String,
+        bias_tensor_name: Option<String>,
+        gguf_file: &mut GGUFFile,
+    ) -> Linear {
+        let mut weights = Tensor::from_gguf_file(weight_tensor_name, gguf_file);
+        weights.set_requires_grad(true);
+
+        let mut bias = None;
+        if let Some(bias_name) = bias_tensor_name {
+            let mut bias_tensor = Tensor::from_gguf_file(bias_name, gguf_file);
+            bias_tensor.set_requires_grad(true);
+            bias = Some(bias_tensor);
+        }
+
         Linear { weights, bias }
     }
 }
