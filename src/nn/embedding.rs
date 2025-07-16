@@ -1,5 +1,6 @@
 use crate::central::*;
 use crate::nn::*;
+use crate::utils::GGUFFile;
 
 pub struct Embedding {
     weights: Tensor,
@@ -13,6 +14,11 @@ impl Embedding {
             weights 
         }
     }
+
+    pub fn from_tensor(weights: Tensor) -> Embedding {
+        Embedding { weights }
+    }
+
 }
 
 

@@ -1,30 +1,7 @@
 
 use crate::central::*;
 use crate::nn::*;
-#[derive(Copy, Clone)]
-pub struct GPT2Config {
-    pub vocab_size: usize,
-    pub embedding_dimensions: usize,
-    pub number_of_layers: usize,
-    pub number_of_heads: usize,
-    pub number_of_positions: usize,
-    pub dropout: f32,
-    pub layer_norm_epsilon: f32
-}
-
-impl GPT2Config {
-    pub fn gpt2_small() -> GPT2Config {
-        GPT2Config {
-            vocab_size: 50257,
-            embedding_dimensions: 768,
-            number_of_layers: 12,
-            number_of_heads: 12,
-            number_of_positions: 1024,
-            dropout: 0.1, 
-            layer_norm_epsilon: 1e-5
-        }
-    }
-}
+use crate::utils::GGUFFile;
 
 
 pub fn causal_mask(seq_len: usize) -> Tensor {
@@ -61,6 +38,43 @@ impl GPT2Block {
             layer_norm_2: LayerNorm::new(config.embedding_dimensions),
             multi_layer_perceptron
         }
+    }
+
+    pub fn from_gguf_file(gguf_file: &mut GGUFFile, block_count: i64) {
+ 
+        let attention_norm_weight = format!("blk.{}.attn_norm.weight", block_count);
+        let attention_norm_bias = format!("blk.{}.attn_norm.bias", block_count);
+        let layer_norm_1 = LayerNorm::from_gguf_file(gguf_file , attention_norm_weight, attention_norm_bias);
+
+        /* 
+
+        {0:"blk.0.attn_output.weight"}
+        {0:"blk.0.attn_output.bias"}
+
+        {0:"blk.0.attn_qkv.bias"}
+        {0:"blk.0.attn_qkv.weight"}
+        */
+
+        let ff_norm_weight = format!("blk.{}.ff_norm.weight", block_count);
+        let ff_norm_bias = format!("blk.{}.ff_norm.bias", block_count);
+        let layer_norm_2 = LayerNorm::from_gguf_file(gguf_file , ff_norm_weight, ff_norm_bias);
+
+
+        let ffn_up_weight = format!("blk.{}.ffn_up.weight", block_count);
+        let ffn_up_bias = format!("blk.{}.ffn_up.bias", block_count);
+
+        let up_linear = Linear::from_gguf_file(ffn_up_weight, Some(ffn_up_bias), gguf_file);
+
+        let ffn_down_weight = format!("blk.{}.ffn_down.weight", block_count);
+        let ffn_down_bias = format!("blk.{}.ffn_down.bias", block_count);
+        
+        let down_linear = Linear::from_gguf_file(ffn_down_weight, Some(ffn_down_bias), gguf_file);
+        let multi_layer_perceptron = Sequential::new(vec![
+            Box::new(up_linear),
+            Box::new(GELU::new()),
+            Box::new(down_linear)
+        ]);
+
     }
 }
 

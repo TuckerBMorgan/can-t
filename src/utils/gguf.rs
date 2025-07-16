@@ -284,6 +284,10 @@ impl GGUFFile {
         }
     }
 
+    pub fn get_value(&self, name: String) -> Value {
+        return self.key_value_pairs[&name].clone();
+    }
+
     pub fn get_tensor(&self, name: String) -> TensorMetaData {
         return self.tensors[&name].clone();
     }
@@ -314,3 +318,6 @@ impl GGUFFile {
             .collect();
     }
 }
+
+
+

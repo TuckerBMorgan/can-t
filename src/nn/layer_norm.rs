@@ -1,5 +1,6 @@
 use crate::central::*;
 use crate::nn::*;
+use crate::utils::GGUFFile;
 
 pub struct LayerNorm {
     weight: Tensor,
@@ -13,6 +14,18 @@ impl LayerNorm {
         let mut bias = Tensor::zeros(Shape::new(vec![num_features]));
         bias.set_requires_grad(true);
         LayerNorm { weight, bias }
+    }
+
+    pub fn from_gguf_file(gguf_file: &mut GGUFFile, weight_name: String, bias_name: String) -> LayerNorm {
+        let mut weight = Tensor::from_gguf_file(weight_name, gguf_file);
+        weight.set_requires_grad(true);
+  
+        let mut bias = Tensor::from_gguf_file(bias_name, gguf_file);
+        bias.set_requires_grad(true);
+        LayerNorm {
+            weight,
+            bias
+        }
     }
 }
 

@@ -526,5 +526,6 @@ mod tests {
     #[test]
     fn test_load_gpt() {
         let mut gguf_file = GGUFFile::new(String::from("./models/tests/gpt2/Gpt2-124M-F16.gguf"));
+        
     }
 }

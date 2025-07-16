@@ -1,5 +1,6 @@
 use crate::central::*;
 use crate::nn::*;
+use crate::utils::GGUFFile;
 
 
 pub struct MultiHeadAttention {
@@ -38,6 +39,19 @@ impl MultiHeadAttention {
             scaled_dot_project_attention: ScaledDotProductAttention::new(scale),
             mask
         }
+    }
+
+    pub fn from_gguf_file(gguf_file: &mut GGUFFile, block_number: i64) {
+        let ffn_up_weight = format!("blk.{}.ffn_up.weight", block_number);
+        /*
+
+        {0:"blk.0.attn_output.weight"}
+        {0:"blk.0.attn_output.bias"}
+
+        {0:"blk.0.attn_qkv.bias"}
+        {0:"blk.0.attn_qkv.weight"}
+         */   
+
     }
 
     pub fn set_mask(&mut self, mask: Tensor) {
