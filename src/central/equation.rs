@@ -12,10 +12,10 @@ use ndarray::ArrayD;
 use ndarray::Axis;
 use rand_distr::{Distribution, Normal};
 
-//#[cfg(target_os = "windows")]
-//use cant_cpu::prelude::*;
+#[cfg(not(target_os = "macos"))]
+use cant_cpu::prelude::*;
 
-//#[cfg(target_os = "macos")]
+#[cfg(target_os = "macos")]
 use cant_metal::prelude::*;
 
 //use cant_cpu::prelude::*;
