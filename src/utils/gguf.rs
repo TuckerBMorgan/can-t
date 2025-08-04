@@ -269,7 +269,6 @@ impl GGUFFile {
             let tensor = TensorMetaData::new(tensor_name.clone(), dimensions, offset);
             tensors.insert(tensor_name, tensor);
         }
-
         let position = f.stream_position().unwrap();
         let padding = align_offset(position) - position;
 

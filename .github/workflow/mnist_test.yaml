@@ -1,0 +1,28 @@
+name: Train/Test MNIST Sequential Model
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: # allow manual triggering
+
+jobs:
+  test-mnist:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🦀 Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: ⚙️ Install required system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libopenblas-dev pkg-config
+
+      - name: 🧪 Run specific MNIST training test
+        env:
+          RUST_BACKTRACE: full
+        run: |
+          cargo test --test-threads=1 test_sequential_mnist_training -- --nocapture

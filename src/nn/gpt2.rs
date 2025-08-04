@@ -82,7 +82,7 @@ impl GPT2 {
             let block = GPT2Block::from_gguf_file(gguf_file, i);
         }
 
-        panic!("Sdasd");
+        
     }
 }
 
@@ -132,6 +132,5 @@ mod tests {
     fn basic_test() {
         let mut gguf_file = GGUFFile::new(String::from("./models/tests/gpt2/Gpt2-124M-F16.gguf"));
         let mut gpt2 = GPT2::from_gguf_file(&mut gguf_file);
-        let mut gpt2 = GPT2::new(GPT2Config::gpt2_small());
     }
 }

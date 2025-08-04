@@ -35,14 +35,18 @@ impl MultiHeadAttention {
             query_projection: Linear::new(embed_dim, embed_dim, true),
             key_projection: Linear::new(embed_dim, embed_dim, true),
             value_projection: Linear::new(embed_dim, embed_dim, true),
+
             out_projections: Linear::new(embed_dim, embed_dim, true),
+
             scaled_dot_project_attention: ScaledDotProductAttention::new(scale),
             mask
         }
     }
 
-    pub fn from_gguf_file(gguf_file: &mut GGUFFile, block_number: i64) {
-        let ffn_up_weight = format!("blk.{}.ffn_up.weight", block_number);
+    pub fn from_gguf_file(gguf_file: &mut GGUFFile, block_count: i64) {
+        let attn_output_weight = format!("blk.{}.attn_output.weight", block_count);
+        let attn_output_bias = format!("blk.{}.attn_output.bias", block_count);
+        let output_project = Linear::from_gguf_file(attn_output_weight, Some(attn_output_bias), gguf_file);
         /*
 
         {0:"blk.0.attn_output.weight"}

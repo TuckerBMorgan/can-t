@@ -55,8 +55,10 @@ impl GPT2Block {
         {0:"blk.0.attn_qkv.weight"}
         */
 
-        let ff_norm_weight = format!("blk.{}.ff_norm.weight", block_count);
-        let ff_norm_bias = format!("blk.{}.ff_norm.bias", block_count);
+        let multihead_attention = MultiHeadAttention::from_gguf_file(gguf_file, block_count);
+
+        let ff_norm_weight = format!("blk.{}.ffn_norm.weight", block_count);
+        let ff_norm_bias = format!("blk.{}.ffn_norm.bias", block_count);
         let layer_norm_2 = LayerNorm::from_gguf_file(gguf_file , ff_norm_weight, ff_norm_bias);
 
 
@@ -80,6 +82,7 @@ impl GPT2Block {
 
 impl Layer for GPT2Block {
     fn forward(&mut self, inputs: Tensor) -> Tensor {
+
         // Get the first layer norm out of the way
         let layer_norm_1 = self.layer_norm_1.forward(inputs);
         // Create the mask for this pass of the network
@@ -91,7 +94,8 @@ impl Layer for GPT2Block {
  
         // attention and residual
         let attended = self.attention.forward(layer_norm_1);
-        let inputs = inputs + attended;
+
+        let inputs: Tensor = inputs + attended;
 
         // Second layer norm and the MLP
         let layer_norm_2 = self.layer_norm_2.forward(inputs);
