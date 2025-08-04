@@ -25,4 +25,4 @@ jobs:
         env:
           RUST_BACKTRACE: full
         run: |
-          cargo test --test-threads=1 test_sequential_mnist_training -- --nocapture
+          cargo test test_sequential_mnist_training -- --nocapture
