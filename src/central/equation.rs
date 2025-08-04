@@ -16,9 +16,10 @@ use rand_distr::{Distribution, Normal};
 use cant_cpu::prelude::*;
 
 #[cfg(target_os = "macos")]
-use cant_metal::prelude::*;
+use cant_cpu::prelude::*;
 
-//use cant_cpu::prelude::*;
+//use cant_metal::prelude::*;
+
 
 /// A Struct used by the backpropagation functions to help collect common function arugumnets into a single place
 pub struct BackproagationPacket<'a> {
