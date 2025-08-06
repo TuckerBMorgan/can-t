@@ -26,7 +26,6 @@ impl Model for Sequential {
         for layer in &self.layers {
             parameters.extend(layer.get_parameters());
         }
-        
 
         return parameters;
     }
@@ -512,7 +511,6 @@ mod tests {
         }
     }
 
-
     #[test]
     pub fn celeb_a_dcgan_test() {
         let batch_size = 128;
@@ -524,7 +522,5 @@ mod tests {
         let number_of_training_epochs = 5;
         let learning_rate = 0.0020;
         let beta_1 = 0.5;
-
-
     }
 }

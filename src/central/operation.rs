@@ -1,4 +1,4 @@
-use super::{Shape, tensor::TensorID};
+use super::{tensor::TensorID, Shape};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Operation {

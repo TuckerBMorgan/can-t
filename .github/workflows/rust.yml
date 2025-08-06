@@ -15,8 +15,11 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: 🦀 Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: 🦀 Use latest toolchain
+        run: rustup update
+
+      - name: 📜 Check format
+        run: cargo fmt --check
 
       - name: ⚙️ Install required system dependencies
         run: sudo apt-get update && sudo apt-get install -y libopenblas-dev pkg-config

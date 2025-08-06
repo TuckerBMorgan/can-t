@@ -2,8 +2,8 @@ use std::collections::{HashMap, HashSet};
 
 use super::backward_for_matmul;
 use super::{
-    InternalTensor, Operation, TensorID, add_op, cross_entropy_op, log, matmul_op, mean_op, mul_op,
-    pow_op, reshape, select_op, shape::*, std_op, sum_op, tanh_op, transpose_op,
+    add_op, cross_entropy_op, log, matmul_op, mean_op, mul_op, pow_op, reshape, select_op,
+    shape::*, std_op, sum_op, tanh_op, transpose_op, InternalTensor, Operation, TensorID,
 };
 use crate::central::index::Indexable;
 use crate::central::{backwards_for_mask_fill, relu_op, softmax_op};
@@ -19,7 +19,6 @@ use cant_cpu::prelude::*;
 use cant_cpu::prelude::*;
 
 //use cant_metal::prelude::*;
-
 
 /// A Struct used by the backpropagation functions to help collect common function arugumnets into a single place
 pub struct BackproagationPacket<'a> {
@@ -537,7 +536,7 @@ impl Equation {
             }
             Operation::RELU(_) => {
                 relu_op::backward_for_relu(packet);
-            },
+            }
             Operation::MaskFill(_, _, _) => {
                 backwards_for_mask_fill(packet);
             }

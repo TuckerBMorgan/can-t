@@ -1,4 +1,4 @@
-use crate::central::{BackproagationPacket, Operation, Shape, Tensor, get_equation};
+use crate::central::{get_equation, BackproagationPacket, Operation, Shape, Tensor};
 
 impl Tensor {
     // helper function to actually swap the data of two axes
@@ -130,7 +130,7 @@ mod tests {
         a.push(10.0);
     }
 
-    fn show(list:&mut Vec<f32>) {
+    fn show(list: &mut Vec<f32>) {
         list.push(0.0);
     }
 

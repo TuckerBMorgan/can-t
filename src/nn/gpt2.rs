@@ -1,4 +1,3 @@
-
 use crate::central::*;
 use crate::nn::*;
 use crate::utils::GGUFFile;
@@ -10,7 +9,7 @@ pub struct GPT2Config {
     pub number_of_heads: usize,
     pub number_of_positions: usize,
     pub dropout: f32,
-    pub layer_norm_epsilon: f32
+    pub layer_norm_epsilon: f32,
 }
 
 impl GPT2Config {
@@ -21,17 +20,15 @@ impl GPT2Config {
             number_of_layers: 12,
             number_of_heads: 12,
             number_of_positions: 1024,
-            dropout: 0.1, 
-            layer_norm_epsilon: 1e-5
+            dropout: 0.1,
+            layer_norm_epsilon: 1e-5,
         }
     }
 }
 
-
-
 pub fn sinusoidal_position_encoding(seq_len: usize, d_model: usize) -> Tensor {
     let mut pos_encoding = vec![0.0; seq_len * d_model];
-    
+
     for pos in 0..seq_len {
         for i in (0..d_model).step_by(2) {
             let angle = pos as f32 / 10000.0_f32.powf(i as f32 / d_model as f32);
@@ -41,7 +38,7 @@ pub fn sinusoidal_position_encoding(seq_len: usize, d_model: usize) -> Tensor {
             }
         }
     }
-    
+
     Tensor::from_vec(pos_encoding, vec![seq_len, d_model])
 }
 
@@ -51,12 +48,14 @@ pub struct GPT2 {
     wpe: Embedding,
     blocks: Vec<GPT2Block>,
     final_layer_norm: LayerNorm,
-    final_head: Linear
+    final_head: Linear,
 }
 
 impl GPT2 {
     pub fn new(config: GPT2Config) -> GPT2 {
-        let blocks = (0..config.number_of_layers).map(|_|GPT2Block::new(config)).collect();
+        let blocks = (0..config.number_of_layers)
+            .map(|_| GPT2Block::new(config))
+            .collect();
 
         GPT2 {
             wte: Embedding::new(config.vocab_size, config.embedding_dimensions),
@@ -64,12 +63,11 @@ impl GPT2 {
             blocks,
             final_layer_norm: LayerNorm::new(config.embedding_dimensions),
             final_head: Linear::new(config.embedding_dimensions, config.vocab_size, true),
-            config
+            config,
         }
     }
 
     pub fn from_gguf_file(gguf_file: &mut GGUFFile) {
-
         let wpe_tensor = Tensor::from_gguf_file(String::from("token_embd.weight"), gguf_file);
         let wte_tensor = Tensor::from_gguf_file(String::from("position_embd.weight"), gguf_file);
         let wpe = Embedding::from_tensor(wpe_tensor);
@@ -81,17 +79,14 @@ impl GPT2 {
         for i in 0..block_count {
             let block = GPT2Block::from_gguf_file(gguf_file, i);
         }
-
-        
     }
 }
 
 impl Model for GPT2 {
-
     fn forward(&mut self, input: Tensor) -> Tensor {
-
         let seq_length = input.shape.dimensions()[1];
-        let position_ids = sinusoidal_position_encoding(seq_length, self.config.embedding_dimensions);        
+        let position_ids =
+            sinusoidal_position_encoding(seq_length, self.config.embedding_dimensions);
         let token_embeddings = self.wte.forward(input);
         let positional_embeddings = self.wpe.forward(position_ids);
         let mut hidden_states = token_embeddings + positional_embeddings;
@@ -103,7 +98,6 @@ impl Model for GPT2 {
         hidden_states = self.final_layer_norm.forward(hidden_states);
 
         self.final_head.forward(hidden_states)
-
     }
 
     fn get_parameters(&self) -> Vec<TensorID> {
@@ -121,11 +115,10 @@ impl Model for GPT2 {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use crate::nn::{GPT2Config, GPT2};
     use crate::central::*;
+    use crate::nn::{GPT2Config, GPT2};
     use crate::utils::GGUFFile;
 
     #[test]

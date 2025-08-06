@@ -2,7 +2,7 @@ use ndarray::ArrayD;
 
 use crate::utils::GGUFFile;
 
-use super::{Operation, Shape, get_equation};
+use super::{get_equation, Operation, Shape};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TensorID {

@@ -265,7 +265,7 @@ mod tests {
             gradients[1],
             1.0 - ((-10.0_f32).tanh().powf(2.0)),
             1e-6
-        )); // Very small  
+        )); // Very small
         assert!(approx_equal(gradients[2], 1.0, 1e-6)); // tanh'(0) = 1
     }
 }
