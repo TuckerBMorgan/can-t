@@ -14,14 +14,15 @@ serde = { version = "1.0.219", features = ["derive"] }
 serde_json = { version = "1.0.140", features = ["arbitrary_precision"] }
 mnist = { version = "0.5", features = ["download"] }
 
+# for gguf
+memmap2 = "0.9"
+ggus = "0.5"
+
 [target.'cfg(target_os = "macos")'.dependencies]
 cant_metal = { path = "crates/cant_metal" }
 
 [workspace]
-members = [
-    "crates/cant_cpu",
-    "crates/cant_metal",
-]
+members = ["crates/cant_cpu", "crates/cant_metal"]
 
 [profile.release]
 debug = true
