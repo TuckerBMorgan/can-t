@@ -40,22 +40,13 @@ impl GPT2Block {
         }
     }
 
-    pub fn from_gguf_file(gguf_file: &mut GGUFFile, block_count: i64) {
+    pub fn from_gguf_file(gguf_file: &mut GGUFFile, block_count: i64, gpt_config: &GPT2Config) {
  
         let attention_norm_weight = format!("blk.{}.attn_norm.weight", block_count);
         let attention_norm_bias = format!("blk.{}.attn_norm.bias", block_count);
         let layer_norm_1 = LayerNorm::from_gguf_file(gguf_file , attention_norm_weight, attention_norm_bias);
 
-        /* 
-
-        {0:"blk.0.attn_output.weight"}
-        {0:"blk.0.attn_output.bias"}
-
-        {0:"blk.0.attn_qkv.bias"}
-        {0:"blk.0.attn_qkv.weight"}
-        */
-
-        let multihead_attention = MultiHeadAttention::from_gguf_file(gguf_file, block_count);
+        let multihead_attention = MultiHeadAttention::from_gguf_file(gguf_file, block_count, gpt_config);
 
         let ff_norm_weight = format!("blk.{}.ffn_norm.weight", block_count);
         let ff_norm_bias = format!("blk.{}.ffn_norm.bias", block_count);

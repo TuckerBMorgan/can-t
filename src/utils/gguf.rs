@@ -275,7 +275,7 @@ impl GGUFFile {
         // to save us effort later, seek to the end of padding, and then save that cursor position
         // so when we want to read the weights of a tensor in, we know where to start
         f.seek_relative(padding as i64);
-        GGUFFile {
+    GGUFFile {
             path,
             tensors,
             key_value_pairs,

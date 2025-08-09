@@ -25,6 +25,20 @@ impl GPT2Config {
             layer_norm_epsilon: 1e-5
         }
     }
+
+    pub fn from_gguf_file(gguf_file: &mut  GGUFFile) -> GPT2Config {
+
+
+        GPT2Config {
+            vocab_size: 50257,
+            embedding_dimensions: gguf_file.get_value(String::from("gpt2.embedding_length")).as_u64().unwrap() as usize,
+            number_of_layers: gguf_file.get_value(String::from("gpt2.block_count")).as_u64().unwrap() as usize,
+            number_of_heads: gguf_file.get_value(String::from("gpt2.attention.head_count")).as_u64().unwrap() as usize,
+            number_of_positions: 1024,//gguf_file.get_value(String::from("vocab_size")).as_i64().unwrap() as usize,
+            dropout: 0.1, 
+            layer_norm_epsilon: 1e-5
+        }
+    }
 }
 
 
@@ -69,7 +83,7 @@ impl GPT2 {
     }
 
     pub fn from_gguf_file(gguf_file: &mut GGUFFile) {
-
+        let gpt_config = GPT2Config::gpt2_small();
         let wpe_tensor = Tensor::from_gguf_file(String::from("token_embd.weight"), gguf_file);
         let wte_tensor = Tensor::from_gguf_file(String::from("position_embd.weight"), gguf_file);
         let wpe = Embedding::from_tensor(wpe_tensor);
@@ -79,7 +93,7 @@ impl GPT2 {
         let block_count = block_count_value.as_i64().unwrap();
 
         for i in 0..block_count {
-            let block = GPT2Block::from_gguf_file(gguf_file, i);
+            let block = GPT2Block::from_gguf_file(gguf_file, i, &gpt_config);
         }
 
         

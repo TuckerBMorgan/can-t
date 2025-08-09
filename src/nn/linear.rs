@@ -19,6 +19,13 @@ impl Linear {
         Linear { weights, bias }
     }
 
+    pub fn from_tensors(weights: Tensor, bias: Option<Tensor>) -> Linear {
+        Linear {
+            weights,
+            bias
+        }
+    }   
+
     /// Creates a Linear layer from a GGUF file by loading weight and bias tensors
     /// # Arguments
     /// * `weight_tensor_name` - The name of the weight tensor in the GGUF file
