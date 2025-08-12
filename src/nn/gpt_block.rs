@@ -40,7 +40,7 @@ impl GPT2Block {
         }
     }
 
-    pub fn from_gguf_file(gguf_file: &mut GGUFFile, block_count: i64, gpt_config: &GPT2Config) {
+    pub fn from_gguf_file(gguf_file: &mut GGUFFile, block_count: i64, gpt_config: &GPT2Config) -> GPT2Block{
  
         let attention_norm_weight = format!("blk.{}.attn_norm.weight", block_count);
         let attention_norm_bias = format!("blk.{}.attn_norm.bias", block_count);
@@ -67,6 +67,13 @@ impl GPT2Block {
             Box::new(GELU::new()),
             Box::new(down_linear)
         ]);
+
+        GPT2Block {
+            layer_norm_1,
+            attention: multihead_attention,
+            layer_norm_2,
+            multi_layer_perceptron
+        }
 
     }
 }

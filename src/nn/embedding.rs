@@ -3,7 +3,7 @@ use crate::nn::*;
 use crate::utils::GGUFFile;
 
 pub struct Embedding {
-    weights: Tensor,
+    pub weights: Tensor,
 }
 
 impl Embedding {

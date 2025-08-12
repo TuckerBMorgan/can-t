@@ -27,8 +27,7 @@ impl GPT2Config {
     }
 
     pub fn from_gguf_file(gguf_file: &mut  GGUFFile) -> GPT2Config {
-
-
+        println!("{:?}", gguf_file.get_value(String::from("tokenizer.ggml.tokens")).as_array().unwrap());
         GPT2Config {
             vocab_size: 50257,
             embedding_dimensions: gguf_file.get_value(String::from("gpt2.embedding_length")).as_u64().unwrap() as usize,
@@ -82,21 +81,35 @@ impl GPT2 {
         }
     }
 
-    pub fn from_gguf_file(gguf_file: &mut GGUFFile) {
+    pub fn from_gguf_file(gguf_file: &mut GGUFFile) -> GPT2{
         let gpt_config = GPT2Config::gpt2_small();
-        let wpe_tensor = Tensor::from_gguf_file(String::from("token_embd.weight"), gguf_file);
-        let wte_tensor = Tensor::from_gguf_file(String::from("position_embd.weight"), gguf_file);
+        let wpe_tensor = Tensor::from_gguf_file(String::from("position_embd.weight"), gguf_file);
+        let wte_tensor = Tensor::from_gguf_file(String::from("token_embd.weight"), gguf_file);
         let wpe = Embedding::from_tensor(wpe_tensor);
         let wte = Embedding::from_tensor(wte_tensor);
 
         let block_count_value = gguf_file.get_value(String::from("gpt2.block_count"));
         let block_count = block_count_value.as_i64().unwrap();
 
+        let mut blocks  = vec![];
+
         for i in 0..block_count {
             let block = GPT2Block::from_gguf_file(gguf_file, i, &gpt_config);
+            blocks.push(block);
         }
-
+        let final_layer_norm = LayerNorm::from_gguf_file(gguf_file, String::from("output_norm.weight"), String::from("output_norm.bias"));
+        println!("{:?}", wte.weights.shape);
+        let wte_weights_reshapes_for_weight_tying = wte.weights.reshape(Shape::new(vec![gpt_config.embedding_dimensions, gpt_config.vocab_size]));
+        let final_head = Linear::from_tensors(wte_weights_reshapes_for_weight_tying, None);
         
+        GPT2 {
+            config: gpt_config,
+            wpe,
+            wte,
+            blocks,
+            final_layer_norm,
+            final_head
+        }
     }
 }
 
@@ -105,9 +118,12 @@ impl Model for GPT2 {
     fn forward(&mut self, input: Tensor) -> Tensor {
 
         let seq_length = input.shape.dimensions()[1];
-        let position_ids = sinusoidal_position_encoding(seq_length, self.config.embedding_dimensions);        
+        let positional_ids = (0..seq_length).map(|x|x as f32).collect();
+        let positional_ids = Tensor::from_vec(positional_ids, vec![1, seq_length]);
+
         let token_embeddings = self.wte.forward(input);
-        let positional_embeddings = self.wpe.forward(position_ids);
+        let positional_embeddings = self.wpe.forward(positional_ids);
+
         let mut hidden_states = token_embeddings + positional_embeddings;
 
         for block in &mut self.blocks {
@@ -117,7 +133,6 @@ impl Model for GPT2 {
         hidden_states = self.final_layer_norm.forward(hidden_states);
 
         self.final_head.forward(hidden_states)
-
     }
 
     fn get_parameters(&self) -> Vec<TensorID> {
@@ -138,7 +153,7 @@ impl Model for GPT2 {
 
 #[cfg(test)]
 mod tests {
-    use crate::nn::{GPT2Config, GPT2};
+    use crate::nn::{GPT2Config, Model, GPT2};
     use crate::central::*;
     use crate::utils::GGUFFile;
 
@@ -146,5 +161,8 @@ mod tests {
     fn basic_test() {
         let mut gguf_file = GGUFFile::new(String::from("./models/tests/gpt2/Gpt2-124M-F16.gguf"));
         let mut gpt2 = GPT2::from_gguf_file(&mut gguf_file);
+        let mut input = Tensor::ones(Shape::new(vec![1, 10]));
+        let output = gpt2.forward(input);
+        println!("{:?}", output.item());
     }
 }

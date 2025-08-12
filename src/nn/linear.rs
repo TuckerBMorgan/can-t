@@ -36,7 +36,9 @@ impl Linear {
         bias_tensor_name: Option<String>,
         gguf_file: &mut GGUFFile,
     ) -> Linear {
-        let mut weights = Tensor::from_gguf_file(weight_tensor_name, gguf_file);
+        let weights = Tensor::from_gguf_file(weight_tensor_name, gguf_file);
+        // GGUF saves linear layers in pytorch format, which is inverse from cant
+        let mut weights = weights.transpose(0, 1);
         weights.set_requires_grad(true);
 
         let mut bias = None;

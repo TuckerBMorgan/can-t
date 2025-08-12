@@ -51,9 +51,9 @@ impl MultiHeadAttention {
         let qkv = Tensor::from_gguf_file(format!("blk.{}.attn_qkv.weight", block_count), gguf_file);
         // Split along axis 1 (output dimension) at embed_dim intervals
         let qkv_item = qkv.item();
-        let embed_dim = qkv_item.shape()[1] / 3;
-        let (q_array, kv_array) = qkv_item.view().split_at(Axis(1), embed_dim);
-        let (k_array, v_array) = kv_array.split_at(Axis(1), embed_dim);
+        let embed_dim = qkv_item.shape()[0] / 3;
+        let (q_array, kv_array) = qkv_item.view().split_at(Axis(0), embed_dim);
+        let (k_array, v_array) = kv_array.split_at(Axis(0), embed_dim);
 
         // Convert back to Tensors
         let mut q_tensor = Tensor::from_vec(q_array.to_owned().into_raw_vec(), q_array.shape().to_vec());
@@ -82,10 +82,10 @@ impl MultiHeadAttention {
         k_bias.set_requires_grad(true);
         let mut v_bias = Tensor::from_vec(v_b.to_owned().into_raw_vec(), vec![embed_dim]);
         v_bias.set_requires_grad(true);
-
+        let head_dimension = embed_dim / config.number_of_heads;
         MultiHeadAttention {
             number_of_heads: config.number_of_heads,
-            head_dimension: config.number_of_heads,
+            head_dimension: head_dimension,
             scale: 1.0 / (config.number_of_heads as f32).sqrt(),
             query_projection: Linear::from_tensors(q_tensor, Some(q_bias)),
             key_projection: Linear::from_tensors(k_tensor, Some(k_bias)),
@@ -109,11 +109,11 @@ impl Layer for MultiHeadAttention {
         let sequence_length = inputs.shape.dimensions()[1];
         let embeding_dimensions = inputs.shape.dimensions()[2];
 
-        // Calculate the Q, K, V 
+        // Calculate the Q, K, V         
         let query = self.query_projection.forward(inputs);
         let key = self.key_projection.forward(inputs);
         let value = self.value_projection.forward(inputs);
-
+        
         let query = query.reshape(Shape::new(vec![batch_size, sequence_length, self.number_of_heads, self.head_dimension]));
         let key = key.reshape(Shape::new(vec![batch_size, sequence_length, self.number_of_heads, self.head_dimension]));
         let value = value.reshape(Shape::new(vec![batch_size, sequence_length, self.number_of_heads, self.head_dimension]));
