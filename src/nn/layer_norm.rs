@@ -61,7 +61,7 @@ impl Layer for LayerNorm {
         let normalized = centered / std_dev;
 
         // Finally add in our learneable parameters
-        let output = normalized * self.weight + self.bias;
+        let output = (normalized * self.weight) + self.bias;
         return output;
     }
 

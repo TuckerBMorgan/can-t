@@ -2,15 +2,19 @@
 use crate::central::*;
 use crate::nn::*;
 use crate::utils::GGUFFile;
+use rust_tokenizers::tokenizer::{Gpt2Tokenizer, Tokenizer};
+
+
+
 #[derive(Copy, Clone)]
 pub struct GPT2Config {
-    pub vocab_size: usize,
-    pub embedding_dimensions: usize,
-    pub number_of_layers: usize,
-    pub number_of_heads: usize,
-    pub number_of_positions: usize,
-    pub dropout: f32,
-    pub layer_norm_epsilon: f32
+    pub vocab_size: usize, // The number of tokens, from tokenization of the corpus
+    pub embedding_dimensions: usize, // the size of the learned representation of the vocab
+    pub number_of_layers: usize, // The number of blocks
+    pub number_of_heads: usize, // How many heads per Transofmer
+    pub number_of_positions: usize, // 
+    pub dropout: f32, // Rate of dropout(note used)
+    pub layer_norm_epsilon: f32 // how much we add to the denomnators of part of layer norm to avoid a div by 0
 }
 
 impl GPT2Config {
@@ -97,8 +101,9 @@ impl GPT2 {
             let block = GPT2Block::from_gguf_file(gguf_file, i, &gpt_config);
             blocks.push(block);
         }
+        
         let final_layer_norm = LayerNorm::from_gguf_file(gguf_file, String::from("output_norm.weight"), String::from("output_norm.bias"));
-        println!("{:?}", wte.weights.shape);
+
         let wte_weights_reshapes_for_weight_tying = wte.weights.reshape(Shape::new(vec![gpt_config.embedding_dimensions, gpt_config.vocab_size]));
         let final_head = Linear::from_tensors(wte_weights_reshapes_for_weight_tying, None);
         
@@ -120,18 +125,19 @@ impl Model for GPT2 {
         let seq_length = input.shape.dimensions()[1];
         let positional_ids = (0..seq_length).map(|x|x as f32).collect();
         let positional_ids = Tensor::from_vec(positional_ids, vec![1, seq_length]);
-
         let token_embeddings = self.wte.forward(input);
         let positional_embeddings = self.wpe.forward(positional_ids);
 
         let mut hidden_states = token_embeddings + positional_embeddings;
+
 
         for block in &mut self.blocks {
             hidden_states = block.forward(hidden_states);
         }
 
         hidden_states = self.final_layer_norm.forward(hidden_states);
-
+        println!("{:?}", hidden_states.item());
+        panic!("");
         self.final_head.forward(hidden_states)
     }
 
@@ -156,13 +162,67 @@ mod tests {
     use crate::nn::{GPT2Config, Model, GPT2};
     use crate::central::*;
     use crate::utils::GGUFFile;
-
+    use ndarray::Axis;
+    
     #[test]
     fn basic_test() {
         let mut gguf_file = GGUFFile::new(String::from("./models/tests/gpt2/Gpt2-124M-F16.gguf"));
         let mut gpt2 = GPT2::from_gguf_file(&mut gguf_file);
-        let mut input = Tensor::ones(Shape::new(vec![1, 10]));
+        let test_text = "I play the Game Boy Game";
+
+        let bpe_builder = BPE::from_file("./data/tokenizers/gpt2/vocab.json", "./data/tokenizers/gpt2/merges.txt");
+        let bpe = bpe_builder
+            //.unk_token("[UNK]".into())
+            .build().unwrap();
+
+        let tokenizer = Tokenizer::new(bpe);
+        let encoding = tokenizer.encode(test_text, false).unwrap();
+        let input = Tensor::from_vec(encoding.get_ids().to_vec().iter().map(|x|*x as f32).collect(), vec![1, encoding.get_ids().to_vec().len()]);
+
         let output = gpt2.forward(input);
-        println!("{:?}", output.item());
+
+
+
+        let arr = output.item();
+        // Get the index of the max along the last axis
+
+        let test = arr.rows();
+        let mut indices = vec![];
+        for row in test {
+            let mut index = 0;
+            let mut current = std::f32::NEG_INFINITY;
+            let mut counter = 0;
+            for element in row {
+                counter += 1;
+                if *element > current {
+                    current = *element;
+                    index = counter;
+                }
+            }
+            println!("{:?}", current);
+            indices.push(index);
+        }
+        println!("{:?}", indices)
+
+    }
+
+    use tokenizers::tokenizer::{Result, Tokenizer, EncodeInput};
+    use tokenizers::models::bpe::BPE;
+
+    #[test]
+    fn tokenizer_test() -> Result<()> {
+        let bpe_builder = BPE::from_file("./data/tokenizers/gpt2/vocab.json", "./data/tokenizers/gpt2/merges.txt");
+        let bpe = bpe_builder
+            .dropout(0.1)
+            //.unk_token("[UNK]".into())
+            .build()?;
+
+        let mut tokenizer = Tokenizer::new(bpe);
+
+        let encoding = tokenizer.encode("Hey there!", false)?;
+        println!("{:?}", encoding.get_tokens());
+        println!("{:?}", encoding.get_ids());
+        println!("{:?}", tokenizer.get_vocab(false).len());
+        Ok(())
     }
 }
