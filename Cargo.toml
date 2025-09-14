@@ -16,6 +16,7 @@ mnist = { version = "0.5", features = ["download"] }
 tiktoken-rs = "0.7.0"
 rust_tokenizers = "8.1.1"
 tokenizers = "*"
+regex = "*"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cant_metal = { path = "crates/cant_metal" }

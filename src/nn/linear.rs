@@ -3,8 +3,8 @@ use crate::nn::*;
 use crate::utils::GGUFFile;
 
 pub struct Linear {
-    weights: Tensor,
-    bias: Option<Tensor>,
+    pub weights: Tensor,
+    pub bias: Option<Tensor>,
 }
 
 impl Linear {
@@ -25,7 +25,6 @@ impl Linear {
             bias
         }
     }   
-
     /// Creates a Linear layer from a GGUF file by loading weight and bias tensors
     /// # Arguments
     /// * `weight_tensor_name` - The name of the weight tensor in the GGUF file
@@ -36,7 +35,7 @@ impl Linear {
         bias_tensor_name: Option<String>,
         gguf_file: &mut GGUFFile,
     ) -> Linear {
-        let weights = Tensor::from_gguf_file(weight_tensor_name, gguf_file);
+        let mut weights = Tensor::from_gguf_file(weight_tensor_name, gguf_file);
         // GGUF saves linear layers in pytorch format, which is inverse from cant
         let mut weights = weights.transpose(0, 1);
         weights.set_requires_grad(true);
@@ -54,7 +53,7 @@ impl Linear {
 
 impl Layer for Linear {
     fn forward(&mut self, inputs: Tensor) -> Tensor {
-        let output = inputs << self.weights; //.transpose(0, 1);
+        let output = inputs << self.weights;//.transpose(0, 1);
         match &self.bias {
             Some(bias) => output + *bias,
             None => output,

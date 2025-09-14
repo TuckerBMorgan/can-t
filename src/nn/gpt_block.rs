@@ -80,27 +80,36 @@ impl GPT2Block {
 
 impl Layer for GPT2Block {
     fn forward(&mut self, inputs: Tensor) -> Tensor {
+        // ----- block index for printing -----
+    
+        // LayerNorm 1
+        let layer_norm_1 = self.layer_norm_1.forward(inputs.clone());
 
-        // Get the first layer norm out of the way
-        let layer_norm_1 = self.layer_norm_1.forward(inputs);
-        // Create the mask for this pass of the network
-        let dimensions = inputs.shape.dimensions();
-        let seq_len = dimensions[1];
-
+    
+        // causal mask for attention
+        let seq_len = inputs.shape.dimensions()[1];
         let mask = causal_mask(seq_len);
         self.attention.set_mask(mask);
- 
-        // attention and residual
-        let attended = self.attention.forward(layer_norm_1);
+    
+        // Attention output (after c_attn, attn, and c_proj in HF)
+        let attn_out = self.attention.forward(layer_norm_1);
+        // b{i}_ln2_in : residual add after attention
+        let ln2_in: Tensor = inputs + attn_out;
 
-        let inputs: Tensor = inputs + attended;
+        
+    
+        // LayerNorm 2
+        let ln2_out = self.layer_norm_2.forward(ln2_in.clone());
 
-        // Second layer norm and the MLP
-        let layer_norm_2 = self.layer_norm_2.forward(inputs);
-        let mlp: Tensor = self.multi_layer_perceptron.forward(layer_norm_2);
-        // second residual
-        inputs + mlp
+        // MLP (c_fc -> act -> c_proj in HF); we print final projection
+        let mlp_proj: Tensor = self.multi_layer_perceptron.forward(ln2_out);
+//        let test = ln2_out << self.multi_layer_perceptron.weights;
+       // panic!("-- {:?}", mlp_proj.item());    
+        // Block output: residual add after MLP
+        let out = ln2_in + mlp_proj;
+        out
     }
+    
 
     fn get_parameters(&self) -> Vec<TensorID> {
         let mut parameters =  vec![];

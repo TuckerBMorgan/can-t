@@ -11,6 +11,7 @@ mod scaled_dot_project_attention;
 mod embedding;
 mod gelu;
 mod gpt2;
+mod bpe_tokenizer;
 
 pub use gpt_block::*;
 pub use layer::*;
@@ -25,3 +26,4 @@ pub use scaled_dot_project_attention::*;
 pub use embedding::*;
 pub use gelu::*;
 pub use gpt2::*;
+pub use bpe_tokenizer::*;

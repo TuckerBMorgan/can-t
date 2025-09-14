@@ -89,7 +89,7 @@ impl GPT2 {
         let gpt_config = GPT2Config::gpt2_small();
         let wpe_tensor = Tensor::from_gguf_file(String::from("position_embd.weight"), gguf_file);
         let wte_tensor = Tensor::from_gguf_file(String::from("token_embd.weight"), gguf_file);
-        let wpe = Embedding::from_tensor(wpe_tensor);
+        let wpe: Embedding = Embedding::from_tensor(wpe_tensor);
         let wte = Embedding::from_tensor(wte_tensor);
 
         let block_count_value = gguf_file.get_value(String::from("gpt2.block_count"));
@@ -104,7 +104,8 @@ impl GPT2 {
         
         let final_layer_norm = LayerNorm::from_gguf_file(gguf_file, String::from("output_norm.weight"), String::from("output_norm.bias"));
 
-        let wte_weights_reshapes_for_weight_tying = wte.weights.reshape(Shape::new(vec![gpt_config.embedding_dimensions, gpt_config.vocab_size]));
+        let wte_weights_reshapes_for_weight_tying = wte.weights.reshape(Shape::new(vec![gpt_config.vocab_size, gpt_config.embedding_dimensions]));
+        let wte_weights_reshapes_for_weight_tying = wte_weights_reshapes_for_weight_tying.transpose(0, 1);
         let final_head = Linear::from_tensors(wte_weights_reshapes_for_weight_tying, None);
         
         GPT2 {
@@ -121,24 +122,30 @@ impl GPT2 {
 impl Model for GPT2 {
 
     fn forward(&mut self, input: Tensor) -> Tensor {
-
+        // --- position ids: GPT-2 expects integer indices starting at 0 ---
         let seq_length = input.shape.dimensions()[1];
-        let positional_ids = (0..seq_length).map(|x|x as f32).collect();
-        let positional_ids = Tensor::from_vec(positional_ids, vec![1, seq_length]);
+        // If your Tensor::from_vec needs i64 (HF uses int64), use that; adjust if your type differs.
+        let position_ids: Vec<f32> = (0..seq_length).map(|x| x as f32).collect();
+        let position_ids = Tensor::from_vec(position_ids, vec![1, seq_length]);
+    
+        // --- embeddings ---
         let token_embeddings = self.wte.forward(input);
-        let positional_embeddings = self.wpe.forward(positional_ids);
 
+    
+        let positional_embeddings = self.wpe.forward(position_ids);
+    
+        // Sum embeddings (HF calls the tensor after dropout 'hidden_states'; in eval dropout is identity)
         let mut hidden_states = token_embeddings + positional_embeddings;
-
-
-        for block in &mut self.blocks {
+    
+        // --- transformer blocks ---
+        for (i, block) in self.blocks.iter_mut().enumerate() {
             hidden_states = block.forward(hidden_states);
+    
         }
-
+        
         hidden_states = self.final_layer_norm.forward(hidden_states);
-        println!("{:?}", hidden_states.item());
-        panic!("");
-        self.final_head.forward(hidden_states)
+        let logits = self.final_head.forward(hidden_states);
+        logits
     }
 
     fn get_parameters(&self) -> Vec<TensorID> {
@@ -164,11 +171,16 @@ mod tests {
     use crate::utils::GGUFFile;
     use ndarray::Axis;
     
+    fn decode_gpt2_tokens(s: &str) -> String {
+        s.replace("Ġ", " ")
+         .replace("Ċ", "\n")
+    }
+
     #[test]
     fn basic_test() {
         let mut gguf_file = GGUFFile::new(String::from("./models/tests/gpt2/Gpt2-124M-F16.gguf"));
         let mut gpt2 = GPT2::from_gguf_file(&mut gguf_file);
-        let test_text = "I play the Game Boy Game";
+        let test_text = "A";
 
         let bpe_builder = BPE::from_file("./data/tokenizers/gpt2/vocab.json", "./data/tokenizers/gpt2/merges.txt");
         let bpe = bpe_builder
@@ -176,34 +188,38 @@ mod tests {
             .build().unwrap();
 
         let tokenizer = Tokenizer::new(bpe);
-        let encoding = tokenizer.encode(test_text, false).unwrap();
-        let input = Tensor::from_vec(encoding.get_ids().to_vec().iter().map(|x|*x as f32).collect(), vec![1, encoding.get_ids().to_vec().len()]);
 
-        let output = gpt2.forward(input);
-
-
-
-        let arr = output.item();
-        // Get the index of the max along the last axis
-
-        let test = arr.rows();
-        let mut indices = vec![];
-        for row in test {
-            let mut index = 0;
-            let mut current = std::f32::NEG_INFINITY;
-            let mut counter = 0;
-            for element in row {
-                counter += 1;
-                if *element > current {
-                    current = *element;
-                    index = counter;
+        let mut test_text = String::from("A");
+        
+        for _ in 0..30 {
+            println!("input {:?}", test_text);
+            let encoding = tokenizer.encode(test_text.clone(), false).unwrap();
+            let input = Tensor::from_vec(encoding.get_ids().to_vec().iter().map(|x|*x as f32).collect(), vec![1, encoding.get_ids().to_vec().len()]);
+    
+            let output = gpt2.forward(input);
+    
+            let arr = output.item();
+            // Get the index of the max along the last axis
+    
+            let test = arr.rows();
+            let mut indices = vec![];
+            for row in test {
+                let mut index = 0;
+                let mut current = std::f32::NEG_INFINITY;
+                
+                for (i, element) in row.iter().enumerate() {
+                    if *element > current {
+                        current = *element;
+                        index = i; // correct 0-based index
+                    }
                 }
-            }
-            println!("{:?}", current);
-            indices.push(index);
+                indices.push(index as u32);
+            }   
+    
+            println!("{:?}", decode_gpt2_tokens(&tokenizer.decode(&indices, true).unwrap()));
+            let a = [indices[&indices.len() - 1]];
+            test_text = test_text.to_owned() +  &String::from(tokenizer.decode(&a, true).unwrap());
         }
-        println!("{:?}", indices)
-
     }
 
     use tokenizers::tokenizer::{Result, Tokenizer, EncodeInput};

@@ -4,6 +4,26 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::hash::Hash;
 use std::io::prelude::*;
+#[repr(u32)]
+#[derive(Copy, Clone)]
+enum GgmlType {
+    F32 = 0,
+    F16 = 1,
+    // ... many others
+    // match your GGUF spec version
+}
+
+impl TryFrom<u32> for GgmlType {
+    type Error = anyhow::Error;
+    fn try_from(value: u32) -> Result<Self> {
+        match value {
+            0 => Ok(GgmlType::F32),
+            1 => Ok(GgmlType::F16),
+            _ => Err(anyhow!("Unsupported ggml type id {}", value)),
+        }
+    }
+}
+
 
 #[derive(Debug)]
 pub enum MetadataValueType {
@@ -160,14 +180,16 @@ pub struct TensorMetaData {
     name: String,
     pub dimensions: Vec<usize>,
     offset: u64,
+    data_type: GgmlType
 }
 
 impl TensorMetaData {
-    pub fn new(name: String, dimensions: Vec<usize>, offset: u64) -> TensorMetaData {
+    pub fn new(name: String, dimensions: Vec<usize>, offset: u64, data_type: GgmlType) -> TensorMetaData {
         TensorMetaData {
             name,
             dimensions,
             offset,
+            data_type
         }
     }
 }
@@ -263,10 +285,10 @@ impl GGUFFile {
                 dimensions.push(dimension as usize);
             }
 
-            let _tensor_type = read_u32(&mut f);
+            let tensor_type = read_u32(&mut f);
             let offset = read_u64(&mut f);
             dimensions.reverse();
-            let tensor = TensorMetaData::new(tensor_name.clone(), dimensions, offset);
+            let tensor = TensorMetaData::new(tensor_name.clone(), dimensions, offset, GgmlType::try_from(tensor_type).unwrap());
             tensors.insert(tensor_name, tensor);
         }
         let position = f.stream_position().unwrap();
@@ -293,28 +315,69 @@ impl GGUFFile {
 
     pub fn get_weight_for_tensor(&self, name: String) -> Vec<f32> {
         let tensor_meta_data = &self.tensors[&name];
-
-        // open the file and move the seek position to the start of the data porition + the offset
-        // offset is relative to the data_start
-        let mut f = File::open(self.path.as_str()).unwrap();
-        let _ = f.seek(std::io::SeekFrom::Start(
-            self.data_start + tensor_meta_data.offset,
-        ));
-        let mut count_of_data = 1;
+    
+        // open the file and move the seek position to the start of the data portion + the offset
+        let mut f = std::fs::File::open(self.path.as_str()).unwrap();
+        let _ = f.seek(std::io::SeekFrom::Start(self.data_start + tensor_meta_data.offset));
+    
+        // element count
+        let mut count_of_data = 1usize;
         for d in &tensor_meta_data.dimensions {
-            count_of_data *= d;
+            count_of_data *= *d;
         }
-
-        // The data is stored as u8, so we need to read in 4 times the count of data
-        // as each f32 is a u8
-        let mut data = vec![0; (count_of_data * 4) as usize];
-
-        let _result = f.read_exact(&mut data);
-
-        return data
-            .chunks(4)
-            .map(|chunks| f32::from_le_bytes([chunks[0], chunks[1], chunks[2], chunks[3]]))
-            .collect();
+    
+        // local converter: IEEE-754 half (f16) -> f32
+        let f16_to_f32 = |h: u16| -> f32 {
+            let sign = ((h >> 15) & 0x1) as u32;
+            let exp  = ((h >> 10) & 0x1f) as i32;
+            let frac = (h & 0x03ff) as u32;
+    
+            let bits: u32 = if exp == 0 {
+                if frac == 0 {
+                    // zero
+                    sign << 31
+                } else {
+                    // subnormal -> normalize
+                    let mut f = frac;
+                    let mut e = -14; // exponent for subnormals in f16
+                    while (f & 0x0400) == 0 {
+                        f <<= 1;
+                        e -= 1;
+                    }
+                    f &= 0x03ff;
+                    let exp32 = (e + 127) as u32;
+                    (sign << 31) | (exp32 << 23) | (f << 13)
+                }
+            } else if exp == 31 {
+                // inf/NaN
+                (sign << 31) | (0xff << 23) | (frac << 13)
+            } else {
+                // normal
+                let exp32 = (exp - 15 + 127) as u32;
+                (sign << 31) | (exp32 << 23) | (frac << 13)
+            };
+            f32::from_bits(bits)
+        };
+    
+        match tensor_meta_data.data_type {
+            GgmlType::F16 => {
+                let mut data = vec![0u8; count_of_data * 2];
+                let _ = f.read_exact(&mut data);
+                data.chunks_exact(2)
+                    .map(|c| {
+                        let bits = u16::from_le_bytes([c[0], c[1]]);
+                        f16_to_f32(bits)
+                    })
+                    .collect()
+            }
+            GgmlType::F32 => {
+                let mut data = vec![0u8; count_of_data * 4];
+                let _ = f.read_exact(&mut data);
+                data.chunks_exact(4)
+                    .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+                    .collect()
+            }
+        }
     }
 }
 

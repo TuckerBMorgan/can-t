@@ -44,57 +44,81 @@ impl MultiHeadAttention {
     }
 
     pub fn from_gguf_file(gguf_file: &mut GGUFFile, block_count: i64, config: &GPT2Config) -> MultiHeadAttention {
+        // ---- output projection (c_proj) ----
         let attn_output_weight = format!("blk.{}.attn_output.weight", block_count);
-        let attn_output_bias = format!("blk.{}.attn_output.bias", block_count);
+        let attn_output_bias   = format!("blk.{}.attn_output.bias", block_count);
         let output_project = Linear::from_gguf_file(attn_output_weight, Some(attn_output_bias), gguf_file);
-
-        let qkv = Tensor::from_gguf_file(format!("blk.{}.attn_qkv.weight", block_count), gguf_file);
-        // Split along axis 1 (output dimension) at embed_dim intervals
+    
+        // ---- fused QKV weight & bias (c_attn) ----
+        let qkv: Tensor = Tensor::from_gguf_file(format!("blk.{}.attn_qkv.weight", block_count), gguf_file);
+        let b:   Tensor = Tensor::from_gguf_file(format!("blk.{}.attn_qkv.bias",   block_count), gguf_file);
+    
         let qkv_item = qkv.item();
-        let embed_dim = qkv_item.shape()[0] / 3;
-        let (q_array, kv_array) = qkv_item.view().split_at(Axis(0), embed_dim);
-        let (k_array, v_array) = kv_array.split_at(Axis(0), embed_dim);
-
-        // Convert back to Tensors
-        let mut q_tensor = Tensor::from_vec(q_array.to_owned().into_raw_vec(), q_array.shape().to_vec());
-        q_tensor.set_requires_grad(true);
-        let mut k_tensor = Tensor::from_vec(k_array.to_owned().into_raw_vec(), k_array.shape().to_vec());
-        k_tensor.set_requires_grad(true);
-        let mut v_tensor = Tensor::from_vec(v_array.to_owned().into_raw_vec(), v_array.shape().to_vec());
-        v_tensor.set_requires_grad(true);
-
-        let b = Tensor::from_gguf_file(format!("blk.{}.attn_qkv.bias", block_count), gguf_file);
-        let b_item = b.item();
+        let b_item   = b.item();
         assert!(b_item.ndim() == 1, "qkv bias should be 1-D");
-        
+    
         let total = b_item.shape()[0];
         assert!(total % 3 == 0, "qkv bias length not divisible by 3");
         let embed_dim = total / 3;
-        
-        // Split the flat vector
-        let (q_b, kv_b) = b_item.view().split_at(Axis(0), embed_dim);
-        let (k_b, v_b)  = kv_b.split_at(Axis(0), embed_dim);
-        
-        // Back to Tensors (no need to add a fake dimension)
-        let mut q_bias = Tensor::from_vec(q_b.to_owned().into_raw_vec(), vec![embed_dim]);
-        q_bias.set_requires_grad(true);
-        let mut k_bias = Tensor::from_vec(k_b.to_owned().into_raw_vec(), vec![embed_dim]);
-        k_bias.set_requires_grad(true);
-        let mut v_bias = Tensor::from_vec(v_b.to_owned().into_raw_vec(), vec![embed_dim]);
-        v_bias.set_requires_grad(true);
+    
+        // Decide split axis by matching out_features == bias length:
+        // - If qkv.shape()[0] == 3*embed_dim  -> rows are out_features -> split axis 0 (HF Conv1D style)
+        // - If qkv.shape()[1] == 3*embed_dim  -> cols are out_features -> split axis 1
+        // - Else it's an unexpected layout.
+        let shape = qkv_item.shape();
+        let (q_mat, k_mat, v_mat) = if shape[0] == total {
+            // Split rows: [3*E, E_in] -> [E, E_in] x3
+            let (q_arr, kv_arr) = qkv_item.view().split_at(ndarray::Axis(0), embed_dim);
+            let (k_arr, v_arr)  = kv_arr.split_at(ndarray::Axis(0), embed_dim);
+            (
+                Tensor::from_vec(q_arr.to_owned().into_raw_vec(), q_arr.shape().to_vec()),
+                Tensor::from_vec(k_arr.to_owned().into_raw_vec(), k_arr.shape().to_vec()),
+                Tensor::from_vec(v_arr.to_owned().into_raw_vec(), v_arr.shape().to_vec()),
+            )
+        } else if shape.len() == 2 && shape[1] == total {
+            // Split cols: [E_in, 3*E] -> [E_in, E] x3
+            let (q_arr, kv_arr) = qkv_item.view().split_at(ndarray::Axis(1), embed_dim);
+            let (k_arr, v_arr)  = kv_arr.split_at(ndarray::Axis(1), embed_dim);
+            (
+                Tensor::from_vec(q_arr.to_owned().into_raw_vec(), q_arr.shape().to_vec()),
+                Tensor::from_vec(k_arr.to_owned().into_raw_vec(), k_arr.shape().to_vec()),
+                Tensor::from_vec(v_arr.to_owned().into_raw_vec(), v_arr.shape().to_vec()),
+            )
+        } else {
+            panic!("Unexpected QKV weight shape {:?} vs bias len {}", shape, total);
+        };
+    
+        // Split bias the straightforward way (flat vector of length 3*E)
+        let (q_b, kv_b) = b_item.view().split_at(ndarray::Axis(0), embed_dim);
+        let (k_b, v_b)  = kv_b.split_at(ndarray::Axis(0), embed_dim);
+    
+        let q_bias = Tensor::from_vec(q_b.to_owned().into_raw_vec(), vec![embed_dim]);
+        let k_bias = Tensor::from_vec(k_b.to_owned().into_raw_vec(), vec![embed_dim]);
+        let v_bias = Tensor::from_vec(v_b.to_owned().into_raw_vec(), vec![embed_dim]);
+    
+        // ---- heads & scaling ----
+        assert!(embed_dim % config.number_of_heads == 0, "embed_dim must be divisible by n_heads");
         let head_dimension = embed_dim / config.number_of_heads;
+    
+        // ❗ Correct scale is 1 / sqrt(head_dim), not sqrt(n_heads)
+        let scale = 1.0f32 / (head_dimension as f32).sqrt();
+        let q_mat = q_mat.transpose(0, 1);
+        let k_mat = k_mat.transpose(0, 1);
+        let v_mat = v_mat.transpose(0, 1);
+
         MultiHeadAttention {
             number_of_heads: config.number_of_heads,
-            head_dimension: head_dimension,
-            scale: 1.0 / (config.number_of_heads as f32).sqrt(),
-            query_projection: Linear::from_tensors(q_tensor, Some(q_bias)),
-            key_projection: Linear::from_tensors(k_tensor, Some(k_bias)),
-            value_projection: Linear::from_tensors(v_tensor, Some(v_bias)),
-            out_projections: output_project,
-            scaled_dot_project_attention: ScaledDotProductAttention::new(1.0 / (config.number_of_heads as f32).sqrt()),
-            mask: None
+            head_dimension,
+            scale, // keep if you use it outside SDPA
+            query_projection: Linear::from_tensors(q_mat, Some(q_bias)),
+            key_projection:   Linear::from_tensors(k_mat, Some(k_bias)),
+            value_projection: Linear::from_tensors(v_mat, Some(v_bias)),
+            out_projections:  output_project,
+            scaled_dot_project_attention: ScaledDotProductAttention::new(scale),
+            mask: None,
         }
     }
+    
 
     pub fn set_mask(&mut self, mask: Tensor) {
         self.mask = Some(mask);
@@ -109,10 +133,11 @@ impl Layer for MultiHeadAttention {
         let sequence_length = inputs.shape.dimensions()[1];
         let embeding_dimensions = inputs.shape.dimensions()[2];
 
-        // Calculate the Q, K, V         
+        // Calculate the Q, K, V
         let query = self.query_projection.forward(inputs);
         let key = self.key_projection.forward(inputs);
         let value = self.value_projection.forward(inputs);
+
         
         let query = query.reshape(Shape::new(vec![batch_size, sequence_length, self.number_of_heads, self.head_dimension]));
         let key = key.reshape(Shape::new(vec![batch_size, sequence_length, self.number_of_heads, self.head_dimension]));

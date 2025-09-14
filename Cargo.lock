@@ -129,6 +129,7 @@ dependencies = [
  "ndarray",
  "rand 0.8.5",
  "rand_distr",
+ "regex",
  "rust_tokenizers",
  "serde",
  "serde_json",
