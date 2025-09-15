@@ -10,12 +10,14 @@ impl Embedding {
     pub fn new(vocab_size: usize, embeding_dimensions: usize) -> Embedding {
         let mut weights = Tensor::randn(Shape::new(vec![vocab_size, embeding_dimensions]));
         weights.set_requires_grad(true);
+        weights.set_keep_alive(true);
         Embedding { 
             weights 
         }
     }
 
-    pub fn from_tensor(weights: Tensor) -> Embedding {
+    pub fn from_tensor(mut weights: Tensor) -> Embedding {
+        weights.set_keep_alive(true);
         Embedding { weights }
     }
 

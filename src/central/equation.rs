@@ -81,7 +81,7 @@ impl Equation {
         &mut self,
         shape: Shape,
         data: Vec<f32>,
-        operation: Operation,
+        operation: Operation
     ) -> TensorID {
         let id = self.allocate_tensor_id();
         let total_size = shape.total_size();
@@ -629,4 +629,56 @@ impl Equation {
             .unwrap()
             .requires_grad = requires_grad;
     }
+
+
+    /// Helper function for setting the internal tensor to know if it needs gradient or not
+    /// # Arguments
+    /// 'tensor_id' : which Tensor we are setting
+    /// 'requires_grad' : what we are setting the bool too
+    pub fn set_keep_alive(&mut self, tensor_id: TensorID, keep_alive: bool) {
+        self.tensor_record
+            .get_mut(&tensor_id)
+            .unwrap()
+            .keep_alive = keep_alive;
+    }
+
+    pub fn compact_tensor_store(&mut self) {
+        let mut new_data_store = Vec::with_capacity(self.data.len());
+        let mut new_grad_store = Vec::with_capacity(self.grad.len());
+        let mut offset_map = HashMap::new();
+    
+        for tensor in self.tensor_record.values_mut().filter(|t| t.keep_alive) {
+            let size = tensor.shape.total_size();
+    
+            // Copy data
+            let data_slice = &self.data[tensor.data_start_index..tensor.data_start_index + size];
+            let grad_slice = &&self.grad[tensor.grad_start_index..tensor.grad_start_index + size];
+    
+            let new_data_start = new_data_store.len();
+            new_data_store.extend_from_slice(data_slice);
+
+            let new_grad_start = new_grad_store.len();
+            new_grad_store.extend_from_slice(grad_slice);
+    
+            // Update tensor indices
+            tensor.data_start_index = new_data_start;
+            tensor.grad_start_index = new_grad_start;
+            tensor.keep_alive = true;
+    
+            offset_map.insert(tensor.id, tensor); // if needed
+        }
+    
+        // Replace data store
+        self.data = new_data_store;
+        self.grad = new_grad_store;
+    
+        // Remove tensors that were not copied
+        self.tensor_record.retain(|_, t| t.keep_alive);
+    }
+
+    pub fn garbage_collect(&mut self) {
+        self.compact_tensor_store();
+    }
+
+
 }

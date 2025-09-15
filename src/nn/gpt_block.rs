@@ -13,7 +13,8 @@ pub fn causal_mask(seq_len: usize) -> Tensor {
     }
     // Create mask with shape [1, 1, seq_len, seq_len] for proper broadcasting
     // across batch and head dimensions in multi-head attention
-    let mask = Tensor::from_vec(mask_data, vec![seq_len, seq_len]);
+    let mut mask = Tensor::from_vec(mask_data, vec![seq_len, seq_len]);
+    mask.set_keep_alive(true);
     mask.reshape(Shape::new(vec![1, 1, seq_len, seq_len]))
 }
 

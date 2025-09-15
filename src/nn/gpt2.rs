@@ -192,7 +192,6 @@ mod tests {
         let mut test_text = String::from("A");
         
         for _ in 0..30 {
-            println!("input {:?}", test_text);
             let encoding = tokenizer.encode(test_text.clone(), false).unwrap();
             let input = Tensor::from_vec(encoding.get_ids().to_vec().iter().map(|x|*x as f32).collect(), vec![1, encoding.get_ids().to_vec().len()]);
     
@@ -219,6 +218,7 @@ mod tests {
             println!("{:?}", decode_gpt2_tokens(&tokenizer.decode(&indices, true).unwrap()));
             let a = [indices[&indices.len() - 1]];
             test_text = test_text.to_owned() +  &String::from(tokenizer.decode(&a, true).unwrap());
+            get_equation().garbage_collect();
         }
     }
 

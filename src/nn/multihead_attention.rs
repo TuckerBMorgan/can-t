@@ -92,9 +92,15 @@ impl MultiHeadAttention {
         let (q_b, kv_b) = b_item.view().split_at(ndarray::Axis(0), embed_dim);
         let (k_b, v_b)  = kv_b.split_at(ndarray::Axis(0), embed_dim);
     
-        let q_bias = Tensor::from_vec(q_b.to_owned().into_raw_vec(), vec![embed_dim]);
-        let k_bias = Tensor::from_vec(k_b.to_owned().into_raw_vec(), vec![embed_dim]);
-        let v_bias = Tensor::from_vec(v_b.to_owned().into_raw_vec(), vec![embed_dim]);
+        let mut q_bias = Tensor::from_vec(q_b.to_owned().into_raw_vec(), vec![embed_dim]);
+        q_bias.set_requires_grad(true);
+        q_bias.set_keep_alive(true);
+        let mut k_bias = Tensor::from_vec(k_b.to_owned().into_raw_vec(), vec![embed_dim]);
+        k_bias.set_requires_grad(true);
+        k_bias.set_keep_alive(true);
+        let mut v_bias = Tensor::from_vec(v_b.to_owned().into_raw_vec(), vec![embed_dim]);
+        v_bias.set_keep_alive(true);
+        v_bias.set_requires_grad(true);
     
         // ---- heads & scaling ----
         assert!(embed_dim % config.number_of_heads == 0, "embed_dim must be divisible by n_heads");
@@ -102,9 +108,15 @@ impl MultiHeadAttention {
     
         // ❗ Correct scale is 1 / sqrt(head_dim), not sqrt(n_heads)
         let scale = 1.0f32 / (head_dimension as f32).sqrt();
-        let q_mat = q_mat.transpose(0, 1);
-        let k_mat = k_mat.transpose(0, 1);
-        let v_mat = v_mat.transpose(0, 1);
+        let mut q_mat = q_mat.transpose(0, 1);
+        q_mat.set_requires_grad(true);
+        q_mat.set_keep_alive(true);
+        let mut k_mat = k_mat.transpose(0, 1);
+        k_mat.set_requires_grad(true);
+        k_mat.set_keep_alive(true);
+        let mut v_mat = v_mat.transpose(0, 1);
+        v_mat.set_requires_grad(true);
+        v_mat.set_keep_alive(true);
 
         MultiHeadAttention {
             number_of_heads: config.number_of_heads,

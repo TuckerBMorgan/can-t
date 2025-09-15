@@ -11,15 +11,22 @@ impl Linear {
     pub fn new(in_features: usize, out_features: usize, has_bias: bool) -> Linear {
         let mut weights = Tensor::randn(Shape::new(vec![in_features, out_features]));
         weights.set_requires_grad(true);
+        weights.set_keep_alive(true);
         let mut bias = None;
         if has_bias {
             bias = Some(Tensor::zeros(Shape::new(vec![out_features])));
             bias.as_mut().unwrap().set_requires_grad(true);
+            bias.as_mut().unwrap().set_keep_alive(true);
         }
         Linear { weights, bias }
     }
 
-    pub fn from_tensors(weights: Tensor, bias: Option<Tensor>) -> Linear {
+    pub fn from_tensors(mut weights: Tensor, mut bias: Option<Tensor>) -> Linear {
+        weights.set_keep_alive(true);
+        weights.set_requires_grad(true);
+        if bias.is_some() {
+            bias.as_mut().unwrap().set_keep_alive(true);
+        }
         Linear {
             weights,
             bias
@@ -39,11 +46,13 @@ impl Linear {
         // GGUF saves linear layers in pytorch format, which is inverse from cant
         let mut weights = weights.transpose(0, 1);
         weights.set_requires_grad(true);
+        weights.set_keep_alive(true);
 
         let mut bias = None;
         if let Some(bias_name) = bias_tensor_name {
             let mut bias_tensor = Tensor::from_gguf_file(bias_name, gguf_file);
             bias_tensor.set_requires_grad(true);
+            bias_tensor.set_keep_alive(true);
             bias = Some(bias_tensor);
         }
 

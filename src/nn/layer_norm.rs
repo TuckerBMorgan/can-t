@@ -11,17 +11,20 @@ impl LayerNorm {
     pub fn new(num_features: usize) -> Self {
         let mut weight = Tensor::ones(Shape::new(vec![num_features]));
         weight.set_requires_grad(true);
+        weight.set_keep_alive(true);
         let mut bias = Tensor::zeros(Shape::new(vec![num_features]));
         bias.set_requires_grad(true);
+        bias.set_keep_alive(true);
         LayerNorm { weight, bias }
     }
 
     pub fn from_gguf_file(gguf_file: &mut GGUFFile, weight_name: String, bias_name: String) -> LayerNorm {
         let mut weight = Tensor::from_gguf_file(weight_name, gguf_file);
         weight.set_requires_grad(true);
-  
+        weight.set_keep_alive(true);
         let mut bias = Tensor::from_gguf_file(bias_name, gguf_file);
         bias.set_requires_grad(true);
+        bias.set_keep_alive(true);
         LayerNorm {
             weight,
             bias

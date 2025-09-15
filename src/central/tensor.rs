@@ -18,6 +18,7 @@ pub struct InternalTensor {
     pub grad_start_index: usize, // where in equation.grad this tensors grad starts
     pub operation: Operation, // Ther operation that created this tensor, Nop for an allocation
     pub requires_grad: bool,
+    pub keep_alive: bool
 }
 
 impl InternalTensor {
@@ -27,7 +28,7 @@ impl InternalTensor {
         shape: Shape,
         data_start_index: usize,
         grad_start_index: usize,
-        operation: Operation,
+        operation: Operation
     ) -> InternalTensor {
         InternalTensor {
             id,
@@ -36,6 +37,7 @@ impl InternalTensor {
             grad_start_index,
             operation,
             requires_grad: false,
+            keep_alive: false
         }
     }
 
@@ -106,6 +108,7 @@ pub struct Tensor {
     pub shape: Shape, // The shape of the tensor
     operation: Operation, // The operation that created this Tensor(Nop for basic allocations)
     requires_grad: bool,
+    keep_alive: bool
 }
 
 impl Tensor {
@@ -119,6 +122,7 @@ impl Tensor {
             shape,
             operation: Operation::Nop,
             requires_grad: false,
+            keep_alive: false
         }
     }
 
@@ -148,6 +152,7 @@ impl Tensor {
             shape,
             operation: Operation::Nop,
             requires_grad: false,
+            keep_alive: false
         }
     }
 
@@ -161,6 +166,7 @@ impl Tensor {
             shape,
             operation: Operation::Nop,
             requires_grad: false,
+            keep_alive: false
         }
     }
 
@@ -175,6 +181,7 @@ impl Tensor {
             shape,
             operation: Operation::Nop,
             requires_grad: false,
+            keep_alive: false
         }
     }
 
@@ -188,6 +195,7 @@ impl Tensor {
             shape,
             operation: Operation::Nop,
             requires_grad: false,
+            keep_alive: false
         }
     }
 
@@ -223,6 +231,7 @@ impl Tensor {
             shape,
             operation: operation,
             requires_grad: false,
+            keep_alive: false
         };
     }
 
@@ -270,6 +279,13 @@ impl Tensor {
     pub fn set_requires_grad(&mut self, new_requires_grad: bool) {
         self.requires_grad = new_requires_grad;
         get_equation().set_is_grequires_grad(self.id, new_requires_grad);
+    }
+
+    /// Helper function to set the keep_alive bool, also sets the
+    /// internal tensor as well
+    pub fn set_keep_alive(&mut self, new_keep_alive: bool) {
+        self.keep_alive = new_keep_alive;
+        get_equation().set_keep_alive(self.id, new_keep_alive);
     }
 
     /// sends this node backwards though the network, adding to the grad of every node that feeds into this one
