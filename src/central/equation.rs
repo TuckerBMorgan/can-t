@@ -3,10 +3,10 @@ use std::collections::{HashMap, HashSet};
 use super::backward_for_matmul;
 use super::{
     InternalTensor, Operation, TensorID, add_op, cross_entropy_op, log, matmul_op, mean_op, mul_op,
-    pow_op, reshape, select_op, shape::*, std_op, sum_op, tanh_op, transpose_op,
+    pow_op, reshape, select_op, shape::*, std_op, sum_op, tanh_op, transpose_op, cos_op, sin_op
 };
 use crate::central::index::Indexable;
-use crate::central::{backwards_for_mask_fill, relu_op, softmax_op};
+use crate::central::{backward_for_clamp, backwards_for_mask_fill, relu_op, softmax_op, unsqueeze_op};
 use crate::utils::*;
 use ndarray::ArrayD;
 use ndarray::Axis;
@@ -19,7 +19,6 @@ use cant_cpu::prelude::*;
 use cant_cpu::prelude::*;
 
 //use cant_metal::prelude::*;
-
 
 /// A Struct used by the backpropagation functions to help collect common function arugumnets into a single place
 pub struct BackproagationPacket<'a> {
@@ -81,7 +80,7 @@ impl Equation {
         &mut self,
         shape: Shape,
         data: Vec<f32>,
-        operation: Operation
+        operation: Operation,
     ) -> TensorID {
         let id = self.allocate_tensor_id();
         let total_size = shape.total_size();
@@ -537,9 +536,21 @@ impl Equation {
             }
             Operation::RELU(_) => {
                 relu_op::backward_for_relu(packet);
-            },
+            }
             Operation::MaskFill(_, _, _) => {
                 backwards_for_mask_fill(packet);
+            }
+            Operation::Clamp(_, _, _) => {
+                backward_for_clamp(packet);
+            }
+            Operation::Cos(_) => {
+                cos_op::backward_for_cos(packet);
+            }
+            Operation::Sin(_) => {
+                sin_op::backward_for_sin(packet);
+            },
+            Operation::Unsqueeze(_, _) => {
+                unsqueeze_op::backward_for_unsqueeze(packet);
             }
         }
     }
@@ -630,48 +641,44 @@ impl Equation {
             .requires_grad = requires_grad;
     }
 
-
     /// Helper function for setting the internal tensor to know if it needs gradient or not
     /// # Arguments
     /// 'tensor_id' : which Tensor we are setting
     /// 'requires_grad' : what we are setting the bool too
     pub fn set_keep_alive(&mut self, tensor_id: TensorID, keep_alive: bool) {
-        self.tensor_record
-            .get_mut(&tensor_id)
-            .unwrap()
-            .keep_alive = keep_alive;
+        self.tensor_record.get_mut(&tensor_id).unwrap().keep_alive = keep_alive;
     }
 
     pub fn compact_tensor_store(&mut self) {
         let mut new_data_store = Vec::with_capacity(self.data.len());
         let mut new_grad_store = Vec::with_capacity(self.grad.len());
         let mut offset_map = HashMap::new();
-    
+
         for tensor in self.tensor_record.values_mut().filter(|t| t.keep_alive) {
             let size = tensor.shape.total_size();
-    
+
             // Copy data
             let data_slice = &self.data[tensor.data_start_index..tensor.data_start_index + size];
             let grad_slice = &&self.grad[tensor.grad_start_index..tensor.grad_start_index + size];
-    
+
             let new_data_start = new_data_store.len();
             new_data_store.extend_from_slice(data_slice);
 
             let new_grad_start = new_grad_store.len();
             new_grad_store.extend_from_slice(grad_slice);
-    
+
             // Update tensor indices
             tensor.data_start_index = new_data_start;
             tensor.grad_start_index = new_grad_start;
             tensor.keep_alive = true;
-    
+
             offset_map.insert(tensor.id, tensor); // if needed
         }
-    
+
         // Replace data store
         self.data = new_data_store;
         self.grad = new_grad_store;
-    
+
         // Remove tensors that were not copied
         self.tensor_record.retain(|_, t| t.keep_alive);
     }
@@ -679,6 +686,4 @@ impl Equation {
     pub fn garbage_collect(&mut self) {
         self.compact_tensor_store();
     }
-
-
 }

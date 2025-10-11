@@ -24,7 +24,6 @@ impl TryFrom<u32> for GgmlType {
     }
 }
 
-
 #[derive(Debug)]
 pub enum MetadataValueType {
     Uint8 = 0,
@@ -180,16 +179,21 @@ pub struct TensorMetaData {
     name: String,
     pub dimensions: Vec<usize>,
     offset: u64,
-    data_type: GgmlType
+    data_type: GgmlType,
 }
 
 impl TensorMetaData {
-    pub fn new(name: String, dimensions: Vec<usize>, offset: u64, data_type: GgmlType) -> TensorMetaData {
+    pub fn new(
+        name: String,
+        dimensions: Vec<usize>,
+        offset: u64,
+        data_type: GgmlType,
+    ) -> TensorMetaData {
         TensorMetaData {
             name,
             dimensions,
             offset,
-            data_type
+            data_type,
         }
     }
 }
@@ -288,7 +292,12 @@ impl GGUFFile {
             let tensor_type = read_u32(&mut f);
             let offset = read_u64(&mut f);
             dimensions.reverse();
-            let tensor = TensorMetaData::new(tensor_name.clone(), dimensions, offset, GgmlType::try_from(tensor_type).unwrap());
+            let tensor = TensorMetaData::new(
+                tensor_name.clone(),
+                dimensions,
+                offset,
+                GgmlType::try_from(tensor_type).unwrap(),
+            );
             tensors.insert(tensor_name, tensor);
         }
         let position = f.stream_position().unwrap();
@@ -297,7 +306,7 @@ impl GGUFFile {
         // to save us effort later, seek to the end of padding, and then save that cursor position
         // so when we want to read the weights of a tensor in, we know where to start
         f.seek_relative(padding as i64);
-    GGUFFile {
+        GGUFFile {
             path,
             tensors,
             key_value_pairs,
@@ -315,23 +324,25 @@ impl GGUFFile {
 
     pub fn get_weight_for_tensor(&self, name: String) -> Vec<f32> {
         let tensor_meta_data = &self.tensors[&name];
-    
+
         // open the file and move the seek position to the start of the data portion + the offset
         let mut f = std::fs::File::open(self.path.as_str()).unwrap();
-        let _ = f.seek(std::io::SeekFrom::Start(self.data_start + tensor_meta_data.offset));
-    
+        let _ = f.seek(std::io::SeekFrom::Start(
+            self.data_start + tensor_meta_data.offset,
+        ));
+
         // element count
         let mut count_of_data = 1usize;
         for d in &tensor_meta_data.dimensions {
             count_of_data *= *d;
         }
-    
+
         // local converter: IEEE-754 half (f16) -> f32
         let f16_to_f32 = |h: u16| -> f32 {
             let sign = ((h >> 15) & 0x1) as u32;
-            let exp  = ((h >> 10) & 0x1f) as i32;
+            let exp = ((h >> 10) & 0x1f) as i32;
             let frac = (h & 0x03ff) as u32;
-    
+
             let bits: u32 = if exp == 0 {
                 if frac == 0 {
                     // zero
@@ -358,7 +369,7 @@ impl GGUFFile {
             };
             f32::from_bits(bits)
         };
-    
+
         match tensor_meta_data.data_type {
             GgmlType::F16 => {
                 let mut data = vec![0u8; count_of_data * 2];
@@ -380,6 +391,3 @@ impl GGUFFile {
         }
     }
 }
-
-
-

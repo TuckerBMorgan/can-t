@@ -18,17 +18,16 @@ pub struct InternalTensor {
     pub grad_start_index: usize, // where in equation.grad this tensors grad starts
     pub operation: Operation, // Ther operation that created this tensor, Nop for an allocation
     pub requires_grad: bool,
-    pub keep_alive: bool
+    pub keep_alive: bool,
 }
 
 impl InternalTensor {
-
     pub fn new(
         id: TensorID,
         shape: Shape,
         data_start_index: usize,
         grad_start_index: usize,
-        operation: Operation
+        operation: Operation,
     ) -> InternalTensor {
         InternalTensor {
             id,
@@ -37,7 +36,7 @@ impl InternalTensor {
             grad_start_index,
             operation,
             requires_grad: false,
-            keep_alive: false
+            keep_alive: false,
         }
     }
 
@@ -94,11 +93,23 @@ impl InternalTensor {
             }
             Operation::RELU(source) => {
                 return vec![*source];
-            },
-            Operation::MaskFill(source, _, _) => {
-                return  vec![*source];
             }
-        }
+            Operation::MaskFill(source, _, _) => {
+                return vec![*source];
+            }
+            Operation::Clamp(source, _, _) => {
+                return vec![*source];
+            },
+            Operation::Cos(source) => {
+                return vec![*source];
+            },
+            Operation::Sin(source) => {
+                return vec![*source];
+            },
+            Operation::Unsqueeze(source, _) => {
+                return vec![*source];
+            }
+         }
     }
 }
 
@@ -108,7 +119,7 @@ pub struct Tensor {
     pub shape: Shape, // The shape of the tensor
     operation: Operation, // The operation that created this Tensor(Nop for basic allocations)
     requires_grad: bool,
-    keep_alive: bool
+    keep_alive: bool,
 }
 
 impl Tensor {
@@ -122,7 +133,7 @@ impl Tensor {
             shape,
             operation: Operation::Nop,
             requires_grad: false,
-            keep_alive: false
+            keep_alive: false,
         }
     }
 
@@ -152,7 +163,7 @@ impl Tensor {
             shape,
             operation: Operation::Nop,
             requires_grad: false,
-            keep_alive: false
+            keep_alive: false,
         }
     }
 
@@ -166,7 +177,7 @@ impl Tensor {
             shape,
             operation: Operation::Nop,
             requires_grad: false,
-            keep_alive: false
+            keep_alive: false,
         }
     }
 
@@ -181,7 +192,7 @@ impl Tensor {
             shape,
             operation: Operation::Nop,
             requires_grad: false,
-            keep_alive: false
+            keep_alive: false,
         }
     }
 
@@ -195,7 +206,7 @@ impl Tensor {
             shape,
             operation: Operation::Nop,
             requires_grad: false,
-            keep_alive: false
+            keep_alive: false,
         }
     }
 
@@ -206,6 +217,22 @@ impl Tensor {
     pub fn from_vec(data: Vec<f32>, shape_dims: Vec<usize>) -> Tensor {
         let shape = Shape::new(shape_dims);
         Self::create_tensor_data_and_shape_and_operation(shape, data, Operation::Nop)
+    }
+
+    /// Creates a tensor of a range of elemenbts, based on the parameters
+    /// # Arguments
+    /// * 'start' - Where we start the range
+    /// * 'length' - The number of steps we will take from start
+    /// * 'step_size' - The step we will take each interation
+    pub fn arange(start: usize, length: usize, step_size: usize) -> Tensor {
+        let mut elements = vec![];
+
+        for i in (start..length).step_by(step_size) {
+            elements.push(i as f32);
+        }
+
+        let elements_length = elements.len();
+        return Tensor::from_vec(elements, vec![elements_length]);
     }
 
     /// Utility function for create a tensor with data, shape and operation
@@ -231,7 +258,7 @@ impl Tensor {
             shape,
             operation: operation,
             requires_grad: false,
-            keep_alive: false
+            keep_alive: false,
         };
     }
 

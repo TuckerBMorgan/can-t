@@ -447,6 +447,30 @@ impl Shape {
 
         return true;
     }
+
+    /// adds a dimension of 1 at the provided dimensions
+
+    pub fn unsqueeze(&self, dimension: isize) -> Shape {
+
+        let abs_dim = dimension.abs();
+        if abs_dim > self.number_of_dimension() as isize{
+            panic!("Dimension provided to unsequeeze larger then number of dimensions the tensor has");
+        }
+        
+        let mut resolved_index = 0;
+
+        if dimension > 0 {
+            resolved_index = dimension as usize;
+        }
+        else {
+            resolved_index = (self.number_of_dimension() as isize + dimension) as usize;
+        }
+
+        let mut current_dimensions = self.dimensions();
+        current_dimensions.insert(resolved_index, 1);
+
+        Shape::new(current_dimensions)
+    }
 }
 
 #[cfg(test)]
@@ -710,5 +734,26 @@ mod tests {
         assert!(matmul_shape.dimensions()[1] == 15);
         assert!(matmul_shape.dimensions()[2] == 6);
         assert!(matmul_shape.dimensions()[3] == 6);
+    }
+
+    #[test]
+    fn unsqueeze_inserts_dimension_at_positive_index() {
+        let shape = Shape::new(vec![2, 3, 4]);
+        let unsqueezed = shape.unsqueeze(1);
+        assert_eq!(unsqueezed.dimensions(), vec![2, 1, 3, 4]);
+    }
+
+    #[test]
+    fn unsqueeze_supports_negative_index_from_end() {
+        let shape = Shape::new(vec![5, 7]);
+        let unsqueezed = shape.unsqueeze(-2);
+        assert_eq!(unsqueezed.dimensions(), vec![1, 5, 7]);
+    }
+
+    #[test]
+    #[should_panic(expected = "Dimension provided to unsequeeze larger then number of dimensions the tensor has")]
+    fn unsqueeze_panics_when_index_out_of_range() {
+        let shape = Shape::new(vec![3, 3]);
+        let _ = shape.unsqueeze(3);
     }
 }

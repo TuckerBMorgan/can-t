@@ -1,8 +1,10 @@
 mod add_op;
+mod clamp_op;
 mod cross_entropy_op;
 mod equation;
 mod index;
 mod log;
+mod masked_fill;
 mod matmul_op;
 mod mean_op;
 mod mul_op;
@@ -18,14 +20,19 @@ mod sum_op;
 mod tanh_op;
 mod tensor;
 mod transpose_op;
-mod masked_fill;
+mod einsum_op;
+mod cos_op;
+mod sin_op;
+mod unsqueeze_op;
 
 pub use add_op::*;
+pub use clamp_op::*;
 pub use cross_entropy_op::*;
 pub use equation::*;
 pub use index::*;
 pub use lazy_static::*;
 pub use log::*;
+pub use masked_fill::*;
 pub use matmul_op::*;
 pub use mean_op::*;
 pub use mul_op::*;
@@ -42,8 +49,10 @@ pub use sum_op::*;
 pub use tanh_op::*;
 pub use tensor::*;
 pub use transpose_op::*;
-pub use masked_fill::*;
-
+pub use einsum_op::*;
+pub use cos_op::*;
+pub use sin_op::*;
+pub use unsqueeze_op::*;
 
 lazy_static! {
     static ref SINGLETON_INSTANCE: Mutex<Equation> = Mutex::new(Equation::new());

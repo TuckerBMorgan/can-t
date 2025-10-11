@@ -130,7 +130,7 @@ mod tests {
         a.push(10.0);
     }
 
-    fn show(list:&mut Vec<f32>) {
+    fn show(list: &mut Vec<f32>) {
         list.push(0.0);
     }
 

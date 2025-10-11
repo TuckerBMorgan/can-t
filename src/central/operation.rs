@@ -1,6 +1,6 @@
 use super::{Shape, tensor::TensorID};
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Operation {
     /// No operation, this will not pass any gradient
     Nop,
@@ -13,9 +13,12 @@ pub enum Operation {
     Pow(TensorID, TensorID), // The tensor we raised to a power, a tensor that holds the value of that power for later
     Matmul(TensorID, TensorID), // Left side operand tensor, right side operand tensor
     Reshape(TensorID, Shape), // The tensor we are shaping from, the Shape we moved to
+    Unsqueeze(TensorID, isize), // The tensor we are shaping from, the dimenesion we are adding
     Exp(TensorID),
     Select(TensorID, TensorID),        // Source tensor, indices tensor
     Tanh(TensorID),                    // Source tensor
+    Cos(TensorID),                    // Source tensor
+    Sin(TensorID),                    // Source tensor
     Mean(TensorID, [isize; 4], usize), // Source tensor, axes, num_axes
     Std(TensorID, [usize; 4], usize),  // Source tensor, axes, num_axes
     Softmax(TensorID, usize),          // Source tensor, axis
@@ -23,4 +26,5 @@ pub enum Operation {
     Transpose(TensorID, usize, usize), // Source, First Index, Second Index
     RELU(TensorID),
     MaskFill(TensorID, TensorID, isize), // Source, Mask, Value
+    Clamp(TensorID, f32, f32),           // Source, Min, Max
 }
