@@ -451,18 +451,18 @@ impl Shape {
     /// adds a dimension of 1 at the provided dimensions
 
     pub fn unsqueeze(&self, dimension: isize) -> Shape {
-
         let abs_dim = dimension.abs();
-        if abs_dim > self.number_of_dimension() as isize{
-            panic!("Dimension provided to unsequeeze larger then number of dimensions the tensor has");
+        if abs_dim > self.number_of_dimension() as isize {
+            panic!(
+                "Dimension provided to unsequeeze larger then number of dimensions the tensor has"
+            );
         }
-        
+
         let mut resolved_index = 0;
 
         if dimension > 0 {
             resolved_index = dimension as usize;
-        }
-        else {
+        } else {
             resolved_index = (self.number_of_dimension() as isize + dimension) as usize;
         }
 
@@ -751,7 +751,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Dimension provided to unsequeeze larger then number of dimensions the tensor has")]
+    #[should_panic(
+        expected = "Dimension provided to unsequeeze larger then number of dimensions the tensor has"
+    )]
     fn unsqueeze_panics_when_index_out_of_range() {
         let shape = Shape::new(vec![3, 3]);
         let _ = shape.unsqueeze(3);

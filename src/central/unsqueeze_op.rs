@@ -17,7 +17,6 @@ impl Tensor {
     }
 }
 
-
 pub fn backward_for_unsqueeze(packet: BackproagationPacket) {
     if let Operation::Unsqueeze(from, _shape) = packet.operation {
         // The reshape operation is simple, since at the end of the day the number and order of

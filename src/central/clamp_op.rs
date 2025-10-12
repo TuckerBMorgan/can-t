@@ -25,7 +25,6 @@ pub fn backward_for_clamp(packet: BackproagationPacket) {
         let in_gradient = packet.equation.get_grad_flat_buffer(packet.incoming_grad);
         let source_data = packet.equation.get_data_flat_buffer(from);
 
-
         let updated: Vec<f32> = in_gradient
             .iter()
             .zip(source_data.iter())

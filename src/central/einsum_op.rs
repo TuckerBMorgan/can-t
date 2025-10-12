@@ -3,12 +3,12 @@ use std::collections::HashMap;
 use crate::central::*;
 
 impl Tensor {
-    /* 
+    /*
     pub fn einsum(&self, einsum_def: String, other: Tensor) -> Tensor {
-        
+
         // Split the definition into two parts
         // left side = what we are operating on
-        // right side = what we are turning it into      
+        // right side = what we are turning it into
         let parts : Vec<&str> = einsum_def.split("->").collect();
         assert!(parts.len() == 2, "For the moment we only support a very basic version of einsum, must have two parts seperate by ->");
 
@@ -32,7 +32,7 @@ impl Tensor {
 
 
         Tensor::from_vec(vec![0.0], vec![1])
-        
+
     }
     */
 }

@@ -17,8 +17,8 @@ pub enum Operation {
     Exp(TensorID),
     Select(TensorID, TensorID),        // Source tensor, indices tensor
     Tanh(TensorID),                    // Source tensor
-    Cos(TensorID),                    // Source tensor
-    Sin(TensorID),                    // Source tensor
+    Cos(TensorID),                     // Source tensor
+    Sin(TensorID),                     // Source tensor
     Mean(TensorID, [isize; 4], usize), // Source tensor, axes, num_axes
     Std(TensorID, [usize; 4], usize),  // Source tensor, axes, num_axes
     Softmax(TensorID, usize),          // Source tensor, axis
@@ -27,4 +27,6 @@ pub enum Operation {
     RELU(TensorID),
     MaskFill(TensorID, TensorID, isize), // Source, Mask, Value
     Clamp(TensorID, f32, f32),           // Source, Min, Max
+    Chunk(TensorID, usize, usize),       // Source, start_index, dimension
+    Cat(TensorID, TensorID, usize),      // Left, Right, Dimension
 }

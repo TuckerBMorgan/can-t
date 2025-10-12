@@ -2,11 +2,14 @@ use std::collections::{HashMap, HashSet};
 
 use super::backward_for_matmul;
 use super::{
-    InternalTensor, Operation, TensorID, add_op, cross_entropy_op, log, matmul_op, mean_op, mul_op,
-    pow_op, reshape, select_op, shape::*, std_op, sum_op, tanh_op, transpose_op, cos_op, sin_op
+    InternalTensor, Operation, TensorID, add_op, chunk_op, cos_op, cross_entropy_op, log,
+    matmul_op, mean_op, mul_op, pow_op, reshape, select_op, shape::*, sin_op, std_op, sum_op,
+    tanh_op, transpose_op,
 };
 use crate::central::index::Indexable;
-use crate::central::{backward_for_clamp, backwards_for_mask_fill, relu_op, softmax_op, unsqueeze_op};
+use crate::central::{
+    backward_for_clamp, backwards_for_mask_fill, cat_op, relu_op, softmax_op, unsqueeze_op,
+};
 use crate::utils::*;
 use ndarray::ArrayD;
 use ndarray::Axis;
@@ -548,9 +551,15 @@ impl Equation {
             }
             Operation::Sin(_) => {
                 sin_op::backward_for_sin(packet);
-            },
+            }
             Operation::Unsqueeze(_, _) => {
                 unsqueeze_op::backward_for_unsqueeze(packet);
+            }
+            Operation::Chunk(_, _, _) => {
+                chunk_op::backward_for_chunk(packet);
+            }
+            Operation::Cat(_, _, _) => {
+                cat_op::backwards_for_cat(packet);
             }
         }
     }
