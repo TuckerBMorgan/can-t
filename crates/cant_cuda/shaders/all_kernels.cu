@@ -1,19 +1,18 @@
-extern "C" __global__
-void add_arrays(const float* a, const float* b, float* out, int n) {
+extern "C" __global__ void add_arrays(const float* a, const float* b, float* out, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < n) {
         out[i] = a[i] + b[i];
     }
 }
 
-void mul_arrays(const float* a, const float* b, float* out, int n) {
+extern "C" __global__ void mul_arrays(const float* a, const float* b, float* out, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < n) {
         out[i] = a[i] * b[i];
     }
 }
 
-void sub_arrays(const float* a, const float* b, float* out, int n) {
+extern "C" __global__ void sub_arrays(const float* a, const float* b, float* out, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < n) {
         out[i] = a[i] - b[i];
@@ -25,8 +24,7 @@ struct MatMulDims {
     unsigned int M, N, K, B2;
 };
 
-extern "C" __global__
-void batchedMatMul(const float* __restrict__ A,
+extern "C" __global__ void batchedMatMul(const float* __restrict__ A,
                    const float* __restrict__ B,
                    float* __restrict__ C,
                    MatMulDims dims)
