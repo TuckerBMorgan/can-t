@@ -22,7 +22,7 @@ use cant_cpu::prelude::*;
 //use cant_metal::prelude::*;
 
 
-#[cfg(target_os = "macos")]
+//#[cfg(target_os = "macos")]
 use cant_cuda::prelude::*;
 
 //use cant_metal::prelude::*;

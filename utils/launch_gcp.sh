@@ -135,10 +135,10 @@ export DEBIAN_FRONTEND=noninteractive
 sudo apt-get update
 sudo apt-get -y install build-essential pkg-config cmake curl git
 
-if [ ! -d "$HOME/cuda_test_harness" ]; then
-  git clone https://github.com/TuckerBMorgan/cuda_test_harness "$HOME/cuda_test_harness"
+if [ ! -d "$HOME/can-t" ]; then
+  git clone https://github.com/TuckerBMorgan/can-t "$HOME/can-t"
 fi
-cd "$HOME/cuda_test_harness"
+cd "$HOME/can-t"
 
 # Rust install: fully non-interactive (equivalent to choosing '1')
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile default --default-toolchain stable --no-modify-path
