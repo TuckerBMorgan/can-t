@@ -62,9 +62,9 @@ void batchedMatMul(const float* __restrict__ A,
     let func = module.load_function("batchedMatMul").expect("load func");  // get function   :contentReference[oaicite:4]{index=4}
 
     // 3) Copy inputs to device / allocate output
-    let d_a = stream.memcpy_stod(a).expect("copy A to device");            // slice->device  :contentReference[oaicite:5]{index=5}
-    let d_b = stream.memcpy_stod(b).expect("copy B to device");            // slice->device  :contentReference[oaicite:6]{index=6}
-    let mut d_c = stream.alloc_zeros::<f32>(out_len).expect("alloc C");    // alloc zeros    :contentReference[oaicite:7]{index=7}
+    let d_a = DEV.memcpy_stod(a).expect("copy A to device");            // slice->device  :contentReference[oaicite:5]{index=5}
+    let d_b = DEV.memcpy_stod(b).expect("copy B to device");            // slice->device  :contentReference[oaicite:6]{index=6}
+    let mut d_c = DEV.alloc_zeros::<f32>(out_len).expect("alloc C");    // alloc zeros    :contentReference[oaicite:7]{index=7}
 
     // 4) Launch configuration: 16x16 threads per block, 3D grid over (N, M, batches)
     let (tx, ty) = (16u32, 16u32);
@@ -80,7 +80,7 @@ void batchedMatMul(const float* __restrict__ A,
 
     // 5) Build args and launch
     unsafe {
-        let mut builder = stream.launch_builder(&func);
+        let mut builder = DEV.launch_builder(&func);
         builder
             .arg(&d_a)                    // const float* A
             .arg(&d_b)                    // const float* B
@@ -93,6 +93,6 @@ void batchedMatMul(const float* __restrict__ A,
     }
 
     // 6) Copy back to host
-    let out: Vec<f32> = stream.memcpy_dtov(&d_c).expect("copy C to host"); // device->vec    :contentReference[oaicite:10]{index=10}
+    let out: Vec<f32> = DEV.memcpy_dtov(&d_c).expect("copy C to host"); // device->vec    :contentReference[oaicite:10]{index=10}
     out
 }
