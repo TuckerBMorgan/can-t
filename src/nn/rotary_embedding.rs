@@ -10,7 +10,6 @@ pub struct RotaryEmbedding {
     base: f32,
     max_seq_len_cached: usize,
     scaling_factor: f32,
-    inv_freq: Vec<f32>,
     initial_context_length: usize,
     ntk_beta: f32,
     ntk_alpha: f32,
@@ -30,7 +29,7 @@ impl RotaryEmbedding {
             head_dim % 2 == 0,
             "RotaryEmbedding expects an even head dimension"
         );
-        let inv_freq = Self::build_inv_freq(head_dim, base);
+
         RotaryEmbedding {
             head_dim,
             base,
@@ -39,7 +38,6 @@ impl RotaryEmbedding {
             initial_context_length: 1,
             ntk_beta: 1.0,
             ntk_alpha: 1.0,
-            inv_freq,
             cos_cache: None,
             sin_cache: None,
         }
@@ -54,11 +52,18 @@ impl RotaryEmbedding {
         let (cos, sin) = self.compute_cos_sin(number_of_tokens);
 
         let query_shape = query.shape;
-        /*
-        let query = query.reshape();
-        let query =
-        */
-        panic!("")
+        let keep_dim = query_shape.dimensions()[1];
+        let query = query.reshape(Shape::new(vec![number_of_tokens, keep_dim, self.head_dim]));
+        let query = self.apply_rotary_embedding(query, cos, sin);
+        let query = query.reshape(query_shape);
+
+        let key_shape = key.shape;
+        let keep_dim = key_shape.dimensions()[1];
+        let key = key.reshape(Shape::new(vec![number_of_tokens, keep_dim, self.head_dim]));
+        let key = self.apply_rotary_embedding(key, cos, sin);
+        let key = key.reshape(key_shape);
+
+        return (query, key);
     }
 
     fn build_concentration_and_inv_freq(&self) -> (Tensor, Tensor) {
@@ -97,21 +102,11 @@ impl RotaryEmbedding {
         );
     }
 
-    /// Builds the inverse frequency vector used to parameterize the sinusoid frequencies.
-    fn build_inv_freq(head_dim: usize, base: f32) -> Vec<f32> {
-        let half_dim = head_dim / 2;
-        let mut inv_freq = Vec::with_capacity(half_dim);
-        for i in 0..half_dim {
-            let exponent = (2 * i) as f32 / head_dim as f32;
-            inv_freq.push(base.powf(-exponent));
-        }
-        inv_freq
-    }
     /// Placeholder for gathering per-position cosine/sine slices.
     fn compute_cos_sin(&self, number_of_tokens: usize) -> (Tensor, Tensor) {
         let (concentration, inv_freq) = self.build_concentration_and_inv_freq();
         let t = Tensor::arange(0, number_of_tokens, 1);
-        let result = t << inv_freq;
+        let result = t.unsqueeze(-1) << inv_freq.unsqueeze(0);
         let cos = result.cos() * concentration;
         let sin = result.sin() * concentration;
         return (cos, sin);
@@ -125,5 +120,48 @@ impl RotaryEmbedding {
         let o1 = chunks[0] * cos - chunks[1] * sin;
         let o2 = chunks[1] * cos + chunks[0] * sin;
         return o1.cat(o2, cos.shape.number_of_dimension() - 1);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn compute_cos_sin_returns_outer_product_shape() {
+        let rotary = RotaryEmbedding::new(8);
+        let (cos, sin) = rotary.compute_cos_sin(4);
+        assert_eq!(cos.shape.dimensions(), vec![4, 4]);
+        assert_eq!(sin.shape.dimensions(), vec![4, 4]);
+    }
+
+    #[test]
+    fn apply_rotary_embedding_preserves_input_shape() {
+        let rotary = RotaryEmbedding::new(8);
+        let (cos, sin) = rotary.compute_cos_sin(4);
+        let input = Tensor::from_vec((0..32).map(|v| v as f32).collect(), vec![4, 1, 8]);
+        let result = rotary.apply_rotary_embedding(input, cos, sin);
+        assert_eq!(result.shape.dimensions(), vec![4, 1, 8]);
+    }
+
+    #[test]
+    fn apply_rotary_embedding_identity_cos_sin_no_change() {
+        let rotary = RotaryEmbedding::new(4);
+        let cos = Tensor::from_vec(vec![1.0, 1.0], vec![1, 2]);
+        let sin = Tensor::from_vec(vec![0.0, 0.0], vec![1, 2]);
+        let original_values = vec![1.0, 2.0, 3.0, 4.0];
+        let input = Tensor::from_vec(original_values.clone(), vec![1, 1, 4]);
+        let result = rotary.apply_rotary_embedding(input, cos, sin);
+        assert_eq!(result.item().into_raw_vec(), original_values);
+    }
+
+    #[test]
+    fn apply_rotary_embedding_quadrature_rotation() {
+        let rotary = RotaryEmbedding::new(4);
+        let cos = Tensor::from_vec(vec![0.0, 0.0], vec![1, 2]);
+        let sin = Tensor::from_vec(vec![1.0, 1.0], vec![1, 2]);
+        let input = Tensor::from_vec(vec![1.0, 2.0, 3.0, 4.0], vec![1, 1, 4]);
+        let result = rotary.apply_rotary_embedding(input, cos, sin);
+        assert_eq!(result.item().into_raw_vec(), vec![-3.0, -4.0, 1.0, 2.0]);
     }
 }

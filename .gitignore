@@ -2,3 +2,4 @@
 default_*
 /models
 /data
+/secrets

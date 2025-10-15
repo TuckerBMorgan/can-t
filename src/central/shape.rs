@@ -451,20 +451,20 @@ impl Shape {
     /// adds a dimension of 1 at the provided dimensions
 
     pub fn unsqueeze(&self, dimension: isize) -> Shape {
-        let abs_dim = dimension.abs();
-        if abs_dim > self.number_of_dimension() as isize {
+        let rank = self.number_of_dimension();
+        // Valid dimensions in PyTorch semantics are [-rank - 1, rank]
+        if dimension < -(rank as isize) - 1 || dimension > rank as isize {
             panic!(
                 "Dimension provided to unsequeeze larger then number of dimensions the tensor has"
             );
         }
 
-        let mut resolved_index = 0;
-
-        if dimension > 0 {
-            resolved_index = dimension as usize;
+        let resolved_index = if dimension >= 0 {
+            dimension as usize
         } else {
-            resolved_index = (self.number_of_dimension() as isize + dimension) as usize;
-        }
+            // Negative dims insert counting from the end, so `-1` appends.
+            (rank as isize + dimension + 1) as usize
+        };
 
         let mut current_dimensions = self.dimensions();
         current_dimensions.insert(resolved_index, 1);
@@ -741,13 +741,17 @@ mod tests {
         let shape = Shape::new(vec![2, 3, 4]);
         let unsqueezed = shape.unsqueeze(1);
         assert_eq!(unsqueezed.dimensions(), vec![2, 1, 3, 4]);
+        let append = shape.unsqueeze(3);
+        assert_eq!(append.dimensions(), vec![2, 3, 4, 1]);
     }
 
     #[test]
     fn unsqueeze_supports_negative_index_from_end() {
         let shape = Shape::new(vec![5, 7]);
-        let unsqueezed = shape.unsqueeze(-2);
-        assert_eq!(unsqueezed.dimensions(), vec![1, 5, 7]);
+        let prepend = shape.unsqueeze(-3);
+        assert_eq!(prepend.dimensions(), vec![1, 5, 7]);
+        let append = shape.unsqueeze(-1);
+        assert_eq!(append.dimensions(), vec![5, 7, 1]);
     }
 
     #[test]
