@@ -63,8 +63,8 @@ void batchedMatMul(const float* __restrict__ A,
     let func = module.load_function("batchedMatMul").expect("load func");  // get function   :contentReference[oaicite:4]{index=4}
 
     // 3) Copy inputs to device / allocate output
-    let d_a = DEV.memcpy_stod(a).expect("copy A to device");            // slice->device  :contentReference[oaicite:5]{index=5}
-    let d_b = DEV.memcpy_stod(b).expect("copy B to device");            // slice->device  :contentReference[oaicite:6]{index=6}
+    let d_a = DEV.htod_sync_copy(a).expect("copy A to device");            // slice->device  :contentReference[oaicite:5]{index=5}
+    let d_b = DEV.htod_sync_copy(b).expect("copy B to device");            // slice->device  :contentReference[oaicite:6]{index=6}
     let mut d_c = DEV.alloc_zeros::<f32>(out_len).expect("alloc C");    // alloc zeros    :contentReference[oaicite:7]{index=7}
 
     // 4) Launch configuration: 16x16 threads per block, 3D grid over (N, M, batches)
@@ -81,19 +81,19 @@ void batchedMatMul(const float* __restrict__ A,
 
     // 5) Build args and launch
     unsafe {
-        let mut builder = DEV.launch_builder(&func);
-        builder
-            .arg(&d_a)                    // const float* A
-            .arg(&d_b)                    // const float* B
-            .arg(&mut d_c)                // float* C
-            .arg(&(m as u32))             // M
-            .arg(&(n as u32))             // N
-            .arg(&(k as u32))             // K
-            .arg(&(total_batches as u32));// totalBatches
-        builder.launch(cfg).expect("kernel launch failed");                 // builder API    :contentReference[oaicite:9]{index=9}
+        let result = func.launch(
+            cfg,
+            (&d_a, d_b, &mut d_c, m, n, k, total_batches),
+        );
+        match result {
+            Ok(_) => {},
+            Err(e) => {
+                println!("Error {:?}", e);
+            }
+        }
     }
 
     // 6) Copy back to host
-    let out: Vec<f32> = DEV.memcpy_dtov(&d_c).expect("copy C to host"); // device->vec    :contentReference[oaicite:10]{index=10}
+    let out: Vec<f32> = DEV.dtoh_sync_copy(&d_c).expect("copy C to host"); // device->vec    :contentReference[oaicite:10]{index=10}
     out
 }
