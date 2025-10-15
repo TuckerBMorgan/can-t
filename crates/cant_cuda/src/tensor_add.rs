@@ -2,7 +2,7 @@ use crate::*;
 use cudarc::driver::{LaunchAsync, LaunchConfig};
 use cudarc::nvrtc::{compile_ptx, Ptx};
 pub fn tensor_add(a: &[f32], b: &[f32]) -> Vec<f32> {
-    let PTX : Ptx = compile_ptx(include_str!("../shaders/all_shaders.cu")).unwrap();
+    let PTX : Ptx = compile_ptx(include_str!("../shaders/all_kernels.cu")).unwrap();
     DEV.load_ptx(PTX, "add_arrays", &["add_arrays"]).unwrap();
     let func = DEV.get_func("add_arrays", "add_arrays").unwrap();
     let tile_size = 16;
