@@ -1,5 +1,5 @@
 use cudarc::{
-    driver::{CudaContext, LaunchConfig, PushKernelArg},
+    driver::{LaunchConfig},
     nvrtc::compile_ptx,
 };
 
@@ -55,12 +55,10 @@ void batchedMatMul(const float* __restrict__ A,
 "#;
 
     // 1) Create a CUDA context & stream
-    let ctx = CudaContext::new(0).expect("failed to init CUDA context");  // default GPU 0  :contentReference[oaicite:0]{index=0}
-    let stream = ctx.default_stream();                                     // get a stream  :contentReference[oaicite:1]{index=1}
 
     // 2) Compile CUDA -> PTX at runtime, load the module, get the function
     let ptx = compile_ptx(KERNEL_SRC).expect("nvrtc compile failed");      // nvrtc compile  :contentReference[oaicite:2]{index=2}
-    let module = ctx.load_module(ptx).expect("load module failed");        // load module    :contentReference[oaicite:3]{index=3}
+    let module = DEV.load_module(ptx).expect("load module failed");        // load module    :contentReference[oaicite:3]{index=3}
     let func = module.load_function("batchedMatMul").expect("load func");  // get function   :contentReference[oaicite:4]{index=4}
 
     // 3) Copy inputs to device / allocate output
