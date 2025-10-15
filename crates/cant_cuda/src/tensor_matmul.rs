@@ -83,7 +83,7 @@ pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize;
     unsafe {
         let result = func.launch(
             cfg,
-            (&d_a, d_b, &mut out_on_device, m, n, k, total_batches),
+            (&d_a, &d_b, &mut out_on_device, m, n, k, total_batches),
         );
         match result {
             Ok(_) => {},
