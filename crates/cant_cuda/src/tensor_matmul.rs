@@ -32,36 +32,34 @@ pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize;
     // --- CUDA kernel (same indexing as your Metal shader) ---
     // C layout: [batch, M, N], A: [batch, M, K], B: [batch, K, N]
     const KERNEL_SRC: &str = r#"
-extern "C" __global__
-void batchedMatMul(const float* __restrict__ A,
-                   const float* __restrict__ B,
-                   float* __restrict__ C,
-                   unsigned M, unsigned N, unsigned K, unsigned totalBatches)
-{
-    unsigned j = blockIdx.x * blockDim.x + threadIdx.x; // column (N)
-    unsigned i = blockIdx.y * blockDim.y + threadIdx.y; // row (M)
-    unsigned batchIndex = blockIdx.z;                   // batch (B1*B2)
+        extern "C" __global__ void batchedMatMul(const float* __restrict__ A,
+                        const float* __restrict__ B,
+                        float* __restrict__ C,
+                        unsigned M, unsigned N, unsigned K, unsigned totalBatches)
+        {
+            unsigned j = blockIdx.x * blockDim.x + threadIdx.x; // column (N)
+            unsigned i = blockIdx.y * blockDim.y + threadIdx.y; // row (M)
+            unsigned batchIndex = blockIdx.z;                   // batch (B1*B2)
 
-    if (i >= M || j >= N || batchIndex >= totalBatches) return;
+            if (i >= M || j >= N || batchIndex >= totalBatches) return;
 
-    unsigned aRowOffset = ((batchIndex * M) + i) * K;  // A[b,i,*]
-    float sum = 0.0f;
-    for (unsigned kk = 0; kk < K; ++kk) {
-        float a_val = A[aRowOffset + kk];
-        float b_val = B[(((batchIndex * K) + kk) * N) + j];
-        sum += a_val * b_val;
-    }
-    C[(((batchIndex * M) + i) * N) + j] = sum;
-}
-"#;
+            unsigned aRowOffset = ((batchIndex * M) + i) * K;  // A[b,i,*]
+            float sum = 0.0f;
+            for (unsigned kk = 0; kk < K; ++kk) {
+                float a_val = A[aRowOffset + kk];
+                float b_val = B[(((batchIndex * K) + kk) * N) + j];
+                sum += a_val * b_val;
+            }
+            C[(((batchIndex * M) + i) * N) + j] = sum;
+        }
+    "#;
 
     // 1) Create a CUDA context & stream
 
     // 2) Compile CUDA -> PTX at runtime, load the module, get the function
     let ptx = compile_ptx(KERNEL_SRC).expect("nvrtc compile failed");      // nvrtc compile  :contentReference[oaicite:2]{index=2}
-    let module = DEV.load_module(ptx).expect("load module failed");        // load module    :contentReference[oaicite:3]{index=3}
-    let func = module.load_function("batchedMatMul").expect("load func");  // get function   :contentReference[oaicite:4]{index=4}
-
+    DEV.load_ptx(PTX, "batchedMatMul", &["batchedMatMul"]).unwrap();
+    let func = DEV.get_func("batchedMatMul", "batchedMatMul").unwrap();
     // 3) Copy inputs to device / allocate output
     let d_a = DEV.htod_sync_copy(a).expect("copy A to device");            // slice->device  :contentReference[oaicite:5]{index=5}
     let d_b = DEV.htod_sync_copy(b).expect("copy B to device");            // slice->device  :contentReference[oaicite:6]{index=6}
