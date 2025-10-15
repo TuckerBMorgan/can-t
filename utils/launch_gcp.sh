@@ -133,7 +133,7 @@ fi
 
 export DEBIAN_FRONTEND=noninteractive
 sudo apt-get update
-sudo apt-get -y install build-essential pkg-config cmake curl git
+sudo apt-get -y install build-essential pkg-config cmake curl git libssl-dev zlib1g-dev ca-certificates
 
 if [ ! -d "$HOME/can-t" ]; then
   git clone https://github.com/TuckerBMorgan/can-t "$HOME/can-t"
@@ -145,5 +145,9 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profil
 . "$HOME/.cargo/env"
 
 rustc --version && cargo --version
+
+gcloud storage cp gs://cant-model-assets/models.zip /tmp/models.zip
+mkdir -p models && unzip -o /tmp/models.zip -d models
+
 cargo build
 REMOTE_CMDS
