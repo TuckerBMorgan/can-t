@@ -9,10 +9,10 @@ use cudarc::driver::{LaunchAsync, LaunchConfig};
 use cudarc::nvrtc::{compile_ptx, Ptx};
 
 lazy_static! {
-    static ref CONTEXT: CudaContext   = cudarc::driver::CudaContext::new(0).unwrap();
+    //static ref CONTEXT: CudaContext   = cudarc::driver::CudaContext::new(0).unwrap();
     static ref DEV : std::sync::Arc<cudarc::driver::CudaDevice> = cudarc::driver::CudaDevice::new(0).unwrap();
 
-    static ref PTX : Ptx = compile_ptx(include_str!("../shaders/all_shaders.cu")).unwrap();
+
 }
 
 pub mod prelude {

@@ -2,14 +2,14 @@ use crate::*;
 use cudarc::driver::{LaunchAsync, LaunchConfig};
 use cudarc::nvrtc::{compile_ptx, Ptx};
 pub fn tensor_add(a: &[f32], b: &[f32]) -> Vec<f32> {
-
+    let PTX : Ptx = compile_ptx(include_str!("../shaders/all_shaders.cu")).unwrap();
     DEV.load_ptx(PTX, "add_arrays", &["add_arrays"]).unwrap();
     let func = DEV.get_func("add_arrays", "add_arrays").unwrap();
     let tile_size = 16;
 
-    let m = a_shape[0];
-    let n = a_shape[1];
-    let k = b_shape[1];
+    let m = a.len();
+    let n = a.len();
+    let k = a.len();
 
     let grid_rows = (m + tile_size - 1) / tile_size;
     let grid_cols = (k + tile_size - 1) / tile_size;
@@ -24,10 +24,10 @@ pub fn tensor_add(a: &[f32], b: &[f32]) -> Vec<f32> {
     let b_on_device = DEV.htod_sync_copy(&b).unwrap();
 
     let c_host = vec![0.0f32; a.len()];
-    let mut out_on_device = dev.htod_sync_copy(&c_host).unwrap();
+    let mut out_on_device = DEV.htod_sync_copy(&c_host).unwrap();
 
     unsafe {
-        let result = f.launch(
+        let result = func.launch(
             cfg,
             (&a_on_device, &b_on_device, &mut out_on_device, m, n, k),
         );
@@ -38,6 +38,6 @@ pub fn tensor_add(a: &[f32], b: &[f32]) -> Vec<f32> {
             }
         }
     }
-    let c_host = dev.dtoh_sync_copy(&out_on_device).unwrap();
+    let c_host = DEV.dtoh_sync_copy(&out_on_device).unwrap();
     return  c_host;
 }
