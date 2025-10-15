@@ -1,3 +1,4 @@
+use crate::*;
 use cudarc::{
     driver::{LaunchConfig},
     nvrtc::compile_ptx,
