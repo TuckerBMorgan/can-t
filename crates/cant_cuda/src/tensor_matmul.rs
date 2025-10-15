@@ -64,7 +64,7 @@ pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize;
     let d_a = DEV.htod_sync_copy(a).expect("copy A to device");            // slice->device  :contentReference[oaicite:5]{index=5}
     let d_b = DEV.htod_sync_copy(b).expect("copy B to device");            // slice->device  :contentReference[oaicite:6]{index=6}
 
-    let c_host = vec![0.0f32; a.len()];
+    let c_host = vec![0.0f32; out_len];
     let mut out_on_device = DEV.htod_sync_copy(&c_host).unwrap();
 
     // 4) Launch configuration: 16x16 threads per block, 3D grid over (N, M, batches)
