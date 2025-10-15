@@ -19,7 +19,8 @@ tokenizers = "*"
 regex = "*"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-cant_metal = { path = "crates/cant_metal" }
+cant_cuda = { path = "crates/cant_cuda" }
+#cant_metal = { path = "crates/cant_metal" }
 
 [workspace]
 members = [
