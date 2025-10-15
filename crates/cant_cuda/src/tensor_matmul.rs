@@ -58,7 +58,7 @@ pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize;
 
     // 2) Compile CUDA -> PTX at runtime, load the module, get the function
     let ptx = compile_ptx(KERNEL_SRC).expect("nvrtc compile failed");      // nvrtc compile  :contentReference[oaicite:2]{index=2}
-    DEV.load_ptx(PTX, "batchedMatMul", &["batchedMatMul"]).unwrap();
+    DEV.load_ptx(ptx, "batchedMatMul", &["batchedMatMul"]).unwrap();
     let func = DEV.get_func("batchedMatMul", "batchedMatMul").unwrap();
     // 3) Copy inputs to device / allocate output
     let d_a = DEV.htod_sync_copy(a).expect("copy A to device");            // slice->device  :contentReference[oaicite:5]{index=5}
