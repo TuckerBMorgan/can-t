@@ -1,3 +1,6 @@
+
+#![feature(f16)]
+
 mod central;
 mod nn;
 mod utils;

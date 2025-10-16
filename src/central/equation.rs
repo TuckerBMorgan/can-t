@@ -22,8 +22,8 @@ use rand_distr::{Distribution, Normal};
 //use cant_metal::prelude::*;
 
 
-//#[cfg(target_os = "macos")]
-use cant_cuda::prelude::*;
+#[cfg(target_os = "macos")]
+use cant_metal::prelude::*;
 
 //use cant_metal::prelude::*;
 

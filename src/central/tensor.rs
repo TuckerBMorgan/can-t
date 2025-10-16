@@ -149,10 +149,10 @@ impl Tensor {
     pub fn from_gguf_file(tensor_name: String, gguf_file: &mut GGUFFile) -> Tensor {
         //    let id = get_equation().allocate_zero_tensor(shape);
         let data = gguf_file.get_weight_for_tensor(tensor_name.clone());
-        let tensor_data = gguf_file.get_tensor(tensor_name);
+        let dims = gguf_file.get_tensor_dims(tensor_name);
 
         return Tensor::create_tensor_data_and_shape_and_operation(
-            Shape::new(tensor_data.dimensions),
+            Shape::new(dims),
             data,
             Operation::Nop,
         );
