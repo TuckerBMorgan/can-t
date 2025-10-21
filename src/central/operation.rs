@@ -1,5 +1,7 @@
 use super::{Shape, tensor::TensorID};
 
+
+
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Operation {
     /// No operation, this will not pass any gradient
@@ -14,7 +16,7 @@ pub enum Operation {
     Matmul(TensorID, TensorID), // Left side operand tensor, right side operand tensor
     Reshape(TensorID, Shape), // The tensor we are shaping from, the Shape we moved to
     Unsqueeze(TensorID, isize), // The tensor we are shaping from, the dimenesion we are adding
-    Exp(TensorID),
+    Exp(TensorID), // Source Tensor
     Select(TensorID, TensorID),        // Source tensor, indices tensor
     Tanh(TensorID),                    // Source tensor
     Cos(TensorID),                     // Source tensor
@@ -24,7 +26,7 @@ pub enum Operation {
     Softmax(TensorID, usize),          // Source tensor, axis
     Log(TensorID),                     // Source tensor,
     Transpose(TensorID, usize, usize), // Source, First Index, Second Index
-    RELU(TensorID),
+    RELU(TensorID), // Source Tensor
     MaskFill(TensorID, TensorID, isize), // Source, Mask, Value
     Clamp(TensorID, f32, f32),           // Source, Min, Max
     Chunk(TensorID, usize, usize),       // Source, start_index, dimension

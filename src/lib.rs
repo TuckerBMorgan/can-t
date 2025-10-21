@@ -1,9 +1,9 @@
 
 #![feature(f16)]
 
-mod central;
-mod nn;
-mod utils;
+pub mod central;
+pub mod nn;
+pub mod utils;
 
 mod tests {
     use crate::central::*;
