@@ -1,10 +1,6 @@
 import torch
 
-a = torch.randn(4, 3, 2)
+a = torch.arange(24)
+a = a.reshape(2, 3, 4)
 
-print(a)
-
-b = a.diagonal(0, 0, 2)
-
-print(b)
-print(b.shape)
+print(a.diagonal(0, 1, 2))

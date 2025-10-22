@@ -79,6 +79,49 @@ impl Shape {
         return Shape::new(new_dimension);
     }
 
+    /// Returns a new shape where the dimenion at origin has been moved to destination
+    ///
+    /// # Arguments
+    /// * 'origin' - The source location we are pulling the dimension from
+    /// * 'destination' - The location we are moving the dimenion to
+    pub fn move_index(&self, origin: usize, destination: usize) -> Shape {
+        let mut current_dimension = self.dimensions();
+        let max = origin.max(destination);
+        assert!(
+            max > current_dimension.len(),
+            "too high dimension provided to move_index"
+        );
+        let element = current_dimension.remove(origin);
+        current_dimension.insert(destination, element);
+        return Shape::new(current_dimension);
+    }
+
+    /// Returns a new shape where the existing dimensions are rearranged according to the order set in permutation
+    ///
+    /// # Arguments
+    /// * 'premutation' - The order the dimensions should be rearranged into
+    pub fn permute(&self, permutation: &[usize]) -> Shape {
+        let dims = self.dimensions();
+        let rank = dims.len();
+        assert!(
+            permutation.len() == rank,
+            "permute: expected {} indices, got {}",
+            rank,
+            permutation.len()
+        );
+
+        // O(n) validation: in-range + no duplicates
+        let mut seen = vec![false; rank];
+        for &p in permutation {
+            assert!(p < rank, "permute: index {} out of range 0..{}", p, rank);
+            assert!(!seen[p], "permute: duplicate index {}", p);
+            seen[p] = true;
+        }
+
+        let new_dims = permutation.iter().map(|&i| dims[i]).collect();
+        Shape::new(new_dims)
+    }
+
     /// Returns a new shape with the dimensions changed to a new ones
     ///
     /// # Arguments
@@ -449,7 +492,6 @@ impl Shape {
     }
 
     /// adds a dimension of 1 at the provided dimensions
-
     pub fn unsqueeze(&self, dimension: isize) -> Shape {
         let rank = self.number_of_dimension();
         // Valid dimensions in PyTorch semantics are [-rank - 1, rank]

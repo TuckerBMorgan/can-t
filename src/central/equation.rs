@@ -8,8 +8,8 @@ use super::{
 };
 use crate::central::index::Indexable;
 use crate::central::{
-    backward_for_clamp, backwards_for_mask_fill, cat_op, diagonal_op, relu_op, softmax_op,
-    unsqueeze_op,
+    backward_for_clamp, backwards_for_mask_fill, cat_op, diagonal_op, movedim_op, permute, relu_op,
+    softmax_op, unsqueeze_op,
 };
 use crate::utils::*;
 use ndarray::ArrayD;
@@ -567,6 +567,12 @@ impl Equation {
             }
             Operation::Diagonal(_, _, _, _) => {
                 diagonal_op::backwards_for_diagonal(packet);
+            }
+            Operation::MoveDim(_, _, _) => {
+                movedim_op::backward_for_movedim(packet);
+            }
+            Operation::Permute(_, _, _) => {
+                permute::backward_for_permute(packet);
             }
         }
     }

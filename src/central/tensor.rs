@@ -117,6 +117,12 @@ impl InternalTensor {
             Operation::Diagonal(source, _, _, _) => {
                 return vec![*source];
             }
+            Operation::MoveDim(source, _, _) => {
+                return vec![*source];
+            }
+            Operation::Permute(source, _, _) => {
+                return vec![*source];
+            }
         }
     }
 }

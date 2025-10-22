@@ -29,5 +29,7 @@ pub enum Operation {
     Clamp(TensorID, f32, f32), // Source, Min, Max
     Chunk(TensorID, usize, usize), // Source, start_index, dimension
     Cat(TensorID, TensorID, usize), // Left, Right, Dimension
-    Diagonal(TensorID, usize, usize, usize), // Source, Offset, First Dimension, Second Dimension
+    Diagonal(TensorID, usize, usize, usize), // Source, Offset, First Dimension, Second Dimension,
+    MoveDim(TensorID, usize, usize), // Source, Originial, New Location
+    Permute(TensorID, [usize; 4], usize), // Source, Permutation, In use Dimensions in Permutations
 }
