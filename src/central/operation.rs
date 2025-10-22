@@ -1,7 +1,5 @@
 use super::{Shape, tensor::TensorID};
 
-
-
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Operation {
     /// No operation, this will not pass any gradient
@@ -16,19 +14,20 @@ pub enum Operation {
     Matmul(TensorID, TensorID), // Left side operand tensor, right side operand tensor
     Reshape(TensorID, Shape), // The tensor we are shaping from, the Shape we moved to
     Unsqueeze(TensorID, isize), // The tensor we are shaping from, the dimenesion we are adding
-    Exp(TensorID), // Source Tensor
-    Select(TensorID, TensorID),        // Source tensor, indices tensor
-    Tanh(TensorID),                    // Source tensor
-    Cos(TensorID),                     // Source tensor
-    Sin(TensorID),                     // Source tensor
+    Exp(TensorID),           // Source Tensor
+    Select(TensorID, TensorID), // Source tensor, indices tensor
+    Tanh(TensorID),          // Source tensor
+    Cos(TensorID),           // Source tensor
+    Sin(TensorID),           // Source tensor
     Mean(TensorID, [isize; 4], usize), // Source tensor, axes, num_axes
-    Std(TensorID, [usize; 4], usize),  // Source tensor, axes, num_axes
-    Softmax(TensorID, usize),          // Source tensor, axis
-    Log(TensorID),                     // Source tensor,
+    Std(TensorID, [usize; 4], usize), // Source tensor, axes, num_axes
+    Softmax(TensorID, usize), // Source tensor, axis
+    Log(TensorID),           // Source tensor,
     Transpose(TensorID, usize, usize), // Source, First Index, Second Index
-    RELU(TensorID), // Source Tensor
+    RELU(TensorID),          // Source Tensor
     MaskFill(TensorID, TensorID, isize), // Source, Mask, Value
-    Clamp(TensorID, f32, f32),           // Source, Min, Max
-    Chunk(TensorID, usize, usize),       // Source, start_index, dimension
-    Cat(TensorID, TensorID, usize),      // Left, Right, Dimension
+    Clamp(TensorID, f32, f32), // Source, Min, Max
+    Chunk(TensorID, usize, usize), // Source, start_index, dimension
+    Cat(TensorID, TensorID, usize), // Left, Right, Dimension
+    Diagonal(TensorID, usize, usize, usize), // Source, Offset, First Dimension, Second Dimension
 }

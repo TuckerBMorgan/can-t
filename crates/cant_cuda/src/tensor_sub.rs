@@ -1,8 +1,8 @@
 use crate::*;
 use cudarc::driver::{LaunchAsync, LaunchConfig};
-use cudarc::nvrtc::{compile_ptx, Ptx};
+use cudarc::nvrtc::{Ptx, compile_ptx};
 pub fn tensor_sub(a: &[f32], b: &[f32]) -> Vec<f32> {
-    let PTX : Ptx = compile_ptx(include_str!("../shaders/all_kernels.cu")).unwrap();
+    let PTX: Ptx = compile_ptx(include_str!("../shaders/all_kernels.cu")).unwrap();
     DEV.load_ptx(PTX, "sub_arrays", &["sub_arrays"]).unwrap();
     let func = DEV.get_func("sub_arrays", "sub_arrays").unwrap();
     let tile_size = 16;
@@ -39,5 +39,5 @@ pub fn tensor_sub(a: &[f32], b: &[f32]) -> Vec<f32> {
         }
     }
     let c_host = DEV.dtoh_sync_copy(&out_on_device).unwrap();
-    return  c_host;
+    return c_host;
 }

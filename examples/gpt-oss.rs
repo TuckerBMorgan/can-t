@@ -19,7 +19,7 @@ pub struct ModelConfig {
     rope_scaling_factor: f32,
     rope_ntk_alpha: f32,
     rope_ntk_beta: f32,
-    world_size: usize
+    world_size: usize,
 }
 
 struct MLPBlock {
@@ -31,7 +31,7 @@ struct MLPBlock {
     mlp1_weight: Tensor,
     mlp1_bias: Tensor,
     mlp2_weight: Tensor,
-    mlp2_bias: Tensor
+    mlp2_bias: Tensor,
 }
 
 impl MLPBlock {
@@ -43,10 +43,24 @@ impl MLPBlock {
             // world_limit??
             norm: RMSNorm::new(config.hidden_layer_size),
             gate: Linear::new(config.number_of_experts, config.hidden_layer_size, true),
-            mlp1_weight: Tensor::new(Shape::new(vec![config.number_of_experts, config.intermediate_size * 2, config.hidden_layer_size])),
-            mlp1_bias: Tensor::new(Shape::new(vec![config.number_of_experts, config.intermediate_size * 2 / config.world_size])),
-            mlp2_weight: Tensor::new(Shape::new(vec![config.number_of_experts, config.hidden_layer_size, config.intermediate_size / config.world_size])),
-            mlp2_bias: Tensor::new(Shape::new(vec![config.number_of_experts, config.hidden_layer_size])),
+            mlp1_weight: Tensor::new(Shape::new(vec![
+                config.number_of_experts,
+                config.intermediate_size * 2,
+                config.hidden_layer_size,
+            ])),
+            mlp1_bias: Tensor::new(Shape::new(vec![
+                config.number_of_experts,
+                config.intermediate_size * 2 / config.world_size,
+            ])),
+            mlp2_weight: Tensor::new(Shape::new(vec![
+                config.number_of_experts,
+                config.hidden_layer_size,
+                config.intermediate_size / config.world_size,
+            ])),
+            mlp2_bias: Tensor::new(Shape::new(vec![
+                config.number_of_experts,
+                config.hidden_layer_size,
+            ])),
         }
     }
 }

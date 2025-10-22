@@ -1,9 +1,5 @@
 use crate::*;
-use cudarc::{
-    driver::{LaunchConfig},
-    nvrtc::compile_ptx,
-};
-
+use cudarc::{driver::LaunchConfig, nvrtc::compile_ptx};
 
 // Checks if the tensor shapes are compatible for batched matrix multiplication
 fn valid_shape(a: [usize; 4], b: [usize; 4]) {
@@ -23,8 +19,16 @@ pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize;
     assert_eq!(b1_a, b1_b, "batch dim 0 mismatch");
     assert_eq!(b2_a, b2_b, "batch dim 1 mismatch");
     assert_eq!(k, k_b, "inner dim mismatch: K");
-    assert_eq!(a.len(), b1_a * b2_a * m * k, "A buffer size != product of A shape");
-    assert_eq!(b.len(), b1_b * b2_b * k * n, "B buffer size != product of B shape");
+    assert_eq!(
+        a.len(),
+        b1_a * b2_a * m * k,
+        "A buffer size != product of A shape"
+    );
+    assert_eq!(
+        b.len(),
+        b1_b * b2_b * k * n,
+        "B buffer size != product of B shape"
+    );
 
     let total_batches = b1_a * b2_a;
     let out_len = total_batches * m * n;
@@ -57,12 +61,13 @@ pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize;
     // 1) Create a CUDA context & stream
 
     // 2) Compile CUDA -> PTX at runtime, load the module, get the function
-    let ptx = compile_ptx(KERNEL_SRC).expect("nvrtc compile failed");      // nvrtc compile  :contentReference[oaicite:2]{index=2}
-    DEV.load_ptx(ptx, "batchedMatMul", &["batchedMatMul"]).unwrap();
+    let ptx = compile_ptx(KERNEL_SRC).expect("nvrtc compile failed"); // nvrtc compile  :contentReference[oaicite:2]{index=2}
+    DEV.load_ptx(ptx, "batchedMatMul", &["batchedMatMul"])
+        .unwrap();
     let func = DEV.get_func("batchedMatMul", "batchedMatMul").unwrap();
     // 3) Copy inputs to device / allocate output
-    let d_a = DEV.htod_sync_copy(a).expect("copy A to device");            // slice->device  :contentReference[oaicite:5]{index=5}
-    let d_b = DEV.htod_sync_copy(b).expect("copy B to device");            // slice->device  :contentReference[oaicite:6]{index=6}
+    let d_a = DEV.htod_sync_copy(a).expect("copy A to device"); // slice->device  :contentReference[oaicite:5]{index=5}
+    let d_b = DEV.htod_sync_copy(b).expect("copy B to device"); // slice->device  :contentReference[oaicite:6]{index=6}
 
     let c_host = vec![0.0f32; out_len];
     let mut out_on_device = DEV.htod_sync_copy(&c_host).unwrap();
@@ -86,7 +91,7 @@ pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize;
             (&d_a, &d_b, &mut out_on_device, m, n, k, total_batches),
         );
         match result {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => {
                 println!("Error {:?}", e);
             }

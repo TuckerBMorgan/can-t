@@ -114,6 +114,9 @@ impl InternalTensor {
             Operation::Cat(left, right, _) => {
                 return vec![*left, *right];
             }
+            Operation::Diagonal(source, _, _, _) => {
+                return vec![*source];
+            }
         }
     }
 }

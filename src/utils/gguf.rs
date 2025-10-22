@@ -56,19 +56,22 @@ impl GGUFFile {
                 let ([], data, []) = (unsafe { data.align_to::<f16>() }) else {
                     unreachable!()
                 };
-                return data.iter().map(|x| *x as f32).collect::<Vec<f32>>().to_vec()
-            },
+                return data
+                    .iter()
+                    .map(|x| *x as f32)
+                    .collect::<Vec<f32>>()
+                    .to_vec();
+            }
             GGmlType::F32 => {
-
                 let len = tensor.shape().iter().product::<u64>() as usize;
                 let data = &self.gguf.data[tensor.offset()..][..len * size_of::<f32>()];
                 let ([], data, []) = (unsafe { data.align_to::<f32>() }) else {
                     unreachable!()
                 };
-                return data.to_vec()
-            },
+                return data.to_vec();
+            }
             _ => {
-                panic!("{:?}: unsupported data data",tensor.ty());
+                panic!("{:?}: unsupported data data", tensor.ty());
             }
         }
     }

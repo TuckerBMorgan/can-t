@@ -8,7 +8,8 @@ use super::{
 };
 use crate::central::index::Indexable;
 use crate::central::{
-    backward_for_clamp, backwards_for_mask_fill, cat_op, relu_op, softmax_op, unsqueeze_op,
+    backward_for_clamp, backwards_for_mask_fill, cat_op, diagonal_op, relu_op, softmax_op,
+    unsqueeze_op,
 };
 use crate::utils::*;
 use ndarray::ArrayD;
@@ -20,7 +21,6 @@ use rand_distr::{Distribution, Normal};
 
 //#[cfg(target_os = "macos")]
 //use cant_metal::prelude::*;
-
 
 #[cfg(target_os = "macos")]
 use cant_metal::prelude::*;
@@ -564,6 +564,9 @@ impl Equation {
             }
             Operation::Cat(_, _, _) => {
                 cat_op::backwards_for_cat(packet);
+            }
+            Operation::Diagonal(_, _, _, _) => {
+                diagonal_op::backwards_for_diagonal(packet);
             }
         }
     }

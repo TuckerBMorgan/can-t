@@ -4,6 +4,8 @@ mod chunk_op;
 mod clamp_op;
 mod cos_op;
 mod cross_entropy_op;
+mod diagonal_op;
+mod einsum;
 mod equation;
 mod index;
 mod log;
@@ -25,7 +27,6 @@ mod tanh_op;
 mod tensor;
 mod transpose_op;
 mod unsqueeze_op;
-mod einsum;
 
 pub use add_op::*;
 pub use cat_op::*;
@@ -33,6 +34,8 @@ pub use chunk_op::*;
 pub use clamp_op::*;
 pub use cos_op::*;
 pub use cross_entropy_op::*;
+pub use diagonal_op::*;
+pub use einsum::*;
 pub use equation::*;
 pub use index::*;
 pub use lazy_static::*;
@@ -56,7 +59,6 @@ pub use tanh_op::*;
 pub use tensor::*;
 pub use transpose_op::*;
 pub use unsqueeze_op::*;
-pub use einsum::*;
 
 lazy_static! {
     static ref SINGLETON_INSTANCE: Mutex<Equation> = Mutex::new(Equation::new());
