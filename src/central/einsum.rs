@@ -204,9 +204,9 @@ impl Tensor {
         let mut size_of_ellipsis = vec![1, number_of_ellipsis_dimensions];
         let mut dimenion_count = vec![0, permanent_index];
 
-        let mut ops: Vec<Tensor> = vec![];
+        let mut operands_stack: Vec<Tensor> = vec![];
         for i in 0..number_of_operands {
-            let operand = operands[i];
+            let mut operand = operands[i];
 
             let mut permutation = vec![-1; permanent_index];
             let mut dimension = 0;
@@ -248,8 +248,68 @@ impl Tensor {
                 } else {
                     let previous_dimension =
                         permutation[permanent_label_index[*s as usize] as usize];
+
+                    let diag = operand.diagonal(0, previous_dimension as usize, dimension);
+                    let last_dimension = diag.shape.dimensions()[diag.shape.number_of_dimension() - 1];
+                    operand = diag.movedim(last_dimension,previous_dimension as usize );
                 }
             }
+            for val in &mut permutation {
+                if *val == -1 {
+                    operand = operand.unsqueeze(dimension as isize);
+                    *val = dimension as isize;
+                    dimension += 1;
+                }
+            }
+            operands_stack.push(operand.permute(permutation.iter().map(|x|*x as usize).collect()));
+        }
+
+        let mut contract_path = vec![0;0];
+
+        while operands_stack.len() > 0 {
+            let mut i = 0;
+            let mut j = 1;
+            let operand_a = operands_stack[i];
+            let operand_b = operands_stack[j];
+            
+            let mut summed_dimensions = vec![];
+            
+            let mut a_dimensions_to_sum = vec![];
+            let mut b_dimensions_to_sum = vec![];
+
+            for dim in number_of_output_dimensions..permanent_index {
+                
+                let sa = operand_a.shape.dimensions()[dim] != 1;
+                let sb = operand_b.shape.dimensions()[dim] != 1;
+
+                if sa && sb {
+                    assert!(operand_a.shape.dimensions()[dim] == operand_b.shape.dimensions()[dim]);
+                    dimenion_count[dim] -= 1;
+                    if dimenion_count[dim] == 1 {
+                        summed_dimensions.push(dim);
+                        dimenion_count[dim] = 0;
+                    }
+                }
+                else if dimenion_count[dim] == 1 {
+                    if sa == true {
+                        a_dimensions_to_sum.push(dim);
+                        dimenion_count[dim] = 0;
+                    } else if sb == true {
+                        b_dimensions_to_sum.push(dim);
+                        dimenion_count[dim] = 0;
+                    }
+                }
+            }
+
+            if a_dimensions_to_sum.is_empty() == false {
+                
+            }
+            if b_dimensions_to_sum.is_empty() == false {
+
+            }
+
+        //    operands_stack.insert(0, sum);
+
         }
 
         Tensor::randn(Shape::new(vec![1]))
