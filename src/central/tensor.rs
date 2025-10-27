@@ -241,7 +241,7 @@ impl Tensor {
     pub fn arange(start: usize, length: usize, step_size: usize) -> Tensor {
         let mut elements = vec![];
 
-        for i in (start..length).step_by(step_size) {
+        for i in (start..(start + length)).step_by(step_size) {
             elements.push(i as f32);
         }
 

@@ -1,6 +1,5 @@
 import torch
 
-a = torch.arange(24)
-a = a.reshape(2, 3, 4)
-
-print(a.diagonal(0, 1, 2))
+a = torch.arange(4)#.reshape(2)
+b = torch.arange(start=5, end=9, step=1)#.reshape(2, 2)
+print(torch.einsum("i,j -> ij", a, b))
