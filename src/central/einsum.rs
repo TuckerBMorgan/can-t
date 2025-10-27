@@ -121,6 +121,11 @@ impl Tensor {
         {
             let mut i = 0;
 
+            for it in &lro { 
+                out_permutations[*it] = i;
+                i += 1;
+            }
+
             for it in &lo {
                 out_permutations[*it] = i as usize;
                 i+=1;
@@ -147,6 +152,11 @@ impl Tensor {
         // Cant does this by default as all Matrix Multiply
         // it is likely worth some time to understand why pytorch does not have them as the same function
         let result = left << right;
+        println!("Left {:?}", left.shape);
+        println!("Right {:?}", right.shape);
+        println!("Result {:?}", result.shape);
+        println!("Output Size {:?}", output_size);
+        println!("Out Permuitation {:?}", out_permutations);
         let result = result.reshape(Shape::new(output_size)).permute(out_permutations);
 
         return result;
@@ -510,13 +520,24 @@ mod tests {
         println!("{:?}", c.item())
     }
 
-        #[test]
+    #[test]
     fn basic_1d_1d_test() {
         let a = Tensor::arange(0, 4,1).reshape(Shape::new(vec![4]));
         let b = Tensor::arange(5, 4,1).reshape(Shape::new(vec![4]));
         println!("{:?}", a.item());
         println!("{:?}", b.item());
         let c =Tensor::einsum("i,k->ik", vec![a, b]);
+        println!("{:?}", c.item())
+    }
+
+    #[test]
+    // bec,be->bc
+    fn basic_batch_test() {
+        let a = Tensor::arange(0, 12,1).reshape(Shape::new(vec![3, 2, 2]));
+        let b = Tensor::arange(0, 6,1).reshape(Shape::new(vec![3, 2]));
+        println!("{:?}", a.item());
+        println!("{:?}", b.item());
+        let c = Tensor::einsum("bec,be->bc", vec![a, b]);
         println!("{:?}", c.item())
     }
 }

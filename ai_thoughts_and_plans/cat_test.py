@@ -1,5 +1,7 @@
 import torch
 
-a = torch.arange(4)#.reshape(2)
-b = torch.arange(start=5, end=9, step=1)#.reshape(2, 2)
-print(torch.einsum("i,j -> ij", a, b))
+a = torch.arange(12).reshape(3, 2, 2)
+b = torch.arange(6).reshape(3, 2)
+print(a)
+print(b)
+print(torch.einsum("bec,be->bc", a, b))

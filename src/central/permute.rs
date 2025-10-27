@@ -1,4 +1,5 @@
 use super::{BackproagationPacket, Operation, Shape, Tensor, get_equation};
+use std::collections::HashSet;
 
 fn compute_strides(dims: &[usize]) -> Vec<usize> {
     let rank = dims.len();
@@ -62,8 +63,16 @@ pub(crate) fn invert_permutation(permutation: &[usize]) -> Vec<usize> {
 }
 
 impl Tensor {
+
+    fn all_unique(values: &[usize]) -> bool {
+    let mut seen = HashSet::with_capacity(values.len());
+    values.iter().all(|&v| seen.insert(v))
+}
     /// Reorders the tensor axes according to the provided permutation.
     pub fn permute(&self, permutation: Vec<usize>) -> Tensor {
+
+        assert!(Tensor::all_unique(&permutation), "All axes in a permutation must be unique {:?}", permutation);
+
         let (source_dims, source_data) = {
             let equation = get_equation();
             let shape = equation.get_tensor_shape(self.id);
@@ -78,6 +87,8 @@ impl Tensor {
             permutation.len(),
             source_dims.len()
         );
+
+
 
         let output_dims: Vec<usize> = permutation.iter().map(|&axis| source_dims[axis]).collect();
         let output_shape = Shape::new(output_dims);
