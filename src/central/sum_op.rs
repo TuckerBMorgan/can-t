@@ -44,7 +44,7 @@ impl Tensor {
         }
 
         // We need to copy the dimensions we are summing into an array, so it can fit into the enum Operation
-        let mut dimensions_as_array : [usize;MAX_DIMS] = [0_usize; 10];
+        let mut dimensions_as_array: [usize; MAX_DIMS] = [0_usize; 10];
         for (index, dim) in axes.iter().enumerate() {
             dimensions_as_array[index] = *dim;
         }

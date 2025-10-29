@@ -69,7 +69,7 @@ impl Tensor {
 
             (std, output_shape)
         };
-        let mut copied_axes : [usize;MAX_DIMS] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let mut copied_axes: [usize; MAX_DIMS] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         for (i, axis) in axes.iter().enumerate() {
             copied_axes[i] = *axis;
         }

@@ -1,9 +1,9 @@
 // To keep the library simple we have a forced max of the number of dimensions we work with
-pub const MAX_DIMS : usize = 10;
+pub const MAX_DIMS: usize = 10;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Shape {
     dimension: [usize; MAX_DIMS], // Right to left, the length of up to 4 dimensions, Capping at 4 since that is the most we will encounter
-    in_use_dimension: usize, // the number of the 4 dimensions that we are using
+    in_use_dimension: usize,      // the number of the 4 dimensions that we are using
 }
 
 impl Shape {
@@ -18,12 +18,20 @@ impl Shape {
     /// This function will panic if the number of indices exceeds the maximum number of indices.
     /// This function will panic if there are 0 supplied dimensions
     pub fn new(dimensions: Vec<usize>) -> Shape {
-        assert!(dimensions.len() <= MAX_DIMS, "To many dimensions provided {:?}", dimensions);
-        assert!(dimensions.len() != 0, "Must provide at least one dimension {:?}", dimensions);
+        assert!(
+            dimensions.len() <= MAX_DIMS,
+            "To many dimensions provided {:?}",
+            dimensions
+        );
+        assert!(
+            dimensions.len() != 0,
+            "Must provide at least one dimension {:?}",
+            dimensions
+        );
         //TODO: do an assert for cases such as [1, 0, 1], which is invalid
         let in_use_dimension = dimensions.len();
 
-        let mut final_dimensions : [usize;MAX_DIMS] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let mut final_dimensions: [usize; MAX_DIMS] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         for i in 0..in_use_dimension {
             assert!(
                 dimensions[i] != 0,
@@ -187,73 +195,59 @@ impl Shape {
     /// * 'a' - Left hand shape
     /// * 'b' - Right hand shape
     pub fn matmul_broadcast(a: Shape, b: Shape) -> (Shape, Shape) {
-        let mut a_new_shape = vec![1, 1, 1, 1];
-        let mut b_new_shape = vec![1, 1, 1, 1];
+        let mut a_new_shape = vec![1; MAX_DIMS];
+        let mut b_new_shape = vec![1; MAX_DIMS];
 
-        // it is simplier if we assume that all matrix multiplication simply happens as 4x4
-        // So first lets fill out dummy shapes with those dimensions we do have
-        for (index, dimension) in a.dimensions().iter().rev().enumerate() {
-            a_new_shape[MAX_DIMS - 1 - index] = *dimension;
+        // Right-align A into the last MAX_DIMS slots
+        for (index, &dimension) in a.dimensions().iter().rev().enumerate() {
+            a_new_shape[MAX_DIMS - 1 - index] = dimension;
         }
 
-        // Special casing 1d vectors on the right hand side
-        // because in the case of for example [1, 2, 3, 4] x [4] we want it to come out
-        // [1, 2, 3, 4] x [1, 2, 4, 1] then [1, 2, 3, 4] x [1, 2, 1, 4]
+        // Right-align B; if B is 1-D, treat it as (k, 1) so it can act like a column vector.
         if b.number_of_dimension() == 1 {
-            b_new_shape[2] = b.dimensions()[0];
+            // put k in the penultimate dim; final dim (n) stays 1
+            b_new_shape[MAX_DIMS - 2] = b.dimensions()[0];
         } else {
-            for (index, dimension) in b.dimensions().iter().rev().enumerate() {
-                b_new_shape[3 - index] = *dimension;
+            for (index, &dimension) in b.dimensions().iter().rev().enumerate() {
+                b_new_shape[MAX_DIMS - 1 - index] = dimension;
             }
         }
 
-        // Next we want to broadcast just the first two dimensions of the four
-        // Following basic broadcasting rules
+        // Broadcast all "batch" dimensions (everything except the last two)
+        for i in 0..(MAX_DIMS - 2) {
+            let ad = a_new_shape[i];
+            let bd = b_new_shape[i];
 
-        // First check that the indices are broadcastable at all
-        if a_new_shape[0] != 1 && b_new_shape[0] != 1 && a_new_shape[0] != b_new_shape[0] {
-            panic!("None broadcastable shapes {:?} {:?}", a, b);
+            // Check broadcastability for this batch dim
+            if ad != 1 && bd != 1 && ad != bd {
+                panic!("None broadcastable shapes {:?} {:?}", a, b);
+            }
+
+            // Apply broadcasting if needed
+            if ad == 1 || bd == 1 {
+                let final_dimension = usize::max(ad, bd);
+                a_new_shape[i] = final_dimension;
+                b_new_shape[i] = final_dimension;
+            }
         }
 
-        // Broadcast them if we need to
-        if a_new_shape[0] == 1 || b_new_shape[0] == 1 {
-            let a_first = a_new_shape[0];
-            let b_first = b_new_shape[0];
-            let final_dimension = usize::max(a_first, b_first);
-            a_new_shape[0] = final_dimension;
-            b_new_shape[0] = final_dimension;
-        }
+        // Note: as before, we don't check matmul core dims here:
+        // A[..., m, k] x B[..., k, n] -> result checks happen elsewhere.
 
-        // And then repeat for the second index
-        if a_new_shape[1] != 1 && b_new_shape[1] != 1 && a_new_shape[1] != b_new_shape[1] {
-            panic!("None broadcastable shapes {:?} {:?}", a, b);
-        }
-
-        if a_new_shape[1] == 1 || b_new_shape[1] == 1 {
-            let a_first = a_new_shape[1];
-            let b_first = b_new_shape[1];
-            let final_dimension = usize::max(a_first, b_first);
-            a_new_shape[1] = final_dimension;
-            b_new_shape[1] = final_dimension;
-        }
-
-        let new_a = Shape::new(a_new_shape);
-        let new_b = Shape::new(b_new_shape);
-
-        return (new_a, new_b);
+        (Shape::new(a_new_shape), Shape::new(b_new_shape))
     }
 
     /// Returns a new shape that would be the result of two matrices of the provided shapes being matmul together
     /// # Arguments
     /// * 'other' - the shape of ther right side operand
     pub fn matmul_shape(&self, other: Shape) -> Shape {
-        let mut final_dimensions = vec![];
+        let a_dims = self.dimensions().to_vec();
+        let b_dims = other.dimensions().to_vec();
 
-        // Following rules roughly laid out in https://docs.pytorch.org/docs/stable/generated/torch.matmul.html
-        // If they are both vectors(1d matrix) then the result will be a single scalar, so the shape will be 1 d
-        if self.number_of_dimension() == 1 && other.number_of_dimension() == 1 {
+        // 1) 1D @ 1D -> scalar (keep your convention: shape [1])
+        if a_dims.len() == 1 && b_dims.len() == 1 {
             assert!(
-                self.dimensions()[0] == other.dimensions()[0],
+                a_dims[0] == b_dims[0],
                 "Mis matching dimensions for 1d@1d matrix multiply a{:?} b{:?}",
                 self,
                 other
@@ -261,145 +255,96 @@ impl Shape {
             return Shape::new(vec![1]);
         }
 
-        // If they are both 2d, follow the standard forumla, MxN @ NxB = MxB
-        if self.number_of_dimension() == 2 && other.number_of_dimension() == 2 {
-            assert!(
-                self.dimensions()[1] == other.dimensions()[0],
-                "Mis matching dimensions for 2d@2d matrix multiply a{:?} b{:?}",
-                self,
-                other
-            );
-            return Shape::new(vec![self.dimensions()[0], other.dimensions()[1]]);
-        }
+        // Build working 2D-or-higher shapes by "unsqueezing" vectors:
+        // If A is 1D [k] -> [1, k]
+        // If B is 1D [k] -> [k, 1]
+        let a_was_vec = a_dims.len() == 1;
+        let b_was_vec = b_dims.len() == 1;
 
-        // if one is 2d and the other is 1d, take the leading dimension
-        if self.number_of_dimension() == 2 && other.number_of_dimension() == 1 {
-            assert!(
-                self.dimensions()[1] == other.dimensions()[0],
-                "Mis matching dimensions for 2d@1d matrix multiply a{:?} b{:?}",
-                self,
-                other
-            );
-            return Shape::new(vec![self.dimensions()[0]]);
-        }
-        // if one is 1d and the other is 2d, take the trailing dimension
-        if self.number_of_dimension() == 1 && other.number_of_dimension() == 2 {
-            assert!(
-                self.dimensions()[0] == other.dimensions()[0],
-                "Mis matching dimensions for 1d@2d matrix multiply a{:?} b{:?}",
-                self,
-                other
-            );
-            return Shape::new(vec![other.dimensions()[1]]);
-        }
-
-        let mut one_dimension_added_to_left = false;
-        let mut one_dimension_added_to_right = false;
-        // Then get left and right operand for the batch test
-        let left_hand_working_shape = {
-            if self.number_of_dimension() == 4 || self.number_of_dimension() == 3 {
-                let return_shape = self.clone();
-                if self.number_of_dimension() == 3 {
-                    return_shape.remove_index(0)
-                } else {
-                    return_shape.remove_index(0).remove_index(0)
-                }
-            } else {
-                if self.number_of_dimension() == 2 {
-                    self.clone()
-                } else {
-                    //NOTE: this is different then the right side, we are prepending, below does a append
-                    one_dimension_added_to_left = true;
-                    self.add_dimension_at_index(1, 0)
-                }
-            }
+        let a_work = if a_was_vec {
+            vec![1, a_dims[0]]
+        } else {
+            a_dims.clone()
+        };
+        let b_work = if b_was_vec {
+            vec![b_dims[0], 1]
+        } else {
+            b_dims.clone()
         };
 
-        let right_hand_working_shape = {
-            if other.number_of_dimension() == 4 || other.number_of_dimension() == 3 {
-                let return_shape = other.clone();
-                if other.number_of_dimension() == 3 {
-                    return_shape.remove_index(0)
-                } else {
-                    return_shape.remove_index(0).remove_index(0)
-                }
+        // 2) Validate matrix core dims: A[..., m, k] @ B[..., k, n]
+        assert!(
+            a_work.len() >= 2 && b_work.len() >= 2,
+            "Both operands must be at least 1D (after normalization)."
+        );
+        let a_m = a_work[a_work.len() - 2];
+        let a_k = a_work[a_work.len() - 1];
+        let b_k = b_work[b_work.len() - 2];
+        let b_n = b_work[b_work.len() - 1];
+
+        assert!(
+            a_k == b_k,
+            "Mis matching core dims a_k={} vs b_k={} for matmul a{:?} b{:?}",
+            a_k,
+            b_k,
+            self,
+            other
+        );
+
+        // 3) Broadcast batch dims (everything except the last two), right-aligned
+        let a_batch = &a_work[..a_work.len() - 2];
+        let b_batch = &b_work[..b_work.len() - 2];
+
+        // Right-align and broadcast
+        let mut result_batch = vec![];
+        let max_batch_len = a_batch.len().max(b_batch.len());
+        for i in 0..max_batch_len {
+            // pick from the right
+            let a_dim = if i < a_batch.len() {
+                a_batch[a_batch.len() - 1 - i]
             } else {
-                if other.number_of_dimension() == 2 {
-                    other.clone()
-                } else {
-                    //NOTE: this is different then the left side, we are appending, above does a prepend
-                    one_dimension_added_to_right = true;
-                    other.add_dimension_at_index(1, 1)
-                }
+                1
+            };
+            let b_dim = if i < b_batch.len() {
+                b_batch[b_batch.len() - 1 - i]
+            } else {
+                1
+            };
+
+            if a_dim != 1 && b_dim != 1 && a_dim != b_dim {
+                panic!(
+                    "None broadcastable batch dims at offset {}: a_dim={}, b_dim={} for a{:?} b{:?}",
+                    i, a_dim, b_dim, self, other
+                );
             }
-        };
+            result_batch.push(usize::max(a_dim, b_dim));
+        }
+        result_batch.reverse();
 
-        let mut dimensions = vec![
-            left_hand_working_shape.dimensions()[0],
-            right_hand_working_shape.dimensions()[1],
-        ];
+        // 4) Compose result matrix dims, then squeeze back if a/b were vectors
+        let mut result = result_batch;
+        result.push(a_m);
+        result.push(b_n);
 
-        // We need to remove the added dimensions that made it easier to and simpler to make the new shape
-        if one_dimension_added_to_left {
-            dimensions.remove(0);
-        } else if one_dimension_added_to_right {
-            dimensions.remove(1);
+        if a_was_vec {
+            // drop the 'm' dimension -> batch + [n]
+            // (remove the element just before the last: index len-2)
+            let drop_idx = result.len() - 2;
+            result.remove(drop_idx);
+        }
+        if b_was_vec {
+            // drop the 'n' dimension -> batch + [m]
+            // (remove the last element)
+            result.pop();
         }
 
-        // We need to the batch dimensions (the leading dimensions of any vector greater then 2 in length)
-        let mut left_side_batch_dimension = vec![];
-        let mut right_side_batch_dimension = vec![];
+        // Special-cases naturally fall out:
+        // - 2D@2D -> [m, n]
+        // - 2D@1D -> [m]
+        // - 1D@2D -> [n]
+        // - ND@MD -> batch-broadcasted + [m, n]
 
-        let number_of_left_side_batch_dimension = self.number_of_dimension().saturating_sub(2);
-        let number_of_right_side_batch_dimension = other.number_of_dimension().saturating_sub(2);
-
-        if number_of_left_side_batch_dimension == 0 {
-            for i in 0..number_of_right_side_batch_dimension {
-                final_dimensions.push(other.dimensions()[i]);
-            }
-
-            for i in 0..dimensions.len() {
-                final_dimensions.push(dimensions[i]);
-            }
-            return Shape::new(final_dimensions);
-        }
-
-        if number_of_right_side_batch_dimension == 0 {
-            for i in 0..number_of_left_side_batch_dimension {
-                final_dimensions.push(self.dimensions()[i]);
-            }
-
-            for i in 0..dimensions.len() {
-                final_dimensions.push(dimensions[i]);
-            }
-            return Shape::new(final_dimensions);
-        }
-
-        for i in 0..number_of_left_side_batch_dimension {
-            left_side_batch_dimension.push(self.dimensions()[i]);
-        }
-
-        for i in 0..number_of_right_side_batch_dimension {
-            right_side_batch_dimension.push(other.dimensions()[i]);
-        }
-
-        let left_side_batch_dimension_shape = Shape::new(left_side_batch_dimension);
-        let right_side_batch_dimension_shape = Shape::new(right_side_batch_dimension);
-
-        let broadcast_shape =
-            left_side_batch_dimension_shape.broadcast_shape(right_side_batch_dimension_shape);
-
-        let broadcast_dimension = broadcast_shape.dimensions();
-
-        for i in 0..broadcast_dimension.len() {
-            final_dimensions.push(broadcast_dimension[i]);
-        }
-
-        for i in 0..dimensions.len() {
-            final_dimensions.push(dimensions[i]);
-        }
-
-        return Shape::new(final_dimensions);
+        Shape::new(result)
     }
 
     /// Checks if the two shapes are broadcastable
@@ -682,13 +627,13 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "assertion failed")]
+    #[should_panic(expected = "Must provide at least one dimension []")]
     pub fn bad_shape_test() {
         let _shape = Shape::new(vec![]);
     }
 
     #[test]
-    #[should_panic(expected = "assertion failed")]
+    #[should_panic(expected = "Must provide at least one dimension []")]
     pub fn bad_shape_test_remove_at_zero() {
         let shape = Shape::new(vec![1]);
         let _new_shape = shape.remove_index(0);

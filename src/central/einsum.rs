@@ -4,9 +4,11 @@ use regex::Regex;
 use std::{collections::HashMap, hash::Hash, mem::swap};
 
 impl Tensor {
-
-    fn dim_list_to_bitset(summed_dimensions: &Vec<usize>, number_of_dimensions: usize) -> Vec<bool> {
-        let mut bitset = vec![false;64];
+    fn dim_list_to_bitset(
+        summed_dimensions: &Vec<usize>,
+        number_of_dimensions: usize,
+    ) -> Vec<bool> {
+        let mut bitset = vec![false; 64];
         for index in 0..summed_dimensions.len() {
             let dimension = summed_dimensions[index];
             assert!(bitset[dimension] == false);
@@ -15,7 +17,12 @@ impl Tensor {
         return bitset;
     }
 
-    fn sumproduct_pair(left: Tensor, right: Tensor, sum_dimensions: Vec<usize>, keep_dimensions: bool) -> Tensor {
+    fn sumproduct_pair(
+        left: Tensor,
+        right: Tensor,
+        sum_dimensions: Vec<usize>,
+        keep_dimensions: bool,
+    ) -> Tensor {
         if sum_dimensions.is_empty() {
             return left * right;
         }
@@ -32,7 +39,6 @@ impl Tensor {
         let mut ro = vec![];
         let mut ro_size = 1;
         let mut sum_size = 1;
-        
 
         for i in 0..number_left_dimensions {
             let sl = left.shape.dimensions()[i] != 1;
@@ -40,23 +46,19 @@ impl Tensor {
 
             if summed_dimensions[i] == true {
                 if sl == true && sr == true {
-                    sum_size *= left.shape.dimensions()[i];                    
-                }
-                else if sl == true {
+                    sum_size *= left.shape.dimensions()[i];
+                } else if sl == true {
                     left = left.sum(vec![i], true);
-                }
-                else if sr == true {
+                } else if sr == true {
                     right = right.sum(vec![i], true);
                 }
             } else if sl == true && sr == true {
                 lro.push(i);
                 lro_size *= left.shape.dimensions()[i];
-            }
-            else if sl == true {
+            } else if sl == true {
                 lo.push(i);
                 lo_size *= left.shape.dimensions()[i];
-            }
-            else {
+            } else {
                 ro.push(i);
                 ro_size *= right.shape.dimensions()[i];
             }
@@ -77,7 +79,6 @@ impl Tensor {
             ro_size = lo_size;
             lo_size = hold_ro_size;
         }
-
 
         let number_of_output_dimension = lro.len() + lo.len() + sum_dimensions.len() + ro.len();
 
@@ -116,19 +117,18 @@ impl Tensor {
         rpermutations.append(&mut ro.clone());
         rpermutations.append(&mut lo.clone());
 
-
-        let mut out_permutations = vec![0;number_of_output_dimension];
+        let mut out_permutations = vec![0; number_of_output_dimension];
         {
             let mut i = 0;
 
-            for it in &lro { 
+            for it in &lro {
                 out_permutations[*it] = i;
                 i += 1;
             }
 
             for it in &lo {
                 out_permutations[*it] = i as usize;
-                i+=1;
+                i += 1;
             }
 
             for it in &sum_dimensions {
@@ -140,13 +140,15 @@ impl Tensor {
                 out_permutations[*it] = i;
                 i += 1;
             }
-            
         }
 
+        let left = left
+            .permute(lpermutations)
+            .reshape(Shape::new(vec![lro_size, lo_size, sum_size]));
 
-        let left = left.permute(lpermutations).reshape(Shape::new(vec![lro_size, lo_size, sum_size]));
-
-        let right = right.permute(rpermutations).reshape(Shape::new(vec![lro_size, sum_size, ro_size]));
+        let right = right
+            .permute(rpermutations)
+            .reshape(Shape::new(vec![lro_size, sum_size, ro_size]));
 
         // In the original c++ this is a call to bmm, (batched matrix multlpy)
         // Cant does this by default as all Matrix Multiply
@@ -157,7 +159,9 @@ impl Tensor {
         println!("Result {:?}", result.shape);
         println!("Output Size {:?}", output_size);
         println!("Out Permuitation {:?}", out_permutations);
-        let result = result.reshape(Shape::new(output_size)).permute(out_permutations);
+        let result = result
+            .reshape(Shape::new(output_size))
+            .permute(out_permutations);
 
         return result;
     }
@@ -368,11 +372,10 @@ impl Tensor {
 
             let mut permutation = vec![-1; permanent_index];
             let mut dimension = 0;
-            
+
             for s in &operand_labels[i] {
-                
                 println!("{:?} epioch {:?}", permutation, i);
-                println!("{:?} epioch", (*s + b'a' - NUM_OF_LETTERS)as char );
+                println!("{:?} epioch", (*s + b'a' - NUM_OF_LETTERS) as char);
 
                 if *s == ELLIPSIS {
                     let number_of_dimensions =
@@ -414,8 +417,9 @@ impl Tensor {
                         permutation[permanent_label_index[*s as usize] as usize];
 
                     let diag = operand.diagonal(0, previous_dimension as usize, dimension);
-                    let last_dimension = diag.shape.dimensions()[diag.shape.number_of_dimension() - 1];
-                    operand = diag.movedim(last_dimension,previous_dimension as usize );
+                    let last_dimension =
+                        diag.shape.dimensions()[diag.shape.number_of_dimension() - 1];
+                    operand = diag.movedim(last_dimension, previous_dimension as usize);
                 }
             }
 
@@ -427,7 +431,7 @@ impl Tensor {
                 }
             }
 
-            operands_stack.push(operand.permute(permutation.iter().map(|x|*x as usize).collect()));
+            operands_stack.push(operand.permute(permutation.iter().map(|x| *x as usize).collect()));
         }
 
         while operands_stack.len() > 1 {
@@ -441,17 +445,16 @@ impl Tensor {
 
             let mut operand_a = operands_stack[i];
             let mut operand_b = operands_stack[j];
-            
+
             operands_stack.remove(j);
             operands_stack.remove(i);
-            
+
             let mut summed_dimensions = vec![];
-            
+
             let mut a_dimensions_to_sum = vec![];
             let mut b_dimensions_to_sum = vec![];
 
             for dim in number_of_output_dimensions..permanent_index {
-                
                 let sa = operand_a.shape.dimensions()[dim] != 1;
                 let sb = operand_b.shape.dimensions()[dim] != 1;
 
@@ -462,8 +465,7 @@ impl Tensor {
                         summed_dimensions.push(dim);
                         dimenion_count[dim] = 0;
                     }
-                }
-                else if dimenion_count[dim] == 1 {
+                } else if dimenion_count[dim] == 1 {
                     if sa == true {
                         a_dimensions_to_sum.push(dim);
                         dimenion_count[dim] = 0;
@@ -481,7 +483,10 @@ impl Tensor {
                 operand_b = operand_b.sum(b_dimensions_to_sum, true);
             }
 
-            operands_stack.insert(0, Tensor::sumproduct_pair(operand_a, operand_b, summed_dimensions, true));
+            operands_stack.insert(
+                0,
+                Tensor::sumproduct_pair(operand_a, operand_b, summed_dimensions, true),
+            );
         }
 
         if permanent_index - number_of_output_dimensions > 0 {
@@ -491,9 +496,8 @@ impl Tensor {
                     sizes.remove(dim);
                 }
                 return operands_stack[0].reshape(Shape::new(sizes));
-            }
-            else {
-                let mut sum_dims = vec![0;permanent_index - number_of_output_dimensions];
+            } else {
+                let mut sum_dims = vec![0; permanent_index - number_of_output_dimensions];
                 for i in 0..number_of_output_dimensions {
                     sum_dims.push(i);
                 }
@@ -510,34 +514,34 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    // Need to support cases 
+    // Need to support cases
     // i,j -> ij
     // "qhmd,khmd->hmqk"
     // beck,bk->bec
     #[test]
     fn basic_test() {
-        let a = Tensor::arange(0, 4,1).reshape(Shape::new(vec![2, 2]));
-        let b = Tensor::arange(5, 4,1).reshape(Shape::new(vec![2, 2]));
+        let a = Tensor::arange(0, 4, 1).reshape(Shape::new(vec![2, 2]));
+        let b = Tensor::arange(5, 4, 1).reshape(Shape::new(vec![2, 2]));
         println!("{:?}", a.item());
         println!("{:?}", b.item());
-        let c =Tensor::einsum("ij,jk->ik", vec![a, b]);
+        let c = Tensor::einsum("ij,jk->ik", vec![a, b]);
         println!("{:?}", c.item())
     }
 
     #[test]
     fn basic_1d_1d_test() {
-        let a = Tensor::arange(0, 4,1).reshape(Shape::new(vec![4]));
-        let b = Tensor::arange(5, 4,1).reshape(Shape::new(vec![4]));
+        let a = Tensor::arange(0, 4, 1).reshape(Shape::new(vec![4]));
+        let b = Tensor::arange(5, 4, 1).reshape(Shape::new(vec![4]));
         println!("{:?}", a.item());
         println!("{:?}", b.item());
-        let c =Tensor::einsum("i,k->ik", vec![a, b]);
+        let c = Tensor::einsum("i,k->ik", vec![a, b]);
         println!("{:?}", c.item())
     }
 
     #[test]
     fn basic_batch_test() {
-        let a = Tensor::arange(0, 12,1).reshape(Shape::new(vec![3, 2, 2]));
-        let b = Tensor::arange(0, 6,1).reshape(Shape::new(vec![3, 2]));
+        let a = Tensor::arange(0, 12, 1).reshape(Shape::new(vec![3, 2, 2]));
+        let b = Tensor::arange(0, 6, 1).reshape(Shape::new(vec![3, 2]));
         println!("{:?}", a.item());
         println!("{:?}", b.item());
         let c = Tensor::einsum("bec,be->bc", vec![a, b]);
@@ -546,8 +550,8 @@ mod tests {
 
     #[test]
     fn advanced_batch_mutiply_test() {
-        let a = Tensor::arange(0, 48 + 24,1).reshape(Shape::new(vec![4, 3, 2, 3]));
-        let b = Tensor::arange(0, 48 + 24,1).reshape(Shape::new(vec![4, 3, 3, 2]));
+        let a = Tensor::arange(0, 48 + 24, 1).reshape(Shape::new(vec![4, 3, 2, 3]));
+        let b = Tensor::arange(0, 48 + 24, 1).reshape(Shape::new(vec![4, 3, 3, 2]));
         println!("{:?}", a.item());
         println!("{:?}", b.item());
         let c = Tensor::einsum("qhmd,khmd->hmqk", vec![a, b]);
