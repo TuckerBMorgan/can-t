@@ -56,6 +56,7 @@ open target/llvm-cov/html/index.html
 
 - **`cant_cpu`** - CPU-based tensor operations using ndarray
 - **`cant_metal`** - Metal shader-based GPU acceleration for macOS
+- **'cant_cuda'** - Cuda based Backend(not has often tested)
 
 ### Utilities (`src/utils/`)
 

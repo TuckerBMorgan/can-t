@@ -1,3 +1,5 @@
+use crate::central::MAX_DIMS;
+
 use super::{Shape, tensor::TensorID};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -7,7 +9,7 @@ pub enum Operation {
     Add(TensorID, TensorID), // Left side operand tensor, right side operand tensor
     Mul(TensorID, TensorID), // Left side operand tensor, right side operand tensor
     BroadCast(TensorID, Shape), // Tensor we are broadcasting, the shape we are broadcasting from?
-    Sum(TensorID, [usize; 4], usize, bool), // The Tensor that was summed, the dimensions that where summed, the number of summed demensions, keep_dimensions
+    Sum(TensorID, [usize; MAX_DIMS], usize, bool), // The Tensor that was summed, the dimensions that where summed, the number of summed demensions, keep_dimensions
     // Rust does not let you copy/clone vecs, and we will not be supporting matrices greater then 4, so we can use [usize;4] as a stand in for
     // the vec
     Pow(TensorID, TensorID), // The tensor we raised to a power, a tensor that holds the value of that power for later
@@ -19,8 +21,8 @@ pub enum Operation {
     Tanh(TensorID),          // Source tensor
     Cos(TensorID),           // Source tensor
     Sin(TensorID),           // Source tensor
-    Mean(TensorID, [isize; 4], usize), // Source tensor, axes, num_axes
-    Std(TensorID, [usize; 4], usize), // Source tensor, axes, num_axes
+    Mean(TensorID, [isize; MAX_DIMS], usize), // Source tensor, axes, num_axes
+    Std(TensorID, [usize; MAX_DIMS], usize), // Source tensor, axes, num_axes
     Softmax(TensorID, usize), // Source tensor, axis
     Log(TensorID),           // Source tensor,
     Transpose(TensorID, usize, usize), // Source, First Index, Second Index
@@ -31,5 +33,5 @@ pub enum Operation {
     Cat(TensorID, TensorID, usize), // Left, Right, Dimension
     Diagonal(TensorID, usize, usize, usize), // Source, Offset, First Dimension, Second Dimension,
     MoveDim(TensorID, usize, usize), // Source, Originial, New Location
-    Permute(TensorID, [usize; 4], usize), // Source, Permutation, In use Dimensions in Permutations
+    Permute(TensorID, [usize; MAX_DIMS], usize), // Source, Permutation, In use Dimensions in Permutations
 }

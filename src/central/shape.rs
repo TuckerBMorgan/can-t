@@ -1,6 +1,8 @@
+// To keep the library simple we have a forced max of the number of dimensions we work with
+pub const MAX_DIMS : usize = 10;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Shape {
-    dimension: [usize; 4], // Right to left, the length of up to 4 dimensions, Capping at 4 since that is the most we will encounter
+    dimension: [usize; MAX_DIMS], // Right to left, the length of up to 4 dimensions, Capping at 4 since that is the most we will encounter
     in_use_dimension: usize, // the number of the 4 dimensions that we are using
 }
 
@@ -16,12 +18,12 @@ impl Shape {
     /// This function will panic if the number of indices exceeds the maximum number of indices.
     /// This function will panic if there are 0 supplied dimensions
     pub fn new(dimensions: Vec<usize>) -> Shape {
-        assert!(dimensions.len() <= 4);
-        assert!(dimensions.len() != 0);
+        assert!(dimensions.len() <= MAX_DIMS, "To many dimensions provided {:?}", dimensions);
+        assert!(dimensions.len() != 0, "Must provide at least one dimension {:?}", dimensions);
         //TODO: do an assert for cases such as [1, 0, 1], which is invalid
         let in_use_dimension = dimensions.len();
 
-        let mut final_dimensions = [0, 0, 0, 0];
+        let mut final_dimensions : [usize;MAX_DIMS] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         for i in 0..in_use_dimension {
             assert!(
                 dimensions[i] != 0,
@@ -180,7 +182,7 @@ impl Shape {
     /// Broadcasting matrices is slightly different then normal
     /// as we only want to broadcast the batch dimensions [batch, batch, outer, inner]
     /// Which are those dimensions over 2
-    /// for simplicity of matmul, we treat all matrices as if they where 4x4
+    /// for simplicity of matmul, we treat all matrices as if they where MAX_DIMSxMAX_DIMS
     /// # Arguments
     /// * 'a' - Left hand shape
     /// * 'b' - Right hand shape
@@ -191,7 +193,7 @@ impl Shape {
         // it is simplier if we assume that all matrix multiplication simply happens as 4x4
         // So first lets fill out dummy shapes with those dimensions we do have
         for (index, dimension) in a.dimensions().iter().rev().enumerate() {
-            a_new_shape[3 - index] = *dimension;
+            a_new_shape[MAX_DIMS - 1 - index] = *dimension;
         }
 
         // Special casing 1d vectors on the right hand side

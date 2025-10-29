@@ -93,7 +93,7 @@ impl Tensor {
             output_size.push(left.shape.dimensions()[*d]);
         }
 
-        for d in &sum_dimensions {
+        for _d in &sum_dimensions {
             // This is an odd line in the original code
             // it does emblack back
             // and has a (vodi)(d)
@@ -259,18 +259,15 @@ impl Tensor {
         let mut number_of_ellipsis_dimensions = 0;
 
         for i in 0..number_of_operands {
-            let operands = operands[i];
+            let operand = operands[i];
             let labels = &operand_labels[i];
-            let number_of_dims = operands.shape;
+            let number_of_dims = operand.shape;
 
             let mut number_labels = labels.len();
-
-            //          let mut has_ellipsis = false;
 
             for label in labels {
                 if *label == ELLIPSIS {
                     number_labels -= 1;
-                    //                    has_ellipsis = true;
                     number_of_ellipsis_dimensions = number_of_ellipsis_dimensions
                         .max(number_of_dims.number_of_dimension() - number_labels);
                 } else {
@@ -371,8 +368,12 @@ impl Tensor {
 
             let mut permutation = vec![-1; permanent_index];
             let mut dimension = 0;
-
+            
             for s in &operand_labels[i] {
+                
+                println!("{:?} epioch {:?}", permutation, i);
+                println!("{:?} epioch", (*s + b'a' - NUM_OF_LETTERS)as char );
+
                 if *s == ELLIPSIS {
                     let number_of_dimensions =
                         operands[i].shape.number_of_dimension() - operand_labels[i].len() - 1;
@@ -401,9 +402,11 @@ impl Tensor {
                                 || label_size[*s as usize] == operand.shape.dimensions()[dimension]
                         );
                         label_size[*s as usize] = operand.shape.dimensions()[dimension];
+                        println!("test {:?}", permanent_label_index[*s as usize]);
                         dimenion_count[permanent_label_index[*s as usize] as usize] =
                             dimenion_count[permanent_label_index[*s as usize] as usize] + 1;
                     }
+
                     permutation[permanent_label_index[*s as usize] as usize] = dimension as isize;
                     dimension += 1;
                 } else {
@@ -415,6 +418,7 @@ impl Tensor {
                     operand = diag.movedim(last_dimension,previous_dimension as usize );
                 }
             }
+
             for val in &mut permutation {
                 if *val == -1 {
                     operand = operand.unsqueeze(dimension as isize);
@@ -422,12 +426,13 @@ impl Tensor {
                     dimension += 1;
                 }
             }
+
             operands_stack.push(operand.permute(permutation.iter().map(|x|*x as usize).collect()));
         }
 
         while operands_stack.len() > 1 {
-            let mut i = 0;
-            let mut j = 1;
+            let i = 0;
+            let j = 1;
 
             // In the original code there is a branch here
             // to handle a contraction path
@@ -509,7 +514,6 @@ mod tests {
     // i,j -> ij
     // "qhmd,khmd->hmqk"
     // beck,bk->bec
-    // bec,be->bc
     #[test]
     fn basic_test() {
         let a = Tensor::arange(0, 4,1).reshape(Shape::new(vec![2, 2]));
@@ -531,13 +535,22 @@ mod tests {
     }
 
     #[test]
-    // bec,be->bc
     fn basic_batch_test() {
         let a = Tensor::arange(0, 12,1).reshape(Shape::new(vec![3, 2, 2]));
         let b = Tensor::arange(0, 6,1).reshape(Shape::new(vec![3, 2]));
         println!("{:?}", a.item());
         println!("{:?}", b.item());
         let c = Tensor::einsum("bec,be->bc", vec![a, b]);
+        println!("{:?}", c.item())
+    }
+
+    #[test]
+    fn advanced_batch_mutiply_test() {
+        let a = Tensor::arange(0, 48 + 24,1).reshape(Shape::new(vec![4, 3, 2, 3]));
+        let b = Tensor::arange(0, 48 + 24,1).reshape(Shape::new(vec![4, 3, 3, 2]));
+        println!("{:?}", a.item());
+        println!("{:?}", b.item());
+        let c = Tensor::einsum("qhmd,khmd->hmqk", vec![a, b]);
         println!("{:?}", c.item())
     }
 }

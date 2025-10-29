@@ -1,3 +1,5 @@
+use crate::central::MAX_DIMS;
+
 use super::{BackproagationPacket, Operation, Shape, Tensor, get_equation};
 use std::collections::HashSet;
 
@@ -94,7 +96,7 @@ impl Tensor {
         let output_shape = Shape::new(output_dims);
         let permuted_data = permute_flat_data(&source_data, &source_dims, &permutation);
 
-        let mut stored_permutation = [0usize; 4];
+        let mut stored_permutation = [0usize; MAX_DIMS];
         for (index, value) in permutation.iter().enumerate() {
             stored_permutation[index] = *value;
         }

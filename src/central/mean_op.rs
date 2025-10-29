@@ -33,7 +33,7 @@ impl Tensor {
         // Copy which axes we summed over, so we can use it for back prop later
         // we are using the -1 as a flag values to know what are unused valyes
         // since each operation is stored in an enum, it needs to have a known value
-        let mut coppied_axes = [-1, -1, -1, -1];
+        let mut coppied_axes:[isize;MAX_DIMS] = [0;MAX_DIMS];
         for (i, axes) in axes.iter().enumerate() {
             coppied_axes[i] = *axes as isize;
         }
