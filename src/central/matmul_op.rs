@@ -1,5 +1,5 @@
 use super::get_equation;
-use crate::{central::*, utils::padding_dimenions_to_four};
+use crate::{central::*, utils::padding_dimenions_to_max};
 use std::ops::Shl;
 
 impl Shl for Tensor {
@@ -46,7 +46,7 @@ pub fn backward_for_matmul(backprop_backet: BackproagationPacket) {
         let mut grad_dimensions_reformed = grad.shape().to_vec();
 
         // Pad out the shape so it 4 long, adding a one does not change the matrix
-        let added_dimensions = 4 - grad_dimensions_length;
+        let added_dimensions = MAX_DIMS - grad_dimensions_length;
         for _ in 0..added_dimensions {
             grad_dimensions_reformed.insert(0, 1);
         }
@@ -59,39 +59,48 @@ pub fn backward_for_matmul(backprop_backet: BackproagationPacket) {
             .get_data_flat_buffer(left_hand_side)
             .to_vec();
         let left_hand_shape = backprop_backet.equation.get_tensor_shape(left_hand_side);
-        let mut padded_left_hand_shape = padding_dimenions_to_four(left_hand_shape.dimensions());
+        let mut padded_left_hand_shape = padding_dimenions_to_max(left_hand_shape.dimensions());
 
         let mut right_hand_weights = backprop_backet
             .equation
             .get_data_flat_buffer(right_hand_side)
             .to_vec();
         let right_hand_shape = backprop_backet.equation.get_tensor_shape(right_hand_side);
-        let mut padded_right_hand_shape = padding_dimenions_to_four(right_hand_shape.dimensions());
+        let mut padded_right_hand_shape = padding_dimenions_to_max(right_hand_shape.dimensions());
+
+        // TODO: update this comment
         // Treat them all as if they where 4d matrices, makes everything that comes after simpler
         // and because we are not actually adding or removing elements, it results in the same opeartions
         // ex: a matrixes of size [4] is the equivilent to one of size [4, 1] or [1, 4]
         backprop_backet
             .equation
-            .swap_axes(&mut left_hand_weights, padded_left_hand_shape, 2, 3);
+            .swap_axes(&mut left_hand_weights, padded_left_hand_shape, MAX_DIMS - 2, MAX_DIMS - 1);
+
         backprop_backet
             .equation
-            .swap_axes(&mut right_hand_weights, padded_right_hand_shape, 2, 3);
+            .swap_axes(&mut right_hand_weights, padded_right_hand_shape, MAX_DIMS - 2, MAX_DIMS - 1);
 
         // we also need to swap the indices themselves
-        let hold = padded_left_hand_shape[2];
-        padded_left_hand_shape[2] = padded_left_hand_shape[3];
-        padded_left_hand_shape[3] = hold;
+        let hold = padded_left_hand_shape[MAX_DIMS - 2];
+        padded_left_hand_shape[MAX_DIMS - 2] = padded_left_hand_shape[MAX_DIMS - 1];
+        padded_left_hand_shape[MAX_DIMS - 1] = hold;
 
-        let hold = padded_right_hand_shape[2];
-        padded_right_hand_shape[2] = padded_right_hand_shape[3];
-        padded_right_hand_shape[3] = hold;
+        let hold = padded_right_hand_shape[MAX_DIMS - 2];
+        padded_right_hand_shape[MAX_DIMS - 2] = padded_right_hand_shape[MAX_DIMS - 1];
+        padded_right_hand_shape[MAX_DIMS - 1] = hold;
 
         // everything wants know sized arrays, so just making it quick here
-        let grad_dimensions_reformed: [usize; 4] = [
+        let grad_dimensions_reformed: [usize; 10] = [
             grad_dimensions_reformed[0],
             grad_dimensions_reformed[1],
             grad_dimensions_reformed[2],
             grad_dimensions_reformed[3],
+            grad_dimensions_reformed[4],
+            grad_dimensions_reformed[5],
+            grad_dimensions_reformed[6],
+            grad_dimensions_reformed[7],
+            grad_dimensions_reformed[8],
+            grad_dimensions_reformed[9],
         ];
         let grad_as_vec = grad.into_raw_vec();
 

@@ -214,22 +214,25 @@ impl Equation {
         let mut b_shape = self.tensor_record[&b].shape.dimensions();
 
         // So we need to get the shapes of our two operands
-        let a_shape_missing_dimensions = 4 - a_shape.len();
+        let a_shape_missing_dimensions = MAX_DIMS - a_shape.len();
         for _ in 0..a_shape_missing_dimensions {
             a_shape.insert(0, 1);
         }
 
         // and insert 1s in front of them, to pad out the entire shape
-        let b_shape_missing_dimensions = 4 - b_shape.len();
+        let b_shape_missing_dimensions = MAX_DIMS - b_shape.len();
         for _ in 0..b_shape_missing_dimensions {
             b_shape.insert(0, 1);
         }
+
+        // What was I doing here???
         if b_shape_missing_dimensions == 3 {
             b_shape.swap(2, 3);
         }
 
-        let a_shape = [a_shape[0], a_shape[1], a_shape[2], a_shape[3]];
-        let b_shape = [b_shape[0], b_shape[1], b_shape[2], b_shape[3]];
+        // TODO: update this to 10 d once we have everything working
+        let a_shape = [a_shape[6], a_shape[7], a_shape[8], a_shape[9]];
+        let b_shape = [b_shape[6], b_shape[7], b_shape[8], b_shape[9]];
         // Before call the actually function that does the matmul
         return tensor_matmul(left_data, a_shape, right_data, b_shape);
     }
@@ -242,10 +245,13 @@ impl Equation {
     pub fn matmul_vector(
         &self,
         a: &[f32],
-        a_shape: [usize; 4],
+        a_shape: [usize; MAX_DIMS],
         b: &[f32],
-        b_shape: [usize; 4],
+        b_shape: [usize; MAX_DIMS],
     ) -> Vec<f32> {
+        //TODO: update this to handle MAX_DIM when we get around to ti
+        let a_shape = [a_shape[6], a_shape[7], a_shape[8], a_shape[9]];
+        let b_shape = [b_shape[6], b_shape[7], b_shape[8], b_shape[9]];
         return tensor_matmul(a, a_shape, b, b_shape);
     }
 
@@ -339,54 +345,84 @@ impl Equation {
     }
 
     /// Helper function swap around two axis
-    pub fn swap_axes(&self, data: &mut [f32], dimensions: [usize; 4], axis1: usize, axis2: usize) {
-        // Do some double checking
-        assert!(axis1 < 4 && axis2 < 4, "axis out of bounds");
-        if axis1 == axis2 {
+pub fn swap_axes<const MAX_DIMS: usize>(
+        &self,
+        data: &mut [f32],
+        dimensions: [usize; MAX_DIMS],
+        axis1: usize,
+        axis2: usize,
+    ) {
+        assert!(axis1 < MAX_DIMS && axis2 < MAX_DIMS, "axis out of bounds");
+        if axis1 == axis2 || data.is_empty() {
             return;
         }
 
-        // scratch pad
+        // (Optional) sanity check: product of dims must match data len
+        let mut total = 1usize;
+        for &d in &dimensions {
+            total = total
+                .checked_mul(d)
+                .expect("dimension product overflow");
+        }
+        assert!(
+            total == data.len(),
+            "data length {} does not match product of dimensions {}",
+            data.len(),
+            total
+        );
+
+        // Scratch buffer
         let mut tmp = vec![0.0f32; data.len()];
 
-        // Make a copy of the dimensions, so we can do some swapping latter
+        // Original and new dims after swapping the two axes
         let orig_dims = dimensions;
         let mut new_dims = orig_dims;
         new_dims.swap(axis1, axis2);
 
-        let mut strides = [0usize; 4];
-        strides[3] = 1;
-        for i in (0..3).rev() {
+        // Compute strides (row-major) for original dims
+        let mut strides = [0usize; MAX_DIMS];
+        strides[MAX_DIMS - 1] = 1;
+        for i in (0..MAX_DIMS - 1).rev() {
             strides[i] = strides[i + 1] * orig_dims[i + 1];
         }
 
-        let mut new_stride = [0usize; 4];
-        new_stride[3] = 1;
-        for i in (0..3).rev() {
-            new_stride[i] = new_stride[i + 1] * new_dims[i + 1];
+        // Compute strides for new dims
+        let mut new_strides = [0usize; MAX_DIMS];
+        new_strides[MAX_DIMS - 1] = 1;
+        for i in (0..MAX_DIMS - 1).rev() {
+            new_strides[i] = new_strides[i + 1] * new_dims[i + 1];
         }
 
-        for i0 in 0..orig_dims[0] {
-            for i1 in 0..orig_dims[1] {
-                for i2 in 0..orig_dims[2] {
-                    for i3 in 0..orig_dims[3] {
-                        let orig_idx =
-                            i0 * strides[0] + i1 * strides[1] + i2 * strides[2] + i3 * strides[3];
-
-                        let mut idx = [i0, i1, i2, i3];
-                        idx.swap(axis1, axis2);
-                        let new_idx = idx[0] * new_stride[0]
-                            + idx[1] * new_stride[1]
-                            + idx[2] * new_stride[2]
-                            + idx[3] * new_stride[3];
-
-                        tmp[new_idx] = data[orig_idx];
-                    }
-                }
+        // For each flat index in the original layout:
+        //  1) decode to multi-index using original strides
+        //  2) swap the two axes in that multi-index
+        //  3) re-encode with new strides to get destination flat index
+        for orig_idx in 0..data.len() {
+            // Decode
+            let mut rem = orig_idx;
+            let mut idx = [0usize; MAX_DIMS];
+            for d in 0..MAX_DIMS {
+                let s = strides[d];
+                // For dimensions of size 0 (shouldn't happen), s could be 0; we asserted sizes multiply to len,
+                // so this is safe.
+                idx[d] = rem / s;
+                rem %= s;
             }
+
+            // Swap the two axes
+            idx.swap(axis1, axis2);
+
+            // Encode with new strides
+            let mut new_idx = 0usize;
+            for d in 0..MAX_DIMS {
+                new_idx += idx[d] * new_strides[d];
+            }
+
+            tmp[new_idx] = data[orig_idx];
         }
 
         data.copy_from_slice(&tmp);
+    
     }
 
     /// Copies data into the grad of tensor_id
@@ -469,9 +505,9 @@ impl Equation {
             Operation::BroadCast(from, to_shape) => {
                 let from_grad = self.get_grad(from);
                 let from_shape = from_grad.shape();
-                let from_shape = padding_dimenions_to_four(from_shape.to_vec());
+                let from_shape = padding_dimenions_to_max(from_shape.to_vec());
                 let dimensions = to_shape.dimensions();
-                let dimensions = padding_dimenions_to_four(dimensions);
+                let dimensions = padding_dimenions_to_max(dimensions);
                 let mut result = self.get_grad(incoming_grad);
 
                 // Sum dimensions from right to left, accounting for changing tensor dimensions
