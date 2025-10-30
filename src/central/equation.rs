@@ -1,8 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
-use super::backward_for_matmul;
 use super::{
-    InternalTensor, Operation, TensorID, add_op, chunk_op, cos_op, cross_entropy_op, log,
+    InternalTensor, Operation, TensorID, add_op, chunk_op, cos_op, log,
     matmul_op, mean_op, mul_op, pow_op, reshape, select_op, shape::*, sin_op, std_op, sum_op,
     tanh_op, transpose_op,
 };
@@ -16,8 +15,8 @@ use ndarray::ArrayD;
 use ndarray::Axis;
 use rand_distr::{Distribution, Normal};
 
-//#[cfg(not(target_os = "macos"))]
-//use cant_cpu::prelude::*;
+#[cfg(not(target_os = "macos"))]
+use cant_cpu::prelude::*;
 
 //#[cfg(target_os = "macos")]
 //use cant_metal::prelude::*;
@@ -231,8 +230,8 @@ impl Equation {
         }
 
         // TODO: update this to 10 d once we have everything working
-        let a_shape = [a_shape[6], a_shape[7], a_shape[8], a_shape[9]];
-        let b_shape = [b_shape[6], b_shape[7], b_shape[8], b_shape[9]];
+        let a_shape = [a_shape[0], a_shape[1], a_shape[2], a_shape[3], a_shape[5], a_shape[5], a_shape[6], a_shape[7], a_shape[8], a_shape[9]];
+        let b_shape = [b_shape[0], b_shape[1], b_shape[2], b_shape[3], b_shape[5], b_shape[5], b_shape[6], b_shape[7], b_shape[8], b_shape[9]];
         // Before call the actually function that does the matmul
         return tensor_matmul(left_data, a_shape, right_data, b_shape);
     }
@@ -250,8 +249,8 @@ impl Equation {
         b_shape: [usize; MAX_DIMS],
     ) -> Vec<f32> {
         //TODO: update this to handle MAX_DIM when we get around to ti
-        let a_shape = [a_shape[6], a_shape[7], a_shape[8], a_shape[9]];
-        let b_shape = [b_shape[6], b_shape[7], b_shape[8], b_shape[9]];
+        let a_shape = [a_shape[0], a_shape[1], a_shape[2], a_shape[3], a_shape[5], a_shape[5], a_shape[6], a_shape[7], a_shape[8], a_shape[9]];
+        let b_shape = [b_shape[0], b_shape[1], b_shape[2], b_shape[3], b_shape[5], b_shape[5], b_shape[6], b_shape[7], b_shape[8], b_shape[9]];
         return tensor_matmul(a, a_shape, b, b_shape);
     }
 

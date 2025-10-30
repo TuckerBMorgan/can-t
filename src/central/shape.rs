@@ -159,12 +159,12 @@ impl Shape {
     /// * 'index' - the 0base index that it will be added at
     pub fn add_dimension_at_index(&self, dimension: usize, index: usize) -> Shape {
         assert!(
-            self.number_of_dimension() <= 3,
+            self.number_of_dimension() <= MAX_DIMS,
             "cannot add more dimensions to this shape"
         );
 
         //TODO: Add dynamic index assert
-        assert!(index <= 3, "Index high then possible dimenions");
+        assert!(index <= MAX_DIMS, "Index high then possible dimenions");
         assert!(dimension != 0, "Cannot inset zero dimension");
         let mut current_dimension = self.dimensions();
         current_dimension.insert(index, dimension);

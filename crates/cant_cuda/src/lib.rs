@@ -9,10 +9,7 @@ use cudarc::driver::{LaunchAsync, LaunchConfig};
 use cudarc::nvrtc::{Ptx, compile_ptx};
 
 lazy_static! {
-    //static ref CONTEXT: CudaContext   = cudarc::driver::CudaContext::new(0).unwrap();
     static ref DEV : std::sync::Arc<cudarc::driver::CudaDevice> = cudarc::driver::CudaDevice::new(0).unwrap();
-
-
 }
 
 pub mod prelude {
