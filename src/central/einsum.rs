@@ -522,39 +522,29 @@ mod tests {
     fn basic_test() {
         let a = Tensor::arange(0, 4, 1).reshape(Shape::new(vec![2, 2]));
         let b = Tensor::arange(5, 4, 1).reshape(Shape::new(vec![2, 2]));
-        println!("{:?}", a.item());
-        println!("{:?}", b.item());
         let c = Tensor::einsum("ij,jk->ik", vec![a, b]);
-        println!("{:?}", c.item())
     }
 
     #[test]
     fn basic_1d_1d_test() {
         let a = Tensor::arange(0, 4, 1).reshape(Shape::new(vec![4]));
         let b = Tensor::arange(5, 4, 1).reshape(Shape::new(vec![4]));
-        println!("{:?}", a.item());
-        println!("{:?}", b.item());
+
         let c = Tensor::einsum("i,k->ik", vec![a, b]);
-        println!("{:?}", c.item())
     }
 
     #[test]
     fn basic_batch_test() {
         let a = Tensor::arange(0, 12, 1).reshape(Shape::new(vec![3, 2, 2]));
         let b = Tensor::arange(0, 6, 1).reshape(Shape::new(vec![3, 2]));
-        println!("{:?}", a.item());
-        println!("{:?}", b.item());
         let c = Tensor::einsum("bec,be->bc", vec![a, b]);
-        println!("{:?}", c.item())
+
     }
 
     #[test]
     fn advanced_batch_mutiply_test() {
         let a = Tensor::arange(0, 48 + 24, 1).reshape(Shape::new(vec![4, 3, 2, 3]));
         let b = Tensor::arange(0, 48 + 24, 1).reshape(Shape::new(vec![4, 3, 3, 2]));
-        println!("{:?}", a.item());
-        println!("{:?}", b.item());
         let c = Tensor::einsum("qhmd,khmd->hmqk", vec![a, b]);
-        println!("{:?}", c.item())
     }
 }
