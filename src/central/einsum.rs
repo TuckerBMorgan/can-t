@@ -154,11 +154,6 @@ impl Tensor {
         // Cant does this by default as all Matrix Multiply
         // it is likely worth some time to understand why pytorch does not have them as the same function
         let result = left << right;
-        println!("Left {:?}", left.shape);
-        println!("Right {:?}", right.shape);
-        println!("Result {:?}", result.shape);
-        println!("Output Size {:?}", output_size);
-        println!("Out Permuitation {:?}", out_permutations);
         let result = result
             .reshape(Shape::new(output_size))
             .permute(out_permutations);
@@ -264,8 +259,8 @@ impl Tensor {
 
         for i in 0..number_of_operands {
             let operand = operands[i];
-            let labels = &operand_labels[i];
-            let number_of_dims = operand.shape;
+            let labels: &Vec<u8> = &operand_labels[i];
+            let number_of_dims = operand.shape.number_of_dimension();
 
             let mut number_labels = labels.len();
 
@@ -273,7 +268,7 @@ impl Tensor {
                 if *label == ELLIPSIS {
                     number_labels -= 1;
                     number_of_ellipsis_dimensions = number_of_ellipsis_dimensions
-                        .max(number_of_dims.number_of_dimension() - number_labels);
+                        .max(number_of_dims - number_labels);
                 } else {
                     label_count[*label as usize] += 1;
                 }
@@ -365,7 +360,6 @@ impl Tensor {
         let mut label_size = vec![1; TOTAL_LABELS as usize];
         let mut size_of_ellipsis = vec![1; number_of_ellipsis_dimensions];
         let mut dimenion_count = vec![0; permanent_index];
-
         let mut operands_stack: Vec<Tensor> = vec![];
         for i in 0..number_of_operands {
             let mut operand = operands[i];
@@ -374,12 +368,10 @@ impl Tensor {
             let mut dimension = 0;
 
             for s in &operand_labels[i] {
-                println!("{:?} epioch {:?}", permutation, i);
-                println!("{:?} epioch", (*s + b'a' - NUM_OF_LETTERS) as char);
 
                 if *s == ELLIPSIS {
                     let number_of_dimensions =
-                        operands[i].shape.number_of_dimension() - operand_labels[i].len() - 1;
+                        operands[i].shape.number_of_dimension() - (operand_labels[i].len() - 1);
                     for ii in (number_of_ellipsis_dimensions - number_of_dimensions)
                         ..number_of_ellipsis_dimensions
                     {
@@ -405,7 +397,6 @@ impl Tensor {
                                 || label_size[*s as usize] == operand.shape.dimensions()[dimension]
                         );
                         label_size[*s as usize] = operand.shape.dimensions()[dimension];
-                        println!("test {:?}", permanent_label_index[*s as usize]);
                         dimenion_count[permanent_label_index[*s as usize] as usize] =
                             dimenion_count[permanent_label_index[*s as usize] as usize] + 1;
                     }
@@ -417,9 +408,8 @@ impl Tensor {
                         permutation[permanent_label_index[*s as usize] as usize];
 
                     let diag = operand.diagonal(0, previous_dimension as usize, dimension);
-                    let last_dimension =
-                        diag.shape.dimensions()[diag.shape.number_of_dimension() - 1];
-                    operand = diag.movedim(last_dimension, previous_dimension as usize);
+                    let from_idx = diag.shape.number_of_dimension() - 1; // index of last axis
+                    operand = diag.movedim(from_idx, previous_dimension as usize);
                 }
             }
 
@@ -543,8 +533,8 @@ mod tests {
 
     #[test]
     fn advanced_batch_mutiply_test() {
-        let a = Tensor::arange(0, 48 + 24, 1).reshape(Shape::new(vec![4, 3, 2, 3]));
-        let b = Tensor::arange(0, 48 + 24, 1).reshape(Shape::new(vec![4, 3, 3, 2]));
-        let c = Tensor::einsum("qhmd,khmd->hmqk", vec![a, b]);
+        let a = Tensor::arange(0, 72, 1).reshape(Shape::new(vec![4, 3, 2, 3]));
+        let b = Tensor::arange(0, 72, 1).reshape(Shape::new(vec![4, 3, 3, 2]));
+        let c = Tensor::einsum("qhmd,khdm->hmqk", vec![a, b]); // note: k h d m
     }
 }
