@@ -13,24 +13,39 @@ use std::mem;
 /// * 'b' : the second vector
 ///
 
-// Checks if the tensor shapes are compatible for batched matrix multiplication
-fn valid_shape(a: [usize; 4], b: [usize; 4]) {
-    // Ensure outer batch dimensions match
-    assert!(a[0] == b[0], "{:?} {:?}", a, b);
-    // Ensure inner batch dimensions match
-    assert!(a[1] == b[1], "{:?} {:?}", a, b);
-    // Ensure the inner dimensions of A and B are compatible for matrix multiplication
-    assert!(a[3] == b[2], "{:?} {:?}", a, b);
+use crate::MAX_DIMS;
+
+fn valid_shape(a: [usize; MAX_DIMS], b: [usize; MAX_DIMS]) {
+    // batch dims must match exactly (no broadcasting here)
+    for i in 0..(MAX_DIMS - 2) {
+        assert!(a[i] == b[i], "Batch dims mismatch for matmul: {:?} vs {:?}", a, b);
+    }
+    // inner matmul dims must align: (.., M, K) x (.., K, N)
+    assert!(
+        a[MAX_DIMS - 1] == b[MAX_DIMS - 2],
+        "Inner dims mismatch for matmul: {:?} vs {:?}", a, b
+    );
 }
 
-pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize; 4]) -> Vec<f32> {
+fn product(slice: &[usize]) -> usize {
+    slice.iter().copied().fold(1usize, |acc, x| acc.saturating_mul(x))
+}
+
+pub fn loop_count(shape: [usize; MAX_DIMS]) -> usize {
+    // product of batch dims only
+    product(&shape[..(MAX_DIMS - 2)])
+}
+
+pub fn tensor_matmul(a: &[f32], a_shape: [usize; MAX_DIMS], b: &[f32], b_shape: [usize; MAX_DIMS]) -> Vec<f32> {
     objc::rc::autoreleasepool(|| {
         // Validate that the input shapes are compatible
         valid_shape(a_shape, b_shape);
 
+        let total_batches = loop_count(a_shape); 
+
         // the shape of the resultant matrix
         // we already know that is it a valid shape
-        let result_shape = [a_shape[0], b_shape[1], a_shape[2], b_shape[3]];
+        let result_shape = [total_batches, a_shape[MAX_DIMS - 2], b_shape[MAX_DIMS - 1]];
 
         // Pull out the function we need
         let function = METAL_LIBRARY
@@ -66,10 +81,10 @@ pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize;
 
         // M, N, K, B2
         let mut dimensions = [
-            a_shape[2] as u32,
-            b_shape[3] as u32,
-            a_shape[3] as u32,
-            a_shape[1] as u32,
+            a_shape[MAX_DIMS - 2] as u32,
+            b_shape[MAX_DIMS - 1] as u32,
+            a_shape[MAX_DIMS - 1] as u32,
+            total_batches as u32,
         ];
         let dimensions_buffer = METAL_DEVICE.new_buffer_with_data(
             dimensions.as_mut_ptr() as *const _,
@@ -87,8 +102,6 @@ pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize;
         encoder.set_buffer(2, Some(&c_buffer), 0);
         encoder.set_buffer(3, Some(&dimensions_buffer), 0);
 
-        let b1 = a_shape[0];
-        let b2 = b_shape[1];
         let n = dimensions[1];
         let m = dimensions[0];
 
@@ -97,7 +110,7 @@ pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize;
 
         let threads_per_group = MTLSize::new(tile_x, tile_y, 1);
 
-        let num_batches = (b1 * b2) as u64;
+        let num_batches = total_batches as u64;
         let thread_groups_x = (n as u64 + tile_x - 1) / tile_x;
         let thread_groups_y = (m as u64 + tile_y - 1) / tile_y;
         let thread_groups_z = num_batches;

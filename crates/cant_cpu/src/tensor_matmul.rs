@@ -9,61 +9,79 @@
 /// * 'b' : the second vector
 ///
 use ndarray::prelude::*;
-// Checks if the tensor shapes are compatible for batched matrix multiplication
-fn valid_shape(a: [usize; 4], b: [usize; 4]) {
-    // Ensure outer batch dimensions match
-    assert!(a[0] == b[0], "{:?} {:?}", a, b);
-    // Ensure inner batch dimensions match
-    assert!(a[1] == b[1], "{:?} {:?}", a, b);
-    // Ensure the inner dimensions of A and B are compatible for matrix multiplication
-    assert!(a[3] == b[2], "{:?} {:?}", a, b);
+use std::{char::MAX, cmp::max};
+use ndarray::Array2;
+use crate::MAX_DIMS;
+
+fn valid_shape(a: [usize; MAX_DIMS], b: [usize; MAX_DIMS]) {
+    // batch dims must match exactly (no broadcasting here)
+    for i in 0..(MAX_DIMS - 2) {
+        assert!(a[i] == b[i], "Batch dims mismatch for matmul: {:?} vs {:?}", a, b);
+    }
+    // inner matmul dims must align: (.., M, K) x (.., K, N)
+    assert!(
+        a[MAX_DIMS - 1] == b[MAX_DIMS - 2],
+        "Inner dims mismatch for matmul: {:?} vs {:?}", a, b
+    );
 }
 
-// Performs batched 2D matrix multiplication over 4D tensors
-// Arguments
-// 'a' - a flat buffer of the data in the first tensor
-// 'a_shape' - a 4 element array that represents the matrix dimensions for a
-// 'b' - a flat buffer of the data in the second data
-// 'b_shape' - a 4 element array that represents the matrix dimensions for b
-pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize; 4]) -> Vec<f32> {
-    // Validate that the input shapes are compatible
+fn product(slice: &[usize]) -> usize {
+    slice.iter().copied().fold(1usize, |acc, x| acc.saturating_mul(x))
+}
+
+pub fn loop_count(shape: [usize; MAX_DIMS]) -> usize {
+    // product of batch dims only
+    product(&shape[..(MAX_DIMS - 2)])
+}
+
+pub fn tensor_matmul(
+    a: &[f32],
+    a_shape: [usize; MAX_DIMS],
+    b: &[f32],
+    b_shape: [usize; MAX_DIMS]
+) -> Vec<f32> {
+
     valid_shape(a_shape, b_shape);
 
-    // Output vector to store the result of the batched matrix multiplications
-    // TODO: precalucate how big the result will be, and slab allocate that
-    let mut output: Vec<f32> = vec![];
+    let batches = loop_count(a_shape);
+    let m = a_shape[MAX_DIMS - 2];
+    let k = a_shape[MAX_DIMS - 1];
+    let _k_check = b_shape[MAX_DIMS - 2]; // equals k by valid_shape
+    let n = b_shape[MAX_DIMS - 1];
 
-    // Iterate over the outer batch dimension
-    for outer_batch_dimension in 0..a_shape[0] {
-        // Iterate over the inner batch dimension
-        for inner_batch_dimension in 0..b_shape[1] {
-            // Calculate the offset into the flat input tensor `a` for the current batch
-            let a_outer_offset_start =
-                outer_batch_dimension * (a_shape[1] * a_shape[2] * a_shape[3]);
-            let a_inner_offset_start = inner_batch_dimension * (a_shape[2] * a_shape[3]);
-            let a_offset_start = a_outer_offset_start + a_inner_offset_start;
+    // strides per batch (elements per single matrix)
+    let a_stride = m * k;
+    let b_stride = k * n;
 
-            // Extract the relevant sub-matrix from `a` and reshape it into a 2D matrix
-            let a_sub_matrix = &a[a_offset_start..a_offset_start + (a_shape[2] * a_shape[3])];
-            let a_tensor =
-                Array2::from_shape_vec([a_shape[2], a_shape[3]], a_sub_matrix.to_vec()).unwrap();
+    // sanity-check buffer sizes
+    assert!(
+        a.len() == batches * a_stride,
+        "A buffer size mismatch: len={}, expected={}",
+        a.len(), batches * a_stride
+    );
+    assert!(
+        b.len() == batches * b_stride,
+        "B buffer size mismatch: len={}, expected={}",
+        b.len(), batches * b_stride
+    );
 
-            // Same logic applied to tensor `b`
-            let b_outer_offset_start =
-                outer_batch_dimension * (b_shape[1] * b_shape[2] * b_shape[3]);
-            let b_inner_offset_start = inner_batch_dimension * (b_shape[2] * b_shape[3]);
-            let b_offset_start = b_outer_offset_start + b_inner_offset_start;
+    // allocate output once
+    let mut out = Vec::with_capacity(batches * m * n);
 
-            // Extract and reshape sub-matrix from `b`
-            let b_sub_matrix = &b[b_offset_start..b_offset_start + (b_shape[2] * b_shape[3])];
-            let b_tensor =
-                Array2::from_shape_vec([b_shape[2], b_shape[3]], b_sub_matrix.to_vec()).unwrap();
+    for batch in 0..batches {
+        let a_offset = batch * a_stride;
+        let b_offset = batch * b_stride;
 
-            // Perform 2D matrix multiplication and flatten the result into the output vector
-            let result = a_tensor.dot(&b_tensor);
-            output.extend(result.into_raw_vec());
-        }
+        let a_sub = &a[a_offset..a_offset + a_stride];
+        let b_sub = &b[b_offset..b_offset + b_stride];
+
+        // Build 2D views for this batch
+        let a_mat = Array2::from_shape_vec([m, k], a_sub.to_vec()).unwrap();
+        let b_mat = Array2::from_shape_vec([k, n], b_sub.to_vec()).unwrap();
+
+        let c = a_mat.dot(&b_mat); // (m, n)
+        out.extend(c.into_raw_vec());
     }
 
-    return output;
+    out
 }

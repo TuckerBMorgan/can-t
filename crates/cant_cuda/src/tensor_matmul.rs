@@ -11,26 +11,40 @@ fn valid_shape(a: [usize; 4], b: [usize; 4]) {
     assert!(a[3] == b[2], "{:?} {:?}", a, b);
 }
 
-pub fn tensor_matmul(a: &[f32], a_shape: [usize; 4], b: &[f32], b_shape: [usize; 4]) -> Vec<f32> {
+use crate::MAX_DIMS;
+
+fn valid_shape(a: [usize; MAX_DIMS], b: [usize; MAX_DIMS]) {
+    // batch dims must match exactly (no broadcasting here)
+    for i in 0..(MAX_DIMS - 2) {
+        assert!(a[i] == b[i], "Batch dims mismatch for matmul: {:?} vs {:?}", a, b);
+    }
+    // inner matmul dims must align: (.., M, K) x (.., K, N)
+    assert!(
+        a[MAX_DIMS - 1] == b[MAX_DIMS - 2],
+        "Inner dims mismatch for matmul: {:?} vs {:?}", a, b
+    );
+}
+
+fn product(slice: &[usize]) -> usize {
+    slice.iter().copied().fold(1usize, |acc, x| acc.saturating_mul(x))
+}
+
+pub fn loop_count(shape: [usize; MAX_DIMS]) -> usize {
+    // product of batch dims only
+    product(&shape[..(MAX_DIMS - 2)])
+}
+
+pub fn tensor_matmul(a: &[f32], a_shape: [usize; MAX_DIMS], b: &[f32], b_shape: [usize; MAX_DIMS]) -> Vec<f32> {
     // Shapes: A = [B1, B2, M, K], B = [B1, B2, K, N]
-    let (b1_a, b2_a, m, k) = (a_shape[0], a_shape[1], a_shape[2], a_shape[3]);
-    let (b1_b, b2_b, k_b, n) = (b_shape[0], b_shape[1], b_shape[2], b_shape[3]);
 
-    assert_eq!(b1_a, b1_b, "batch dim 0 mismatch");
-    assert_eq!(b2_a, b2_b, "batch dim 1 mismatch");
-    assert_eq!(k, k_b, "inner dim mismatch: K");
-    assert_eq!(
-        a.len(),
-        b1_a * b2_a * m * k,
-        "A buffer size != product of A shape"
-    );
-    assert_eq!(
-        b.len(),
-        b1_b * b2_b * k * n,
-        "B buffer size != product of B shape"
-    );
 
-    let total_batches = b1_a * b2_a;
+    let m = a_shape[MAX_DIMS - 2];
+    let k = a_shape[MAX_DIMS - 1];
+    let k_b = b_shape[MAX_DIMS - 2];
+    let n = b_shape[MAX_DIMS - 1];
+
+
+    let total_batches = loop_count(a_shape);
     let out_len = total_batches * m * n;
 
     // --- CUDA kernel (same indexing as your Metal shader) ---

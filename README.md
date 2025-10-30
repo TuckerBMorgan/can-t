@@ -56,6 +56,7 @@ open target/llvm-cov/html/index.html
 
 - **`cant_cpu`** - CPU-based tensor operations using ndarray
 - **`cant_metal`** - Metal shader-based GPU acceleration for macOS
+- **'cant_cuda'** - Cuda based Backend(not has often tested)
 
 ### Utilities (`src/utils/`)
 
@@ -67,7 +68,7 @@ open target/llvm-cov/html/index.html
 1. **Global Equation System**: Uses a singleton to manage the computation graph and tensor storage
 2. **Tensor ID System**: Each tensor has a unique ID for efficient lookups
 3. **Operation Tracking**: All operations store their inputs for backward pass computation
-4. **Dual Backend Support**: Operations can execute on CPU or Metal GPU
+4. **Tri Backend Support**: Operations can execute on CPU, Metal, or CUDA
 
 ## Testing
 
@@ -78,7 +79,19 @@ open target/llvm-cov/html/index.html
 ## Platform Support
 
 - **macOS**: Full CPU and Metal GPU acceleration support
-- **Other platforms**: CPU-only support via ndarray backend
+- **Other platforms**: CPU-only support via ndarray backend, and CUDA
+
+
+## What is the point?
+
+If I where to say what this project had other then a place for me to learn is that this is a rather hackable library.
+Pytorch, TensorFlow, JAX all have be production code bases and as such can take a lot of effort to make the smallest change
+
+Can-t on the other hand is rather simple. We might not have all of the bells and whistle you find in them, but I feel comfortable
+saying that you can understand its inner workings faster then the other two. 
+
+I thought back to the small hackable learning libaries I used when i was at college, where the idea was less about being the best
+and instead about being tools for learning. 
 
 ## License
 

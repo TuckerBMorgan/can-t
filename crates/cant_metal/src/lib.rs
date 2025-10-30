@@ -7,6 +7,9 @@ pub use lazy_static::*;
 use metal::*;
 use std::mem;
 
+// This is also defined in the main src crate, maybe think about having some other crate
+pub (crate) const MAX_DIMS : usize = 10;
+
 lazy_static! {
     static ref METAL_DEVICE: Device = Device::system_default().expect("No Metal device found");
     static ref METAL_QUEUE: CommandQueue = METAL_DEVICE.new_command_queue();
