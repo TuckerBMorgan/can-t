@@ -14,6 +14,7 @@ mod rotary_embedding;
 mod scaled_dot_project_attention;
 mod sequential;
 mod tanh;
+mod swiglu;
 
 pub use bpe_tokenizer::*;
 pub use embedding::*;
@@ -31,3 +32,4 @@ pub use rotary_embedding::*;
 pub use scaled_dot_project_attention::*;
 pub use sequential::*;
 pub use tanh::*;
+pub use swiglu::*;

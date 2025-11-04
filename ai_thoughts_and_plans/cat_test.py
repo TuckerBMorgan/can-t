@@ -1,5 +1,15 @@
-import torch
-total = 3 * 4 * 3
-x = torch.rand(3, 4, 3)#.reshape(2, 2)#, 2, 1)
-print(x)
-print(torch.topk(x, 2, 1))
+import numpy as np
+import matplotlib.pyplot as plt
+
+def swiglu(x):
+    return x * (x / (1 + np.exp(-x)))
+
+x = np.linspace(-6, 6, 500)
+y = swiglu(x)
+
+plt.plot(x, y)
+plt.title("SwiGLU Activation Function")
+plt.xlabel("x")
+plt.ylabel("f(x) = x * SiLU(x)")
+plt.grid(True)
+plt.show()

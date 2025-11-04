@@ -41,7 +41,6 @@ pub use diagonal_op::*;
 pub use einsum::*;
 pub use equation::*;
 pub use index::*;
-pub use lazy_static::*;
 pub use log::*;
 pub use masked_fill::*;
 pub use matmul_op::*;
@@ -57,7 +56,7 @@ pub use select_op::*;
 pub use shape::*;
 pub use sin_op::*;
 pub use softmax_op::*;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Mutex, MutexGuard, LazyLock};
 pub use std_op::*;
 pub use sum_op::*;
 pub use tanh_op::*;
@@ -66,39 +65,22 @@ pub use topk_op::*;
 pub use transpose_op::*;
 pub use unsqueeze_op::*;
 
-lazy_static! {
-    static ref SINGLETON_INSTANCE: Mutex<Equation> = Mutex::new(Equation::new());
-}
+
+static SINGLETON_INSTANCE: LazyLock<Mutex<Equation>> =
+    LazyLock::new(|| Mutex::new(Equation::new()));
 
 pub fn get_equation() -> MutexGuard<'static, Equation> {
-    loop {
-        let lock = SINGLETON_INSTANCE.lock();
-
-        match lock {
-            Ok(equation) => {
-                return equation;
-            }
-            Err(_) => {
-                continue;
-            }
-        }
-    }
+    // Handle poisoned mutex without a busy loop
+    SINGLETON_INSTANCE
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
 }
 
 pub fn zero_all_grads() {
-    loop {
-        let lock = SINGLETON_INSTANCE.lock();
-
-        match lock {
-            Ok(mut equation) => {
-                equation.zero_grad();
-                return;
-            }
-            Err(_) => {
-                continue;
-            }
-        }
-    }
+    let mut eq = SINGLETON_INSTANCE
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    eq.zero_grad();
 }
 
 pub fn update_parameters(learning_rate: f32) {
