@@ -1,7 +1,5 @@
 import torch
-
-a = torch.arange(12).reshape(3, 2, 2)
-b = torch.arange(6).reshape(3, 2)
-print(a)
-print(b)
-print(torch.einsum("bec,be->bc", a, b))
+total = 3 * 4 * 3
+x = torch.rand(3, 4, 3)#.reshape(2, 2)#, 2, 1)
+print(x)
+print(torch.topk(x, 2, 1))

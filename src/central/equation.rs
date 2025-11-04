@@ -1,14 +1,13 @@
 use std::collections::{HashMap, HashSet};
 
 use super::{
-    InternalTensor, Operation, TensorID, add_op, chunk_op, cos_op, log,
-    matmul_op, mean_op, mul_op, pow_op, reshape, select_op, shape::*, sin_op, std_op, sum_op,
-    tanh_op, transpose_op,
+    InternalTensor, Operation, TensorID, add_op, chunk_op, cos_op, log, matmul_op, mean_op, mul_op,
+    pow_op, reshape, select_op, shape::*, sin_op, std_op, sum_op, tanh_op, transpose_op,
 };
 use crate::central::index::Indexable;
 use crate::central::{
     backward_for_clamp, backwards_for_mask_fill, cat_op, diagonal_op, movedim_op, permute, relu_op,
-    softmax_op, unsqueeze_op,
+    softmax_op, topk_op, unsqueeze_op,
 };
 use crate::utils::*;
 use ndarray::ArrayD;
@@ -230,8 +229,14 @@ impl Equation {
         }
 
         // TODO: update this to 10 d once we have everything working
-        let a_shape = [a_shape[0], a_shape[1], a_shape[2], a_shape[3], a_shape[5], a_shape[5], a_shape[6], a_shape[7], a_shape[8], a_shape[9]];
-        let b_shape = [b_shape[0], b_shape[1], b_shape[2], b_shape[3], b_shape[5], b_shape[5], b_shape[6], b_shape[7], b_shape[8], b_shape[9]];
+        let a_shape = [
+            a_shape[0], a_shape[1], a_shape[2], a_shape[3], a_shape[5], a_shape[5], a_shape[6],
+            a_shape[7], a_shape[8], a_shape[9],
+        ];
+        let b_shape = [
+            b_shape[0], b_shape[1], b_shape[2], b_shape[3], b_shape[5], b_shape[5], b_shape[6],
+            b_shape[7], b_shape[8], b_shape[9],
+        ];
         // Before call the actually function that does the matmul
         return tensor_matmul(left_data, a_shape, right_data, b_shape);
     }
@@ -249,8 +254,14 @@ impl Equation {
         b_shape: [usize; MAX_DIMS],
     ) -> Vec<f32> {
         //TODO: update this to handle MAX_DIM when we get around to ti
-        let a_shape = [a_shape[0], a_shape[1], a_shape[2], a_shape[3], a_shape[5], a_shape[5], a_shape[6], a_shape[7], a_shape[8], a_shape[9]];
-        let b_shape = [b_shape[0], b_shape[1], b_shape[2], b_shape[3], b_shape[5], b_shape[5], b_shape[6], b_shape[7], b_shape[8], b_shape[9]];
+        let a_shape = [
+            a_shape[0], a_shape[1], a_shape[2], a_shape[3], a_shape[5], a_shape[5], a_shape[6],
+            a_shape[7], a_shape[8], a_shape[9],
+        ];
+        let b_shape = [
+            b_shape[0], b_shape[1], b_shape[2], b_shape[3], b_shape[5], b_shape[5], b_shape[6],
+            b_shape[7], b_shape[8], b_shape[9],
+        ];
         return tensor_matmul(a, a_shape, b, b_shape);
     }
 
@@ -344,7 +355,7 @@ impl Equation {
     }
 
     /// Helper function swap around two axis
-pub fn swap_axes<const MAX_DIMS: usize>(
+    pub fn swap_axes<const MAX_DIMS: usize>(
         &self,
         data: &mut [f32],
         dimensions: [usize; MAX_DIMS],
@@ -359,9 +370,7 @@ pub fn swap_axes<const MAX_DIMS: usize>(
         // (Optional) sanity check: product of dims must match data len
         let mut total = 1usize;
         for &d in &dimensions {
-            total = total
-                .checked_mul(d)
-                .expect("dimension product overflow");
+            total = total.checked_mul(d).expect("dimension product overflow");
         }
         assert!(
             total == data.len(),
@@ -421,7 +430,6 @@ pub fn swap_axes<const MAX_DIMS: usize>(
         }
 
         data.copy_from_slice(&tmp);
-    
     }
 
     /// Copies data into the grad of tensor_id
@@ -608,6 +616,9 @@ pub fn swap_axes<const MAX_DIMS: usize>(
             }
             Operation::Permute(_, _, _) => {
                 permute::backward_for_permute(packet);
+            }
+            Operation::Topk(_, _, _, _, _, _) => {
+                topk_op::backward_for_topk(packet);
             }
         }
     }

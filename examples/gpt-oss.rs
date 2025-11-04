@@ -65,4 +65,17 @@ impl MLPBlock {
     }
 }
 
+impl Layer for MLPBlock {
+    fn forward(&mut self, inputs: Tensor) -> Tensor {
+        let t = self.norm.forward(inputs);
+        let g = self.gate.forward(inputs);
+
+        panic!("")
+    }
+
+    fn get_parameters(&self) -> Vec<TensorID> {
+        vec![]
+    }
+}
+
 pub fn main() {}

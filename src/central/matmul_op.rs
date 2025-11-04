@@ -72,13 +72,19 @@ pub fn backward_for_matmul(backprop_backet: BackproagationPacket) {
         // Treat them all as if they where 4d matrices, makes everything that comes after simpler
         // and because we are not actually adding or removing elements, it results in the same opeartions
         // ex: a matrixes of size [4] is the equivilent to one of size [4, 1] or [1, 4]
-        backprop_backet
-            .equation
-            .swap_axes(&mut left_hand_weights, padded_left_hand_shape, MAX_DIMS - 2, MAX_DIMS - 1);
+        backprop_backet.equation.swap_axes(
+            &mut left_hand_weights,
+            padded_left_hand_shape,
+            MAX_DIMS - 2,
+            MAX_DIMS - 1,
+        );
 
-        backprop_backet
-            .equation
-            .swap_axes(&mut right_hand_weights, padded_right_hand_shape, MAX_DIMS - 2, MAX_DIMS - 1);
+        backprop_backet.equation.swap_axes(
+            &mut right_hand_weights,
+            padded_right_hand_shape,
+            MAX_DIMS - 2,
+            MAX_DIMS - 1,
+        );
 
         // we also need to swap the indices themselves
         let hold = padded_left_hand_shape[MAX_DIMS - 2];

@@ -1,3 +1,5 @@
+use crate::MAX_DIMS;
+use ndarray::Array2;
 /// Takes two tensors as flat buffers, and preforms matrix multiplication upon them
 /// It makes an assumption that all of them are 4d.
 /// This is to make things simpler, it is up to the caller to render the shape correctly
@@ -10,23 +12,31 @@
 ///
 use ndarray::prelude::*;
 use std::{char::MAX, cmp::max};
-use ndarray::Array2;
-use crate::MAX_DIMS;
 
 fn valid_shape(a: [usize; MAX_DIMS], b: [usize; MAX_DIMS]) {
     // batch dims must match exactly (no broadcasting here)
     for i in 0..(MAX_DIMS - 2) {
-        assert!(a[i] == b[i], "Batch dims mismatch for matmul: {:?} vs {:?}", a, b);
+        assert!(
+            a[i] == b[i],
+            "Batch dims mismatch for matmul: {:?} vs {:?}",
+            a,
+            b
+        );
     }
     // inner matmul dims must align: (.., M, K) x (.., K, N)
     assert!(
         a[MAX_DIMS - 1] == b[MAX_DIMS - 2],
-        "Inner dims mismatch for matmul: {:?} vs {:?}", a, b
+        "Inner dims mismatch for matmul: {:?} vs {:?}",
+        a,
+        b
     );
 }
 
 fn product(slice: &[usize]) -> usize {
-    slice.iter().copied().fold(1usize, |acc, x| acc.saturating_mul(x))
+    slice
+        .iter()
+        .copied()
+        .fold(1usize, |acc, x| acc.saturating_mul(x))
 }
 
 pub fn loop_count(shape: [usize; MAX_DIMS]) -> usize {
@@ -38,9 +48,8 @@ pub fn tensor_matmul(
     a: &[f32],
     a_shape: [usize; MAX_DIMS],
     b: &[f32],
-    b_shape: [usize; MAX_DIMS]
+    b_shape: [usize; MAX_DIMS],
 ) -> Vec<f32> {
-
     valid_shape(a_shape, b_shape);
 
     let batches = loop_count(a_shape);
@@ -57,12 +66,14 @@ pub fn tensor_matmul(
     assert!(
         a.len() == batches * a_stride,
         "A buffer size mismatch: len={}, expected={}",
-        a.len(), batches * a_stride
+        a.len(),
+        batches * a_stride
     );
     assert!(
         b.len() == batches * b_stride,
         "B buffer size mismatch: len={}, expected={}",
-        b.len(), batches * b_stride
+        b.len(),
+        batches * b_stride
     );
 
     // allocate output once
