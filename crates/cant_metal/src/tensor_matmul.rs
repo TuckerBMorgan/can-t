@@ -12,23 +12,32 @@ use std::mem;
 /// * 'a' : The first vector
 /// * 'b' : the second vector
 ///
-
 use crate::MAX_DIMS;
 
 fn valid_shape(a: [usize; MAX_DIMS], b: [usize; MAX_DIMS]) {
     // batch dims must match exactly (no broadcasting here)
     for i in 0..(MAX_DIMS - 2) {
-        assert!(a[i] == b[i], "Batch dims mismatch for matmul: {:?} vs {:?}", a, b);
+        assert!(
+            a[i] == b[i],
+            "Batch dims mismatch for matmul: {:?} vs {:?}",
+            a,
+            b
+        );
     }
     // inner matmul dims must align: (.., M, K) x (.., K, N)
     assert!(
         a[MAX_DIMS - 1] == b[MAX_DIMS - 2],
-        "Inner dims mismatch for matmul: {:?} vs {:?}", a, b
+        "Inner dims mismatch for matmul: {:?} vs {:?}",
+        a,
+        b
     );
 }
 
 fn product(slice: &[usize]) -> usize {
-    slice.iter().copied().fold(1usize, |acc, x| acc.saturating_mul(x))
+    slice
+        .iter()
+        .copied()
+        .fold(1usize, |acc, x| acc.saturating_mul(x))
 }
 
 pub fn loop_count(shape: [usize; MAX_DIMS]) -> usize {
@@ -36,12 +45,17 @@ pub fn loop_count(shape: [usize; MAX_DIMS]) -> usize {
     product(&shape[..(MAX_DIMS - 2)])
 }
 
-pub fn tensor_matmul(a: &[f32], a_shape: [usize; MAX_DIMS], b: &[f32], b_shape: [usize; MAX_DIMS]) -> Vec<f32> {
+pub fn tensor_matmul(
+    a: &[f32],
+    a_shape: [usize; MAX_DIMS],
+    b: &[f32],
+    b_shape: [usize; MAX_DIMS],
+) -> Vec<f32> {
     objc::rc::autoreleasepool(|| {
         // Validate that the input shapes are compatible
         valid_shape(a_shape, b_shape);
 
-        let total_batches = loop_count(a_shape); 
+        let total_batches = loop_count(a_shape);
 
         // the shape of the resultant matrix
         // we already know that is it a valid shape

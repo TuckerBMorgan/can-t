@@ -8,7 +8,7 @@ use metal::*;
 use std::mem;
 
 // This is also defined in the main src crate, maybe think about having some other crate
-pub (crate) const MAX_DIMS : usize = 10;
+pub(crate) const MAX_DIMS: usize = 10;
 
 lazy_static! {
     static ref METAL_DEVICE: Device = Device::system_default().expect("No Metal device found");

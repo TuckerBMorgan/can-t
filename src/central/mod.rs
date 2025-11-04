@@ -27,6 +27,7 @@ mod std_op;
 mod sum_op;
 mod tanh_op;
 mod tensor;
+mod topk_op;
 mod transpose_op;
 mod unsqueeze_op;
 
@@ -61,6 +62,7 @@ pub use std_op::*;
 pub use sum_op::*;
 pub use tanh_op::*;
 pub use tensor::*;
+pub use topk_op::*;
 pub use transpose_op::*;
 pub use unsqueeze_op::*;
 

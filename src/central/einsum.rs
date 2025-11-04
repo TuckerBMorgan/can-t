@@ -267,8 +267,8 @@ impl Tensor {
             for label in labels {
                 if *label == ELLIPSIS {
                     number_labels -= 1;
-                    number_of_ellipsis_dimensions = number_of_ellipsis_dimensions
-                        .max(number_of_dims - number_labels);
+                    number_of_ellipsis_dimensions =
+                        number_of_ellipsis_dimensions.max(number_of_dims - number_labels);
                 } else {
                     label_count[*label as usize] += 1;
                 }
@@ -368,7 +368,6 @@ impl Tensor {
             let mut dimension = 0;
 
             for s in &operand_labels[i] {
-
                 if *s == ELLIPSIS {
                     let number_of_dimensions =
                         operands[i].shape.number_of_dimension() - (operand_labels[i].len() - 1);
@@ -528,7 +527,6 @@ mod tests {
         let a = Tensor::arange(0, 12, 1).reshape(Shape::new(vec![3, 2, 2]));
         let b = Tensor::arange(0, 6, 1).reshape(Shape::new(vec![3, 2]));
         let c = Tensor::einsum("bec,be->bc", vec![a, b]);
-
     }
 
     #[test]

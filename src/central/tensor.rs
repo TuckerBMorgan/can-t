@@ -123,6 +123,9 @@ impl InternalTensor {
             Operation::Permute(source, _, _) => {
                 return vec![*source];
             }
+            Operation::Topk(source, _, _, _, _, _) => {
+                return vec![*source];
+            }
         }
     }
 }

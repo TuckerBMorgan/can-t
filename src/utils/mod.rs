@@ -38,7 +38,7 @@ pub fn padding_dimenions_to_max(in_dimension: Vec<usize>) -> [usize; MAX_DIMS] {
     assert!(in_dimension.len() <= MAX_DIMS);
     assert!(in_dimension.len() != 0);
 
-    let mut return_dimension = [1;MAX_DIMS];
+    let mut return_dimension = [1; MAX_DIMS];
 
     for (index, dinension) in in_dimension.iter().rev().enumerate() {
         return_dimension[MAX_DIMS - 1 - index] = *dinension;
