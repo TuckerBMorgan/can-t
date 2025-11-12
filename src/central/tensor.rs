@@ -125,6 +125,9 @@ impl InternalTensor {
             }
             Operation::Topk(source, _, _, _, _, _) => {
                 return vec![*source];
+            },
+            Operation::Gather(source, _, _) => {
+                return vec![*source];
             }
         }
     }

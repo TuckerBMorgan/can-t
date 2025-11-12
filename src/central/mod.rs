@@ -30,6 +30,7 @@ mod tensor;
 mod topk_op;
 mod transpose_op;
 mod unsqueeze_op;
+mod gather_op;
 
 pub use add_op::*;
 pub use cat_op::*;
@@ -64,6 +65,7 @@ pub use tensor::*;
 pub use topk_op::*;
 pub use transpose_op::*;
 pub use unsqueeze_op::*;
+pub use gather_op::*;
 
 
 static SINGLETON_INSTANCE: LazyLock<Mutex<Equation>> =

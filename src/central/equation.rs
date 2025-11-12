@@ -6,8 +6,7 @@ use super::{
 };
 use crate::central::index::Indexable;
 use crate::central::{
-    backward_for_clamp, backwards_for_mask_fill, cat_op, diagonal_op, movedim_op, permute, relu_op,
-    softmax_op, topk_op, unsqueeze_op,
+    backward_for_clamp, backwards_for_mask_fill, cat_op, diagonal_op, gather_op, movedim_op, permute, relu_op, softmax_op, topk_op, unsqueeze_op
 };
 use crate::utils::*;
 use ndarray::ArrayD;
@@ -17,13 +16,8 @@ use rand_distr::{Distribution, Normal};
 #[cfg(not(target_os = "macos"))]
 use cant_cpu::prelude::*;
 
-//#[cfg(target_os = "macos")]
-//use cant_metal::prelude::*;
-
 #[cfg(target_os = "macos")]
 use cant_metal::prelude::*;
-
-//use cant_metal::prelude::*;
 
 /// A Struct used by the backpropagation functions to help collect common function arugumnets into a single place
 pub struct BackproagationPacket<'a> {
@@ -223,12 +217,10 @@ impl Equation {
             b_shape.insert(0, 1);
         }
 
-        // What was I doing here???
-        if b_shape_missing_dimensions == 3 {
-            b_shape.swap(2, 3);
+        if b_shape_missing_dimensions == 9 {
+            b_shape.swap(8, 9);
         }
 
-        // TODO: update this to 10 d once we have everything working
         let a_shape = [
             a_shape[0], a_shape[1], a_shape[2], a_shape[3], a_shape[5], a_shape[5], a_shape[6],
             a_shape[7], a_shape[8], a_shape[9],
@@ -619,6 +611,9 @@ impl Equation {
             }
             Operation::Topk(_, _, _, _, _, _) => {
                 topk_op::backward_for_topk(packet);
+            },
+            Operation::Gather(_, _, _) => {
+                gather_op::backward_for_gather(packet);
             }
         }
     }

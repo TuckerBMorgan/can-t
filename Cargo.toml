@@ -15,7 +15,6 @@ serde_json = { version = "1.0.140", features = ["arbitrary_precision"] }
 mnist = { version = "0.5", features = ["download"] }
 memmap2 = "0.9"
 ggus = "0.5"
-
 rust_tokenizers = "8.1.1"
 tokenizers = "*"
 regex = "*"
