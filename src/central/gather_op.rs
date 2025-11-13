@@ -34,7 +34,9 @@ impl Tensor {
         let mut return_vec = vec![0.0;index.shape.total_size()];
 
         for p in look_ups {
-            let qualified_offset : usize = linear_index(&p, &self.shape.dimensions()).unwrap();
+            println!("{:?}", p);
+            println!("{:?}", self.shape.dimensions());
+            let qualified_offset : usize = linear_index(&p, &index.shape.dimensions()).unwrap();
             let new_index = offsets[qualified_offset] as usize;
             let mut data_index = p.clone();
             data_index[dimension] = new_index;

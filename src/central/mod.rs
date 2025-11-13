@@ -31,6 +31,9 @@ mod topk_op;
 mod transpose_op;
 mod unsqueeze_op;
 mod gather_op;
+mod max_op;
+mod smooth_l1_loss;
+mod l1_loss;
 
 pub use add_op::*;
 pub use cat_op::*;
@@ -66,6 +69,9 @@ pub use topk_op::*;
 pub use transpose_op::*;
 pub use unsqueeze_op::*;
 pub use gather_op::*;
+pub use max_op::*;
+pub use smooth_l1_loss::*;
+pub use l1_loss::*;
 
 
 static SINGLETON_INSTANCE: LazyLock<Mutex<Equation>> =

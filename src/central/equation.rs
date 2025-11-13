@@ -6,7 +6,7 @@ use super::{
 };
 use crate::central::index::Indexable;
 use crate::central::{
-    backward_for_clamp, backwards_for_mask_fill, cat_op, diagonal_op, gather_op, movedim_op, permute, relu_op, softmax_op, topk_op, unsqueeze_op
+    backward_for_clamp, backwards_for_mask_fill, cat_op, diagonal_op, gather_op, max_op, movedim_op, permute, relu_op, softmax_op, topk_op, unsqueeze_op
 };
 use crate::utils::*;
 use ndarray::ArrayD;
@@ -614,6 +614,12 @@ impl Equation {
             },
             Operation::Gather(_, _, _) => {
                 gather_op::backward_for_gather(packet);
+            },
+            Operation::Max(_, _, _) => {
+                max_op::backwards_for_max(packet);
+            },
+            Operation::SmoothL1Loss(_, _) => {
+                panic!()
             }
         }
     }

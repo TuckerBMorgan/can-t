@@ -36,4 +36,6 @@ pub enum Operation {
     Permute(TensorID, [usize; MAX_DIMS], usize), // Source, Permutation, In use Dimensions in Permutations
     Topk(TensorID, TensorID, usize, usize, bool, bool),    // Source, Indices, dimension, Largest, Sorted
     Gather(TensorID, TensorID, usize), // Source, Indices, Dimension
+    Max(TensorID, usize, bool), // Source, Dimension, KeepDim
+    SmoothL1Loss(TensorID, TensorID), // Souce, Other
 }

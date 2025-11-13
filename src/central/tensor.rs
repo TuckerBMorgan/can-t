@@ -123,11 +123,17 @@ impl InternalTensor {
             Operation::Permute(source, _, _) => {
                 return vec![*source];
             }
-            Operation::Topk(source, _, _, _, _, _) => {
-                return vec![*source];
+            Operation::Topk(source, other, _, _, _, _) => {
+                return vec![*source, *other];
             },
-            Operation::Gather(source, _, _) => {
+            Operation::Gather(source, other, _) => {
+                return vec![*source, *other];
+            },
+            Operation::Max(source, _, _) => {
                 return vec![*source];
+            }
+            Operation::SmoothL1Loss(source, other) => {
+                return vec![*source, *other];
             }
         }
     }
