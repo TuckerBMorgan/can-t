@@ -511,7 +511,6 @@ impl Shape {
         }
         strides
     }
-    
 }
 
 #[cfg(test)]

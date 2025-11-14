@@ -2,7 +2,7 @@ use ndarray::ArrayD;
 
 use crate::utils::GGUFFile;
 
-use super::{Operation, Shape, get_equation};
+use super::{get_equation, Operation, Shape};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TensorID {
@@ -125,11 +125,11 @@ impl InternalTensor {
             }
             Operation::Topk(source, other, _, _, _, _) => {
                 return vec![*source, *other];
-            },
+            }
             Operation::Gather(source, other, _) => {
                 return vec![*source, *other];
-            },
-            Operation::Max(source, _, _) => {
+            }
+            Operation::Max(source, _, _, _) => {
                 return vec![*source];
             }
             Operation::SmoothL1Loss(source, other) => {

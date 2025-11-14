@@ -26,10 +26,11 @@ cant_metal = { path = "crates/cant_metal" }
 members = [
     "crates/cant_cpu",
     "crates/cant_metal",
-    "crates/cant_cuda"
 ]
 
-
+# Windows-only workspace member
+[target.'cfg(target_os = "windows")'.workspace.members]
+members = ["crates/cant_cuda"]
 
 [profile.release]
 debug = true

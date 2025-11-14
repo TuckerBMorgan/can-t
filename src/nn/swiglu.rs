@@ -15,8 +15,8 @@ def swiglu(x, alpha: float = 1.702, limit: float = 7.0):
 */
 
 pub struct Swiglu {
-    alpha: f32, 
-    limit: f32
+    alpha: f32,
+    limit: f32,
 }
 
 impl Swiglu {
