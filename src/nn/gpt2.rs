@@ -1,7 +1,6 @@
 use crate::central::*;
 use crate::nn::*;
 use crate::utils::GGUFFile;
-use rust_tokenizers::tokenizer::{Gpt2Tokenizer, Tokenizer};
 
 #[derive(Copy, Clone)]
 pub struct GPT2Config {
@@ -73,7 +72,7 @@ pub fn sinusoidal_position_encoding(seq_len: usize, d_model: usize) -> Tensor {
 }
 
 pub struct GPT2 {
-    config: GPT2Config,
+    _config: GPT2Config,
     wte: Embedding,
     wpe: Embedding,
     blocks: Vec<GPT2Block>,
@@ -93,7 +92,7 @@ impl GPT2 {
             blocks,
             final_layer_norm: LayerNorm::new(config.embedding_dimensions),
             final_head: Linear::new(config.embedding_dimensions, config.vocab_size, true),
-            config,
+            _config: config,
         }
     }
 
@@ -129,7 +128,7 @@ impl GPT2 {
         let final_head = Linear::from_tensors(wte_weights_reshapes_for_weight_tying, None);
 
         GPT2 {
-            config: gpt_config,
+            _config: gpt_config,
             wpe,
             wte,
             blocks,
@@ -156,7 +155,7 @@ impl Model for GPT2 {
         let mut hidden_states = token_embeddings + positional_embeddings;
 
         // --- transformer blocks ---
-        for (i, block) in self.blocks.iter_mut().enumerate() {
+        for (_i, block) in self.blocks.iter_mut().enumerate() {
             hidden_states = block.forward(hidden_states);
         }
 
@@ -183,9 +182,8 @@ impl Model for GPT2 {
 #[cfg(test)]
 mod tests {
     use crate::central::*;
-    use crate::nn::{GPT2, GPT2Config, Model};
+    use crate::nn::{GPT2, Model};
     use crate::utils::GGUFFile;
-    use ndarray::Axis;
 
     fn decode_gpt2_tokens(s: &str) -> String {
         s.replace("Ġ", " ").replace("Ċ", "\n")
@@ -195,7 +193,6 @@ mod tests {
     fn basic_test() {
         let mut gguf_file = GGUFFile::new(String::from("./models/tests/gpt2/Gpt2-124M-F16.gguf"));
         let mut gpt2 = GPT2::from_gguf_file(&mut gguf_file);
-        let test_text = "A";
 
         let bpe_builder = BPE::from_file(
             "./data/tokenizers/gpt2/vocab.json",
@@ -253,7 +250,7 @@ mod tests {
     }
 
     use tokenizers::models::bpe::BPE;
-    use tokenizers::tokenizer::{EncodeInput, Result, Tokenizer};
+    use tokenizers::tokenizer::{Result, Tokenizer};
 
     #[test]
     fn tokenizer_test() -> Result<()> {
@@ -266,7 +263,7 @@ mod tests {
             //.unk_token("[UNK]".into())
             .build()?;
 
-        let mut tokenizer = Tokenizer::new(bpe);
+        let tokenizer = Tokenizer::new(bpe);
 
         let encoding = tokenizer.encode("Hey there!", false)?;
         println!("{:?}", encoding.get_tokens());

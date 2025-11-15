@@ -1,6 +1,5 @@
 use core::f32;
 
-use ndarray::{Array, Axis};
 //use itertools::izip; // optional, just nice for zipping
 use super::{BackproagationPacket, Operation, Tensor};
 use crate::central::*;
@@ -68,7 +67,7 @@ impl Tensor {
 }
 
 pub fn backwards_for_max(packet: BackproagationPacket) {
-    if let Operation::Max(source, indices, dimension, keep_dim) = packet.operation {
+    if let Operation::Max(source, indices, _dimension, _keep_dim) = packet.operation {
         let shape = packet.equation.get_tensor_shape(source);
 
         let indices_data = packet.equation.get_data_flat_buffer(indices);

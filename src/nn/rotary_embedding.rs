@@ -1,5 +1,4 @@
 use crate::central::*;
-use crate::nn::*;
 
 const DEFAULT_ROTARY_BASE: f32 = 10000.0;
 
@@ -8,13 +7,13 @@ const DEFAULT_ROTARY_BASE: f32 = 10000.0;
 pub struct RotaryEmbedding {
     head_dim: usize,
     base: f32,
-    max_seq_len_cached: usize,
+    _max_seq_len_cached: usize,
     scaling_factor: f32,
     initial_context_length: usize,
     ntk_beta: f32,
     ntk_alpha: f32,
-    cos_cache: Option<Tensor>,
-    sin_cache: Option<Tensor>,
+    _cos_cache: Option<Tensor>,
+    _sin_cache: Option<Tensor>,
 }
 
 impl RotaryEmbedding {
@@ -34,12 +33,12 @@ impl RotaryEmbedding {
             head_dim,
             base,
             scaling_factor: 1.0,
-            max_seq_len_cached: 0,
+            _max_seq_len_cached: 0,
             initial_context_length: 1,
             ntk_beta: 1.0,
             ntk_alpha: 1.0,
-            cos_cache: None,
-            sin_cache: None,
+            _cos_cache: None,
+            _sin_cache: None,
         }
     }
 

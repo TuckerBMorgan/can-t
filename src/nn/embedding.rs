@@ -1,6 +1,5 @@
 use crate::central::*;
 use crate::nn::*;
-use crate::utils::GGUFFile;
 
 pub struct Embedding {
     pub weights: Tensor,

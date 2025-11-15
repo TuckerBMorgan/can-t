@@ -1,5 +1,4 @@
 use crate::central::*;
-use ndarray::prelude::*;
 
 impl Tensor {
     /// Computes cross-entropy loss between logits and targets

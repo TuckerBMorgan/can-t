@@ -1,18 +1,17 @@
 use core::f32;
 
 use crate::central::*;
-use crate::nn::*;
 
 pub struct ScaledDotProductAttention {
     scale: f32,
-    dropout: f32,
+    _dropout: f32,
 }
 
 impl ScaledDotProductAttention {
     pub fn new(scale: f32) -> ScaledDotProductAttention {
         ScaledDotProductAttention {
             scale,
-            dropout: 1.0,
+            _dropout: 1.0,
         }
     }
     pub fn forward(
@@ -104,17 +103,12 @@ mod tests {
     fn test_attention_constructor() {
         let attention = ScaledDotProductAttention::new(0.5);
         assert_eq!(attention.scale, 0.5);
-        assert_eq!(attention.dropout, 1.0);
+        assert_eq!(attention._dropout, 1.0);
     }
 
     #[test]
     fn test_scaled_dot_product_attention_backward_basic() {
         use crate::central::zero_all_grads;
-
-        fn approx_equal(a: f32, b: f32, epsilon: f32) -> bool {
-            (a - b).abs() < epsilon
-        }
-
         let attention = ScaledDotProductAttention::new(1.0);
 
         // Create tensors with requires_grad = true

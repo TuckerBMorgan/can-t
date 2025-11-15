@@ -146,7 +146,7 @@ impl InternalTensor {
 pub struct Tensor {
     pub id: TensorID, // The unique id for this tensor, ties it to the InternalTensor that can be used to look up the data
     pub shape: Shape, // The shape of the tensor
-    operation: Operation, // The operation that created this Tensor(Nop for basic allocations)
+    _operation: Operation, // The operation that created this Tensor(Nop for basic allocations)
     requires_grad: bool,
     keep_alive: bool,
 }
@@ -160,7 +160,7 @@ impl Tensor {
         Tensor {
             id,
             shape,
-            operation: Operation::Nop,
+            _operation: Operation::Nop,
             requires_grad: false,
             keep_alive: false,
         }
@@ -190,7 +190,7 @@ impl Tensor {
         Tensor {
             id,
             shape,
-            operation: Operation::Nop,
+            _operation: Operation::Nop,
             requires_grad: false,
             keep_alive: false,
         }
@@ -204,7 +204,7 @@ impl Tensor {
         Tensor {
             id,
             shape,
-            operation: Operation::Nop,
+            _operation: Operation::Nop,
             requires_grad: false,
             keep_alive: false,
         }
@@ -219,7 +219,7 @@ impl Tensor {
         Tensor {
             id,
             shape,
-            operation: Operation::Nop,
+            _operation: Operation::Nop,
             requires_grad: false,
             keep_alive: false,
         }
@@ -233,7 +233,7 @@ impl Tensor {
         Tensor {
             id,
             shape,
-            operation: Operation::Nop,
+            _operation: Operation::Nop,
             requires_grad: false,
             keep_alive: false,
         }
@@ -285,7 +285,7 @@ impl Tensor {
         return Tensor {
             id,
             shape,
-            operation: operation,
+            _operation: operation,
             requires_grad: false,
             keep_alive: false,
         };

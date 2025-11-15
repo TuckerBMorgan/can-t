@@ -57,7 +57,7 @@ pub struct Equation {
     tensor_record: HashMap<TensorID, InternalTensor>, // A lookup table from the tensor id to a internal tensor \
     // (which has the information needed to find tensors in data and grad),
     timing: Timing,
-    debugging_options: DebuggingOptions,
+    _debugging_options: DebuggingOptions,
 }
 
 impl Equation {
@@ -70,7 +70,7 @@ impl Equation {
             tensor_count: 0,
             tensor_record: HashMap::new(),
             timing: Timing::new(),
-            debugging_options: DebuggingOptions::default(),
+            _debugging_options: DebuggingOptions::default(),
         }
     }
 
@@ -84,11 +84,6 @@ impl Equation {
         data: Vec<f32>,
         operation: Operation,
     ) -> TensorID {
-        if self.debugging_options.NaNCheck {
-            for d in &data {
-                assert!(d.is_infinite() == false);
-            }
-        }
         let id = self.allocate_tensor_id();
         let total_size = shape.total_size();
 
@@ -722,11 +717,6 @@ impl Equation {
             let eps: f32 = 1e-6;
             let scale = max_norm / (total_norm + eps);
 
-            // Optional: sanity check if you're debugging
-            if self.debugging_options.NaNCheck {
-                assert!(scale.is_finite());
-            }
-
             for (_k, v) in &self.tensor_record {
                 if v.requires_grad {
                     let grad_anchor_point = v.grad_start_index;
@@ -749,11 +739,7 @@ impl Equation {
                 for i in 0..v.shape.total_size() {
                     let grad_anchor_point = v.grad_start_index;
                     let data_anchor_point = v.data_start_index;
-                    let update = learning_rate * self.grad[grad_anchor_point + i];
-
-                    if self.debugging_options.NaNCheck {
-                        assert!(update.is_infinite() == false);
-                    }
+                    let _update = learning_rate * self.grad[grad_anchor_point + i];
                     self.data[data_anchor_point + i] +=
                         learning_rate * self.grad[grad_anchor_point + i];
                 }

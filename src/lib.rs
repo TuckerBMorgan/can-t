@@ -4,6 +4,7 @@ pub mod central;
 pub mod nn;
 pub mod utils;
 
+#[cfg(test)]
 mod tests {
     use crate::central::*;
 
@@ -116,24 +117,6 @@ mod tests {
     }
 
     fn build_batch_norm_dataset_from_subset(
-        words: &[String],
-        stoi: &HashMap<char, usize>,
-    ) -> (Vec<[usize; 3]>, Vec<usize>) {
-        let mut xs = vec![];
-        let mut ys = vec![];
-        for word in words {
-            let fixed = String::from("...") + word + ".";
-            let chars: Vec<char> = fixed.chars().collect();
-            for i in 0..chars.len() - 3 {
-                let pair = (chars[i], chars[i + 1], chars[i + 2], chars[i + 3]);
-                xs.push([stoi[&pair.0], stoi[&pair.1], stoi[&pair.2]]);
-                ys.push(stoi[&pair.3]);
-            }
-        }
-        (xs, ys)
-    }
-
-    fn build_dataset_from_subset(
         words: &[String],
         stoi: &HashMap<char, usize>,
     ) -> (Vec<[usize; 3]>, Vec<usize>) {
@@ -273,7 +256,7 @@ mod tests {
                 // Batch norm inference (add epsilon to prevent division by zero)
                 let bnmeani = hpreact.mean(vec![0]);
                 let bnvari = hpreact.std(vec![0]);
-                let bnvar_inv = (bnvari + 1e-5).pow(-0.5);
+                let _bnvar_inv = (bnvari + 1e-5).pow(-0.5);
 
                 let offset = hpreact - bnmeani; // Fix: use hpreact, not bnvari
                 let numer = offset * bngain;
@@ -353,7 +336,7 @@ mod tests {
         let mut b = Tensor::from_vec(vec![0.0], vec![1, 1]);
         b.set_requires_grad(true);
 
-        for epoch in 0..100 {
+        for _epoch in 0..100 {
             zero_all_grads();
             let pred = (x << w) + b;
             let loss = (pred - y).pow(2.0).sum(vec![0], false) / 4.0;
@@ -422,7 +405,7 @@ mod tests {
 
         // Generate some deterministic "data"
         let x = Tensor::ones(Shape::new(vec![batch_size, input_size]));
-        let mut y_true = Tensor::zeros(Shape::new(vec![batch_size, num_classes]));
+        let y_true = Tensor::zeros(Shape::new(vec![batch_size, num_classes]));
 
         // Set some targets (one-hot encoded)
         for i in 0..batch_size {
@@ -527,6 +510,6 @@ mod tests {
 
     #[test]
     fn test_load_gpt() {
-        let mut gguf_file = GGUFFile::new(String::from("./models/tests/gpt2/Gpt2-124M-F16.gguf"));
+        let mut _gguf_file = GGUFFile::new(String::from("./models/tests/gpt2/Gpt2-124M-F16.gguf"));
     }
 }

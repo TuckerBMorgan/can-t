@@ -1,5 +1,4 @@
 use crate::central::*;
-use std::ops::{Index, IndexMut};
 
 /// An abstraction I have found useful in the past
 /// Since we have a capped length the tensor can be at, it helps

@@ -1,4 +1,4 @@
-use crate::central::{Shape, Tensor, TensorID, equation, get_equation};
+use crate::central::{Shape, Tensor, TensorID, get_equation};
 
 use super::{BackproagationPacket, Operation};
 
@@ -515,7 +515,7 @@ mod tests {
         // So scale gradients should be: [[1.0, 2.0], [5.0, 6.0]]
         assert!(approx_equal(scale_gradients[[0, 0]], 1.0, 1e-6)); // First selected embedding value
         assert!(approx_equal(scale_gradients[[0, 1]], 2.0, 1e-6)); // Second selected embedding value
-        assert!(approx_equal(scale_gradients[[1, 0]], 5.0, 1e-6)); // Third selected embedding value  
+        assert!(approx_equal(scale_gradients[[1, 0]], 5.0, 1e-6)); // Third selected embedding value
         assert!(approx_equal(scale_gradients[[1, 1]], 6.0, 1e-6)); // Fourth selected embedding value
     }
 

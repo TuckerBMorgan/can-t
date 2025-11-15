@@ -1,6 +1,5 @@
 use super::{BackproagationPacket, Operation};
 use crate::central::*;
-use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 
 use core::cmp::Ordering;

@@ -1,7 +1,6 @@
 use crate::central::*;
 use crate::nn::*;
 use crate::utils::GGUFFile;
-use ndarray::Axis;
 
 pub struct MultiHeadAttention {
     // Parameters

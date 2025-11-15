@@ -2,7 +2,7 @@ use cant::central::*;
 use cant::nn::*;
 use cant::utils::GGUFFile;
 
-pub struct ModelConfig {
+pub struct GPTOSSModelConfig {
     number_of_hidden_layers: usize,
     number_of_experts: usize,
     number_of_experts_per_token: usize,
@@ -22,7 +22,23 @@ pub struct ModelConfig {
     world_size: usize,
 }
 
-struct MLPBlock {
+pub struct AttentionBlockGPTOSS {
+    head_dimensions: usize,
+    number_of_attention_heads: usize,
+    number_of_key_value_heads: usize,
+    sliding_window: usize,
+    sinks: Tensor,
+    norm: RMSNorm,
+    query_key_value_dimensions: usize,
+    query_key_value: Linear,
+    out_projection: Linear,
+    sm_scale: f32,
+    rope: RotaryEmbedding,
+}
+
+impl AttentionBlockGPTOSS {}
+
+struct MLPBlockGPTOSS {
     number_of_experts: usize,
     number_of_experts_per_token: usize,
     swiglu_limit: f32,
@@ -35,9 +51,9 @@ struct MLPBlock {
     swiglu: Swiglu,
 }
 
-impl MLPBlock {
-    pub fn new(config: &ModelConfig) -> MLPBlock {
-        MLPBlock {
+impl MLPBlockGPTOSS {
+    pub fn new(config: &GPTOSSModelConfig) -> MLPBlockGPTOSS {
+        MLPBlockGPTOSS {
             number_of_experts: config.number_of_experts,
             number_of_experts_per_token: config.number_of_experts_per_token,
             swiglu_limit: config.swiglu_limit,
@@ -67,7 +83,7 @@ impl MLPBlock {
     }
 }
 
-impl Layer for MLPBlock {
+impl Layer for MLPBlockGPTOSS {
     fn forward(&mut self, inputs: Tensor) -> Tensor {
         let t = self.norm.forward(inputs);
         let g = self.gate.forward(inputs);
@@ -104,6 +120,6 @@ impl Layer for MLPBlock {
 pub struct TransformerBlock {
     layer_index: usize,
     attention_layer: MultiHeadAttention,
-    mlp: MLPBlock,
+    mlp: MLPBlockGPTOSS,
 }
 pub fn main() {}

@@ -69,7 +69,6 @@ pub fn backward_for_movedim(packet: BackproagationPacket) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::central::{Tensor, zero_all_grads};
 
     #[test]

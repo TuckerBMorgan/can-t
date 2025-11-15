@@ -133,7 +133,6 @@ pub fn backward_for_permute(packet: BackproagationPacket) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::central::{Tensor, zero_all_grads};
 
     #[test]
