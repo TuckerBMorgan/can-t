@@ -2,7 +2,7 @@ use ndarray::ArrayD;
 
 use crate::utils::GGUFFile;
 
-use super::{get_equation, Operation, Shape};
+use super::{Operation, Shape, get_equation};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TensorID {
@@ -134,6 +134,9 @@ impl InternalTensor {
             }
             Operation::SmoothL1Loss(source, other) => {
                 return vec![*source, *other];
+            }
+            Operation::Sigmoid(source) => {
+                return vec![*source];
             }
         }
     }

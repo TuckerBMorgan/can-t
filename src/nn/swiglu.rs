@@ -1,5 +1,6 @@
 use crate::central::*;
 use crate::nn::*;
+use std::f32;
 use std::f32::consts::PI;
 
 /*
@@ -7,10 +8,15 @@ use std::f32::consts::PI;
 def swiglu(x, alpha: float = 1.702, limit: float = 7.0):
     x_glu, x_linear = x[..., ::2], x[..., 1::2]
     # Clamp the input values
+
     x_glu = x_glu.clamp(min=None, max=limit)
+
     x_linear = x_linear.clamp(min=-limit, max=limit)
+
     out_glu = x_glu * torch.sigmoid(alpha * x_glu)
+
     # Note we add an extra bias of 1 to the linear layer
+
     return out_glu * (x_linear + 1)
 */
 
@@ -27,16 +33,29 @@ impl Swiglu {
 
 impl Layer for Swiglu {
     fn forward(&mut self, x: Tensor) -> Tensor {
-        // Constants aligned with PyTorch/Transformers
-        // sqrt(2/pi) ~= 0.7978845608028654, but f32 rounded like PyTorch:
-        let alpha: f32 = 0.797_884_6;
-        let c: f32 = 0.044_715;
+        let final_dimension = x.shape.dimensions().last().unwrap().clone();
+        // We need to have an even set of dimensions here
+        assert!(final_dimension % 2 == 0);
+        let mut evens = vec![];
+        let mut odds = vec![];
 
-        // Compute x + 0.044715*x^3 via multiplies (more stable than powf)
-        let x2 = x * x;
-        let inner = x * (1.0f32 + c * x2); // x * (1 + 0.044715*x^2)
-        let t = (inner * alpha).tanh();
-        0.5f32 * x * (1.0f32 + t)
+        for i in 0..final_dimension {
+            if i % 2 == 0 {
+                evens.push(i as f32);
+            } else {
+                odds.push(i as f32);
+            }
+        }
+        let evens_len = evens.len();
+        let even_indices = Tensor::from_vec(evens, vec![evens_len]);
+        let odds_len = odds.len();
+        let odds_indices = Tensor::from_vec(odds, vec![odds_len]);
+        let x_glu = x.gather(x.shape.dimensions().len() - 1, even_indices);
+        let x_linear = x.gather(x.shape.dimensions().len() - 1, odds_indices);
+        let x_glu_clamp = x_glu.clamp(f32::MIN, self.limit);
+        let x_linear_clamp = x_linear.clamp(-self.limit, self.limit);
+        let out_glu = x_glu_clamp * (self.alpha * x_glu_clamp).sigmoid();
+        return out_glu + (x_linear_clamp + 1.0);
     }
 
     fn get_parameters(&self) -> Vec<TensorID> {

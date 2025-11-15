@@ -32,6 +32,7 @@ struct MLPBlock {
     mlp1_bias: Tensor,
     mlp2_weight: Tensor,
     mlp2_bias: Tensor,
+    swiglu: Swiglu,
 }
 
 impl MLPBlock {
@@ -61,6 +62,7 @@ impl MLPBlock {
                 config.number_of_experts,
                 config.hidden_layer_size,
             ])),
+            swiglu: Swiglu::new(1.702, config.swiglu_limit),
         }
     }
 }
@@ -69,8 +71,29 @@ impl Layer for MLPBlock {
     fn forward(&mut self, inputs: Tensor) -> Tensor {
         let t = self.norm.forward(inputs);
         let g = self.gate.forward(inputs);
+        let g_last_dimension = g.shape.dimensions().len() - 1;
+        let experts = g.topk(
+            self.number_of_experts_per_token,
+            g_last_dimension,
+            true,
+            true,
+        );
+        let expert_weights = experts.0.softmax(3);
+        let expert_indices = experts.1;
+        let mlp1_weights = self.mlp1_weight.select(expert_indices.id);
+        let mlp1_bias = self.mlp1_bias.select(expert_indices.id);
+        let t = Tensor::einsum("beck,bk->bec", vec![mlp1_weights, t]) + mlp1_bias;
+        let t = self.swiglu.forward(t);
 
-        panic!("")
+        let mlp2_weights = self.mlp2_weight.select(expert_indices.id);
+        let mlp2_bias = self.mlp2_bias.select(expert_indices.id);
+        let t = Tensor::einsum("beck,bek->bec", vec![mlp2_weights, t]);
+        // There is a world size thing here
+
+        let t = t + mlp2_bias;
+
+        let t = Tensor::einsum("bec,be->bc", vec![t, expert_weights]);
+        return inputs + t;
     }
 
     fn get_parameters(&self) -> Vec<TensorID> {
@@ -78,4 +101,9 @@ impl Layer for MLPBlock {
     }
 }
 
+pub struct TransformerBlock {
+    layer_index: usize,
+    attention_layer: MultiHeadAttention,
+    mlp: MLPBlock,
+}
 pub fn main() {}
