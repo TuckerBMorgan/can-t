@@ -460,6 +460,57 @@ impl Shape {
 
         Shape::new(current_dimensions)
     }
+
+    pub fn generate_all_positions(&self) -> Vec<Vec<usize>> {
+        let shape = self.dimensions();
+
+        if shape.is_empty() {
+            return vec![Vec::new()];
+        }
+        if shape.iter().any(|&d| d == 0) {
+            return Vec::new();
+        }
+
+        let total: usize = shape.iter().product();
+        let k = shape.len();
+        let mut result = Vec::with_capacity(total);
+        let mut idx = vec![0usize; k];
+
+        loop {
+            result.push(idx.clone());
+
+            // increment like an odometer (last dim fastest)
+            for dim in (0..k).rev() {
+                idx[dim] += 1;
+                if idx[dim] < shape[dim] {
+                    break; // normal carry resolved
+                } else {
+                    idx[dim] = 0; // carry to the next more-significant dim
+                    if dim == 0 {
+                        return result; // overflowed the most-significant dim
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn compute_strides_row_major(&self) -> Vec<usize> {
+        let shape = self.dimensions();
+        let n = shape.len();
+        if n == 0 {
+            return Vec::new(); // scalar: no strides
+        }
+        let mut strides = vec![0usize; n];
+        let mut acc = 1usize;
+        // last dim stride = 1; proceed backward
+        for (i, &dim) in shape.iter().enumerate().rev() {
+            strides[i] = acc;
+            acc = acc
+                .checked_mul(dim)
+                .expect("stride multiplication overflowed usize");
+        }
+        strides
+    }
 }
 
 #[cfg(test)]

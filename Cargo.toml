@@ -15,7 +15,6 @@ serde_json = { version = "1.0.140", features = ["arbitrary_precision"] }
 mnist = { version = "0.5", features = ["download"] }
 memmap2 = "0.9"
 ggus = "0.5"
-
 rust_tokenizers = "8.1.1"
 tokenizers = "*"
 regex = "*"
@@ -27,10 +26,11 @@ cant_metal = { path = "crates/cant_metal" }
 members = [
     "crates/cant_cpu",
     "crates/cant_metal",
-    "crates/cant_cuda"
 ]
 
-
+# Windows-only workspace member
+[target.'cfg(target_os = "windows")'.workspace.members]
+members = ["crates/cant_cuda"]
 
 [profile.release]
 debug = true

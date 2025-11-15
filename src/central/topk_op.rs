@@ -54,7 +54,7 @@ impl Tensor {
         let num_cols = tensor_size / dimension_length;
 
         // Allocate outputs
-        let mut top_k_values  = vec![0.0f32; num_cols * k];
+        let mut top_k_values = vec![0.0f32; num_cols * k];
         let mut top_k_indices = vec![0.0f32; num_cols * k];
 
         // For each column independently
@@ -67,7 +67,7 @@ impl Tensor {
 
                 if min_heap.len() < k {
                     min_heap.push((RevF32(v), row));
-                } else if v > min_heap.peek().unwrap().0 .0 {
+                } else if v > min_heap.peek().unwrap().0.0 {
                     let _ = min_heap.pop();
                     min_heap.push((RevF32(v), row));
                 }
@@ -77,7 +77,7 @@ impl Tensor {
             for j in (0..k).rev() {
                 let (RevF32(val), idx) = min_heap.pop().unwrap();
                 let out_offset = col + j * num_cols;
-                top_k_values[out_offset]  = val;
+                top_k_values[out_offset] = val;
                 top_k_indices[out_offset] = idx as f32; // consider int tensor if supported
             }
         }
@@ -121,7 +121,7 @@ impl Tensor {
             tensor_size *= dims[i];
         }
 
-        let mut all_values  = Vec::new();
+        let mut all_values = Vec::new();
         let mut all_indices = Vec::new();
         all_values.reserve(collapse_batch * k * (tensor_size / dim_len));
         all_indices.reserve(collapse_batch * k * (tensor_size / dim_len));
@@ -130,24 +130,23 @@ impl Tensor {
             let offset = tensor_size * b;
             let data_subset = &data[offset..offset + tensor_size];
 
-            let (vals, inds) = Tensor::batch_with_indices(
-                data_subset,
-                k,
-                dim_len,
-                tensor_size,
-            );
+            let (vals, inds) = Tensor::batch_with_indices(data_subset, k, dim_len, tensor_size);
 
             all_values.extend(vals);
             all_indices.extend(inds);
         }
 
-        let values_tensor  =
-            Tensor::create_tensor_data_and_shape_and_operation(out_shape.clone(), all_values, Operation::Nop);
+        let values_tensor = Tensor::create_tensor_data_and_shape_and_operation(
+            out_shape.clone(),
+            all_values,
+            Operation::Nop,
+        );
 
-        let indices_tensor =
-            Tensor::create_tensor_data_and_shape_and_operation(out_shape, all_indices,
-                Operation::Topk(self.id, values_tensor.id, k, dimension, true, true)
-            );
+        let indices_tensor = Tensor::create_tensor_data_and_shape_and_operation(
+            out_shape,
+            all_indices,
+            Operation::Topk(self.id, values_tensor.id, k, dimension, true, true),
+        );
 
         // Return (values, indices) to match the doc comment.
         (values_tensor, indices_tensor)
@@ -155,10 +154,12 @@ impl Tensor {
 }
 
 pub fn backward_for_topk(backprop_backet: BackproagationPacket) {
-    if let  Operation::Topk(input_id, indices_id, k, dimension, _, _) = backprop_backet.operation {
-
+    if let Operation::Topk(input_id, indices_id, k, dimension, _, _) = backprop_backet.operation {
         // Shapes and buffers
-        let dims = get_equation().get_tensor_shape(input_id).dimensions().to_vec();
+        let dims = get_equation()
+            .get_tensor_shape(input_id)
+            .dimensions()
+            .to_vec();
         let nd = dims.len();
         let dim_len = dims[dimension];
 
@@ -184,13 +185,15 @@ pub fn backward_for_topk(backprop_backet: BackproagationPacket) {
         // - In your forward you returned (indices, values).
         // - If you switch to (values, indices), adjust which grad you fetch here.
         let indices: Vec<f32> = get_equation().get_data_flat_buffer(indices_id).to_vec();
-        let grad_values: Vec<f32> = get_equation().get_grad_flat_buffer(backprop_backet.incoming_grad).to_vec();
+        let grad_values: Vec<f32> = get_equation()
+            .get_grad_flat_buffer(backprop_backet.incoming_grad)
+            .to_vec();
         // Prepare grad for input
         let mut grad_input = vec![0.0f32; collapse_batch * tensor_size];
 
         // Scatter-add
         for b in 0..collapse_batch {
-            let in_base  = b * tensor_size;
+            let in_base = b * tensor_size;
             let out_base = b * (k * num_cols);
 
             for col in 0..num_cols {
@@ -211,7 +214,6 @@ pub fn backward_for_topk(backprop_backet: BackproagationPacket) {
             }
         }
     }
-
 }
 
 #[cfg(test)]
@@ -219,12 +221,21 @@ mod tests {
     use super::*;
 
     fn approx_eq(a: &[f32], b: &[f32], eps: f32) {
-        assert_eq!(a.len(), b.len(), "length mismatch: {} vs {}", a.len(), b.len());
+        assert_eq!(
+            a.len(),
+            b.len(),
+            "length mismatch: {} vs {}",
+            a.len(),
+            b.len()
+        );
         for (i, (x, y)) in a.iter().zip(b.iter()).enumerate() {
             assert!(
                 (x - y).abs() <= eps,
                 "mismatch at {}: got {}, expected {} (eps={})",
-                i, x, y, eps
+                i,
+                x,
+                y,
+                eps
             );
         }
     }
@@ -314,12 +325,9 @@ mod tests {
         let rows = 4usize;
         let data = [
             // row0
-            0.0, 5.0, 8.0,
-            // row1
-            10.0, 4.0, -2.0,
-            // row2
-            3.0, 9.0, 6.0,
-            // row3
+            0.0, 5.0, 8.0, // row1
+            10.0, 4.0, -2.0, // row2
+            3.0, 9.0, 6.0, // row3
             7.0, 1.0, 6.0,
         ];
         let (vals, idxs) = Tensor::batch_with_indices(&data, 2, rows, rows * num_cols);
@@ -350,12 +358,21 @@ mod topk_tests {
     use crate::central::*; // for get_equation
 
     fn approx_eq(a: &[f32], b: &[f32], eps: f32) {
-        assert_eq!(a.len(), b.len(), "length mismatch: {} vs {}", a.len(), b.len());
+        assert_eq!(
+            a.len(),
+            b.len(),
+            "length mismatch: {} vs {}",
+            a.len(),
+            b.len()
+        );
         for (i, (x, y)) in a.iter().zip(b.iter()).enumerate() {
             assert!(
                 (x - y).abs() <= eps,
                 "mismatch at {}: got {}, expected {} (eps={})",
-                i, x, y, eps
+                i,
+                x,
+                y,
+                eps
             );
         }
     }
@@ -428,11 +445,7 @@ mod topk_tests {
         // r0: [1,  7,  3,  2] -> top2 [7,3] idx [1,2]
         // r1: [9,  0,  5,  4] -> top2 [9,5] idx [0,2]
         // r2: [6,  6, -1, 10] -> top2 [10,6] idx [3,0] (tie of 6 keeps first seen col 0)
-        let data = vec![
-            1.0, 7.0, 3.0, 2.0,
-            9.0, 0.0, 5.0, 4.0,
-            6.0, 6.0, -1.0, 10.0,
-        ];
+        let data = vec![1.0, 7.0, 3.0, 2.0, 9.0, 0.0, 5.0, 4.0, 6.0, 6.0, -1.0, 10.0];
         let x = tensor_from(data, &[3, 4]);
         let (vals_t, idxs_t) = x.topk(2, 1, true, true);
 
@@ -464,13 +477,8 @@ mod topk_tests {
         // top1 per column: col0->9(idx0), col1->6(idx1) (tie with idx2, first seen wins)
         let data = vec![
             // b0
-            1.0, 8.0,
-            5.0, 3.0,
-            7.0, 4.0,
-            // b1
-            9.0, -1.0,
-            0.0,  6.0,
-            2.0,  6.0,
+            1.0, 8.0, 5.0, 3.0, 7.0, 4.0, // b1
+            9.0, -1.0, 0.0, 6.0, 2.0, 6.0,
         ];
         let x = tensor_from(data, &[2, 3, 2]);
         let (vals_t, idxs_t) = x.topk(1, 1, true, true);
@@ -495,19 +503,14 @@ mod topk_tests {
         // col0: [0,10,3,7] -> [10,7,3] idx [1,3,2]
         // col1: [5, 4,9,1] -> [ 9,5,4] idx [2,0,1]
         // col2: [8,-2,6,6] -> [ 8,6,6] idx [0,2,3]
-        let data = vec![
-            0.0, 5.0, 8.0,
-            10.0, 4.0, -2.0,
-            3.0, 9.0, 6.0,
-            7.0, 1.0, 6.0,
-        ];
+        let data = vec![0.0, 5.0, 8.0, 10.0, 4.0, -2.0, 3.0, 9.0, 6.0, 7.0, 1.0, 6.0];
         let x = tensor_from(data, &[4, 3]);
         let (vals_t, idxs_t) = x.topk(3, 0, true, true);
         let vals = read(vals_t.id);
         let idxs = read(idxs_t.id);
 
         approx_eq(&vals, &[10.0, 9.0, 8.0, 7.0, 5.0, 6.0, 3.0, 4.0, 6.0], 1e-6);
-        approx_eq(&idxs, &[ 1.0, 2.0, 0.0, 3.0, 0.0, 2.0, 2.0, 1.0, 3.0], 0.0);
+        approx_eq(&idxs, &[1.0, 2.0, 0.0, 3.0, 0.0, 2.0, 2.0, 1.0, 3.0], 0.0);
     }
 
     #[test]
@@ -542,4 +545,3 @@ mod topk_tests {
         assert_eq!(idxs_t.shape.dimensions(), vec![2, 3, 2]);
     }
 }
-

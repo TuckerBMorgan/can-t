@@ -34,5 +34,8 @@ pub enum Operation {
     Diagonal(TensorID, usize, usize, usize), // Source, Offset, First Dimension, Second Dimension,
     MoveDim(TensorID, usize, usize), // Source, Originial, New Location
     Permute(TensorID, [usize; MAX_DIMS], usize), // Source, Permutation, In use Dimensions in Permutations
-    Topk(TensorID, TensorID, usize, usize, bool, bool),    // Source, Indices, dimension, Largest, Sorted
+    Topk(TensorID, TensorID, usize, usize, bool, bool), // Source, Indices, dimension, Largest, Sorted
+    Gather(TensorID, TensorID, usize),                  // Source, Indices, Dimension
+    Max(TensorID, TensorID, usize, bool),               // Source, Indicies, Dimension, KeepDim
+    SmoothL1Loss(TensorID, TensorID),                   // Souce, Other
 }
