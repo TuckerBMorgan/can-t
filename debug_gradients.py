@@ -1,4 +1,5 @@
 import torch
+import sys
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
 # --- setup ---
@@ -8,85 +9,85 @@ model = GPT2LMHeadModel.from_pretrained(model_name)
 model.eval()
 torch.manual_seed(0)
 
-# enable KV cache for fast autoregressive decoding
 model.config.use_cache = True
 
 # --- prompt ---
-prompt = "A"
-inputs = tok(prompt, return_tensors="pt", add_special_tokens=False)
-input_ids = inputs["input_ids"]          # [B=1, S0]
-attention_mask = inputs.get("attention_mask", torch.ones_like(input_ids))
+ids = torch.tensor([[32, 13]])#, 198, 198]], dtype=torch.long)
+attention_mask = torch.ones_like(ids)
 
-# --- capture dict + hook ---
-caps = {"ln_f_out_steps": []}
+# storage for captured activations
+caps = {
+    "ln1_block0": None,
+    "attn_out_block0": None,
+}
 
-def ln_f_hook(_, inp, out):
-    out0 = out[0] if isinstance(out, (tuple, list)) else out
-    # clone to CPU so it won't be mutated when we keep decoding
-    caps["ln_f_out_steps"].append(out0.detach().cpu())
+# --- hook for block 0 ln_1 ---
+def ln1_hook(module, input, output):
+    # output: [batch, seq, hidden]
+    out0 = output.detach().cpu()
+    caps["ln1_block0"] = out0
 
-h = model.transformer.ln_f.register_forward_hook(ln_f_hook)
+# --- hook for block 0 attention output ---
+def attn_hook(module, input, output):
+    # GPT-2 attention usually returns (attn_output, present, attn_weights?) or similar
+    if isinstance(output, (tuple, list)):
+        attn_out = output[0]
+    else:
+        attn_out = output
+    caps["attn_out_block0"] = attn_out.detach().cpu()
 
-# --- decoding config ---
-max_new_tokens = 32
-temperature = 0.0        # 0 = greedy. Set >0 to sample
-top_k = None             # set e.g. 50 for top-k sampling
-eos_id = tok.eos_token_id
-
-generated = input_ids.clone()
-past_key_values = None
+hook_ln1 = model.transformer.h[0].ln_1.register_forward_hook(ln1_hook)
+hook_attn = model.transformer.h[0].attn.register_forward_hook(attn_hook)
 
 with torch.no_grad():
-    # first forward pass can take the whole prompt
+    # --- WTE ---
+    wte_out = model.transformer.wte(ids)
+
+    # --- WPE ---
+    position_ids = torch.arange(ids.size(1), device=ids.device).unsqueeze(0)
+    wpe_out = model.transformer.wpe(position_ids)
+
+    # --- Input into block 0 ---
+    embedded = wte_out + wpe_out
+
+    # --- Forward pass (hooks trigger inside block 0) ---
     out = model(
-        input_ids=generated,
+        input_ids=ids,
         attention_mask=attention_mask,
-        use_cache=True,
-        past_key_values=past_key_values,
+        use_cache=False,
+        output_hidden_states=True,
         return_dict=True,
     )
-    past_key_values = out.past_key_values
 
-    for step in range(max_new_tokens):
-        # logits for the last position
-        next_token_logits = out.logits[:, -1, :]  # [1, vocab]
-        if temperature and temperature > 0:
-            logits = next_token_logits / temperature
-            if top_k is not None and top_k > 0:
-                # top-k filtering
-                topk_vals, topk_idx = torch.topk(logits, k=top_k, dim=-1)
-                filtered = torch.full_like(logits, float("-inf"))
-                filtered.scatter_(dim=-1, index=topk_idx, src=topk_vals)
-                probs = torch.nn.functional.softmax(filtered, dim=-1)
-            else:
-                probs = torch.nn.functional.softmax(logits, dim=-1)
-            next_token = torch.multinomial(probs, num_samples=1)  # [1,1]
-        else:
-            # greedy
-            next_token = torch.argmax(next_token_logits, dim=-1, keepdim=True)  # [1,1]
+    logits = out.logits  # final logits
 
-        # append
-        generated = torch.cat([generated, next_token], dim=-1)
+# remove hooks
+hook_ln1.remove()
+hook_attn.remove()
 
-        # early stop on EOS if present
-        if eos_id is not None and next_token.item() == eos_id:
-            break
+# --- printing ---
+print("=== WTE output ===")
+print("Shape:", wte_out.shape)
+print(wte_out)
 
-        # incremental forward: feed only the new token, with cache
-        out = model(
-            input_ids=next_token,                 # only the last token
-            use_cache=True,
-            past_key_values=past_key_values,
-            return_dict=True,
-        )
-        past_key_values = out.past_key_values
+print("\n=== WPE output ===")
+print("Shape:", wpe_out.shape)
+print(wpe_out)
 
-# remove hook
-h.remove()
+print("\n=== WTE + WPE ===")
+print("Shape:", embedded.shape)
+print(embedded)
 
-# --- outputs ---
-# decode full string
-decoded = tok.decode(generated[0], clean_up_tokenization_spaces=False)
+print("\n=== Block 0 ln_1 output (input to attention) ===")
+print("Shape:", caps['ln1_block0'].shape)
+print(caps["ln1_block0"])
 
-print("=== Generated text ===")
-print(decoded)
+print("\n=== Block 0 attention output (post-attention, pre-residual add / pre-ln_2) ===")
+print("Shape:", caps['attn_out_block0'].shape)
+print(caps["attn_out_block0"])
+
+print("\n=== Final logits ===")
+print("Shape:", logits.shape)
+print(logits)
+
+sys.exit(0)

@@ -106,6 +106,7 @@ impl Layer for GPT2Block {
 
         // Attention output (after c_attn, attn, and c_proj in HF)
         let attn_out = self.attention.forward(layer_norm_1);
+        panic!("{:?}", attn_out.item());
         // b{i}_ln2_in : residual add after attention
         let ln2_in: Tensor = inputs + attn_out;
 

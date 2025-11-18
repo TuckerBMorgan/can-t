@@ -55,22 +55,6 @@ impl GPT2Config {
     }
 }
 
-pub fn sinusoidal_position_encoding(seq_len: usize, d_model: usize) -> Tensor {
-    let mut pos_encoding = vec![0.0; seq_len * d_model];
-
-    for pos in 0..seq_len {
-        for i in (0..d_model).step_by(2) {
-            let angle = pos as f32 / 10000.0_f32.powf(i as f32 / d_model as f32);
-            pos_encoding[pos * d_model + i] = angle.sin();
-            if i + 1 < d_model {
-                pos_encoding[pos * d_model + i + 1] = angle.cos();
-            }
-        }
-    }
-
-    Tensor::from_vec(pos_encoding, vec![seq_len, d_model])
-}
-
 pub struct GPT2 {
     _config: GPT2Config,
     wte: Embedding,
@@ -149,18 +133,20 @@ impl Model for GPT2 {
         // --- embeddings ---
         let token_embeddings = self.wte.forward(input);
 
+
         let positional_embeddings = self.wpe.forward(position_ids);
 
         // Sum embeddings (HF calls the tensor after dropout 'hidden_states'; in eval dropout is identity)
         let mut hidden_states = token_embeddings + positional_embeddings;
-
         // --- transformer blocks ---
         for (_i, block) in self.blocks.iter_mut().enumerate() {
             hidden_states = block.forward(hidden_states);
+            println!("layer {} {:?}",_i, hidden_states.item());
         }
 
         hidden_states = self.final_layer_norm.forward(hidden_states);
         let logits = self.final_head.forward(hidden_states);
+        panic!("{:?}", logits.item());
         logits
     }
 
@@ -205,18 +191,19 @@ mod tests {
 
         let tokenizer = Tokenizer::new(bpe);
 
-        let mut test_text = String::from("A");
-
-        for _ in 0..30 {
-            let encoding = tokenizer.encode(test_text.clone(), false).unwrap();
+        let mut test_text = String::from(" A");
+        let encoding = tokenizer.encode(test_text.clone(), false).unwrap();
+        let mut encoding_ids : Vec<f32> =                 encoding
+        .get_ids()
+        .to_vec()
+        .iter()
+        .map(|x| *x as f32)
+        .collect();
+        let mut forced_encoding_ids = vec![32.0, 13.0];//, 198.0, 198.0];
+        for _ in 0..1 {
             let input = Tensor::from_vec(
-                encoding
-                    .get_ids()
-                    .to_vec()
-                    .iter()
-                    .map(|x| *x as f32)
-                    .collect(),
-                vec![1, encoding.get_ids().to_vec().len()],
+                forced_encoding_ids.clone(),
+                vec![1, forced_encoding_ids.len()],
             );
 
             let output = gpt2.forward(input);
@@ -244,6 +231,8 @@ mod tests {
                 decode_gpt2_tokens(&tokenizer.decode(&indices, true).unwrap())
             );
             let a = [indices[&indices.len() - 1]];
+            forced_encoding_ids.push(a[0] as f32);
+            println!("{:?}", forced_encoding_ids);
             test_text = test_text.to_owned() + &String::from(tokenizer.decode(&a, true).unwrap());
             get_equation().garbage_collect();
         }
