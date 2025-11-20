@@ -15,6 +15,7 @@ impl Embedding {
 
     pub fn from_tensor(mut weights: Tensor) -> Embedding {
         weights.set_keep_alive(true);
+        weights.set_requires_grad(true);
         Embedding { weights }
     }
 }

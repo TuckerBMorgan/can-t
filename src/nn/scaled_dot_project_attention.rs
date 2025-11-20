@@ -22,14 +22,18 @@ impl ScaledDotProductAttention {
         mask: Option<Tensor>,
     ) -> Tensor {
         let key_length = key.shape.dimensions().len();
-        let scores = (query << key.transpose(key_length - 2, key_length - 1)) / self.scale;
+        let scale =
+            1.0 / ((key.shape.dimensions()[key.shape.dimensions().len() - 1] as f32).sqrt());
+        let scores = (query << key.transpose(key_length - 2, key_length - 1)) * scale;
+
         let scores = match mask {
             Some(mask) => scores.masked_fill(mask, f32::NEG_INFINITY),
             None => scores,
         };
 
         let weights = scores.softmax(scores.shape.dimensions().len() - 1);
-        return weights << value;
+        let result = weights << value;
+        return result;
     }
 }
 

@@ -82,8 +82,10 @@ impl GPT2 {
 
     pub fn from_gguf_file(gguf_file: &mut GGUFFile) -> GPT2 {
         let gpt_config = GPT2Config::gpt2_small();
-        let wpe_tensor = Tensor::from_gguf_file(String::from("position_embd.weight"), gguf_file);
-        let wte_tensor = Tensor::from_gguf_file(String::from("token_embd.weight"), gguf_file);
+        let mut wpe_tensor = Tensor::from_gguf_file(String::from("position_embd.weight"), gguf_file);
+
+        
+        let mut wte_tensor = Tensor::from_gguf_file(String::from("token_embd.weight"), gguf_file);
         let wpe: Embedding = Embedding::from_tensor(wpe_tensor);
         let wte = Embedding::from_tensor(wte_tensor);
 
@@ -96,19 +98,24 @@ impl GPT2 {
             let block = GPT2Block::from_gguf_file(gguf_file, i, &gpt_config);
             blocks.push(block);
         }
-
         let final_layer_norm = LayerNorm::from_gguf_file(
             gguf_file,
             String::from("output_norm.weight"),
             String::from("output_norm.bias"),
         );
 
-        let wte_weights_reshapes_for_weight_tying = wte.weights.reshape(Shape::new(vec![
+        let mut wte_weights_reshapes_for_weight_tying = wte.weights.reshape(Shape::new(vec![
             gpt_config.vocab_size,
             gpt_config.embedding_dimensions,
         ]));
-        let wte_weights_reshapes_for_weight_tying =
+        wte_weights_reshapes_for_weight_tying.set_requires_grad(true);
+        wte_weights_reshapes_for_weight_tying.set_keep_alive(true);
+        println!("{:?}", wte_weights_reshapes_for_weight_tying.id);
+        let mut wte_weights_reshapes_for_weight_tying =
             wte_weights_reshapes_for_weight_tying.transpose(0, 1);
+            wte_weights_reshapes_for_weight_tying.set_keep_alive(true);
+            wte_weights_reshapes_for_weight_tying.set_requires_grad(true);
+            println!("{:?}", wte_weights_reshapes_for_weight_tying.id);
         let final_head = Linear::from_tensors(wte_weights_reshapes_for_weight_tying, None);
 
         GPT2 {
@@ -133,7 +140,6 @@ impl Model for GPT2 {
         // --- embeddings ---
         let token_embeddings = self.wte.forward(input);
 
-
         let positional_embeddings = self.wpe.forward(position_ids);
 
         // Sum embeddings (HF calls the tensor after dropout 'hidden_states'; in eval dropout is identity)
@@ -141,12 +147,10 @@ impl Model for GPT2 {
         // --- transformer blocks ---
         for (_i, block) in self.blocks.iter_mut().enumerate() {
             hidden_states = block.forward(hidden_states);
-            println!("layer {} {:?}",_i, hidden_states.item());
         }
 
         hidden_states = self.final_layer_norm.forward(hidden_states);
         let logits = self.final_head.forward(hidden_states);
-        panic!("{:?}", logits.item());
         logits
     }
 
@@ -177,67 +181,194 @@ mod tests {
 
     #[test]
     fn basic_test() {
+        // Load model
         let mut gguf_file = GGUFFile::new(String::from("./models/tests/gpt2/Gpt2-124M-F16.gguf"));
         let mut gpt2 = GPT2::from_gguf_file(&mut gguf_file);
 
-        let bpe_builder = BPE::from_file(
+        // Build tokenizer
+        let bpe = BPE::from_file(
             "./data/tokenizers/gpt2/vocab.json",
             "./data/tokenizers/gpt2/merges.txt",
-        );
-        let bpe = bpe_builder
-            //.unk_token("[UNK]".into())
-            .build()
-            .unwrap();
+        )
+        .build()
+        .unwrap();
 
         let tokenizer = Tokenizer::new(bpe);
 
-        let mut test_text = String::from(" A");
-        let encoding = tokenizer.encode(test_text.clone(), false).unwrap();
-        let mut encoding_ids : Vec<f32> =                 encoding
-        .get_ids()
-        .to_vec()
-        .iter()
-        .map(|x| *x as f32)
-        .collect();
-        let mut forced_encoding_ids = vec![32.0, 13.0];//, 198.0, 198.0];
-        for _ in 0..1 {
-            let input = Tensor::from_vec(
-                forced_encoding_ids.clone(),
-                vec![1, forced_encoding_ids.len()],
-            );
+        // For now, keep the original hard-coded IDs
+        let mut token_ids: Vec<f32> = vec![32.0, 13.0, 198.0, 198.0];
+
+        // Generate 5 tokens
+        for _ in 0..5 {
+            let input = Tensor::from_vec(token_ids.clone(), vec![1, token_ids.len()]);
 
             let output = gpt2.forward(input);
-
             let arr = output.item();
-            // Get the index of the max along the last axis
+            let rows = arr.rows();
 
-            let test = arr.rows();
+            // Greedy decoding: argmax over last dimension for each row
             let mut indices = vec![];
-            for row in test {
-                let mut index = 0;
-                let mut current = std::f32::NEG_INFINITY;
-
-                for (i, element) in row.iter().enumerate() {
-                    if *element > current {
-                        current = *element;
-                        index = i; // correct 0-based index
-                    }
-                }
-                indices.push(index as u32);
+            for row in rows {
+                let (max_idx, _) = row.iter().enumerate().fold(
+                    (0usize, f32::NEG_INFINITY),
+                    |(best_i, best_v), (i, &v)| {
+                        if v > best_v { (i, v) } else { (best_i, best_v) }
+                    },
+                );
+                indices.push(max_idx as u32);
             }
 
-            println!(
-                "{:?}",
-                decode_gpt2_tokens(&tokenizer.decode(&indices, true).unwrap())
-            );
-            let a = [indices[&indices.len() - 1]];
-            forced_encoding_ids.push(a[0] as f32);
-            println!("{:?}", forced_encoding_ids);
-            test_text = test_text.to_owned() + &String::from(tokenizer.decode(&a, true).unwrap());
+            // Take the last predicted token
+            let last_token_id = *indices.last().expect("indices should not be empty");
+            token_ids.push(last_token_id as f32);
+
+            println!("{:?}", token_ids);
+
+            // Decode just the last token and append to running text
+            let decoded = tokenizer.decode(&[last_token_id], true).unwrap();
+
             get_equation().garbage_collect();
         }
+
+        // Optionally assert something about `test_text` here
+        // e.g.:
+        // assert!(test_text.len() > " A".len());
     }
 
+    fn shifted_batches(data: &[u32], batch_size: usize) -> Vec<(Vec<u32>, Vec<u32>)> {
+        let n = data.len();
+
+        // Need at least batch_size + 1 elements to make one (x, y) pair
+        if batch_size == 0 || n < batch_size + 1 {
+            return Vec::new();
+        }
+
+        let mut result = Vec::new();
+
+        // Last valid start index so that both x and y slices fit
+        let last_start = n - batch_size - 1;
+
+        for start in 0..=last_start {
+            let x = data[start..start + batch_size].to_vec();
+            let y = data[start + 1..start + 1 + batch_size].to_vec();
+            result.push((x, y));
+        }
+
+        result
+    }
+
+    fn single_run(input: Vec<f32>, expected_output: Vec<f32>, model: &mut GPT2, vocab_size: usize) {
+        let input_len = input.len();
+        let input = Tensor::from_vec(input, vec![1, input_len]);
+        println!("{:?}", input.id);
+        println!("Forward pass");
+        let output = model.forward(input);
+        
+        let output_onehots = Tensor::zeros(Shape::new(vec![expected_output.len(), vocab_size]));
+        for i in 0..expected_output.len() {
+            output_onehots.set_index(Indexable::Double(i, expected_output[i] as usize), 1.0);
+        }
+        println!("Calculating loss");
+        let loss = output.cross_entropy_loss(output_onehots);
+        zero_all_grads();
+        println!("Backwards pass");
+        loss.backward();
+        println!("Updating parameters");
+        update_parameters(-0.01);
+        get_equation().garbage_collect();
+        validate_tensor_store();
+    }
+
+    #[test]
+    fn basic_retrain_test() {
+        let BATCH_SIZE = 16;
+        // Load model
+        let mut gguf_file = GGUFFile::new(String::from("./models/tests/gpt2/Gpt2-124M-F16.gguf"));
+        let mut gpt2 = GPT2::from_gguf_file(&mut gguf_file);
+
+        // Build tokenizer
+        let bpe = BPE::from_file(
+            "./data/tokenizers/gpt2/vocab.json",
+            "./data/tokenizers/gpt2/merges.txt",
+        )
+        .build()
+        .unwrap();
+
+        let tokenizer = Tokenizer::new(bpe);
+
+        let test_data = r#"One day, a little girl named Lily found a needle in her room. She knew it was difficult to play with it because it was sharp. Lily wanted to share the needle with her mom, so she could sew a button on her shirt.
+Lily went to her mom and said, "Mom, I found this needle. Can you share it with me and sew my shirt?" Her mom smiled and said, "Yes, Lily, we can share the needle and fix your shirt."
+Together, they shared the needle and sewed the button on Lily's shirt. It was not difficult for them because they were sharing and helping each other. After they finished, Lily thanked her mom for sharing the needle and fixing her shirt. They both felt happy because they had shared and worked together.
+<|endoftext|>"#;
+
+        let tokens = tokenizer.encode(test_data, false).unwrap();
+
+        let mut training_batches = shifted_batches(tokens.get_ids(), BATCH_SIZE);
+        training_batches.shuffle(&mut thread_rng());
+        let mut i = 0;
+        let traing_batch_length = training_batches.len();
+        for (a, b) in training_batches {
+            println!("Starting run {:?}", i + 1);
+            let a = a.iter().map(|x|*x as f32).collect();
+            let b = b.iter().map(|x|*x as f32).collect();
+             single_run(a, b, &mut gpt2, tokenizer.get_vocab_size(false));
+             i+= 1;
+             let percent_done = i as f32 / traing_batch_length  as f32 ;
+             println!("Percent done {:?}%", percent_done * 100.0);
+          }
+        return;
+        let read_for_cant: Vec<f32> = tokens.get_ids().iter().map(|x| return *x as f32).collect();
+
+        // For now, keep the original hard-coded IDs
+        let mut token_ids: Vec<f32> = vec![32.0, 13.0, 198.0, 198.0];
+
+        // Generate 5 tokens
+        for _ in 0..5 {
+            let input = Tensor::from_vec(token_ids.clone(), vec![1, token_ids.len()]);
+
+            let output = gpt2.forward(input);
+            let arr = output.item();
+            let rows = arr.rows();
+
+            // Greedy decoding: argmax over last dimension for each row
+            let mut indices = vec![];
+            for row in rows {
+                let (max_idx, _) = row.iter().enumerate().fold(
+                    (0usize, f32::NEG_INFINITY),
+                    |(best_i, best_v), (i, &v)| {
+                        if v > best_v { (i, v) } else { (best_i, best_v) }
+                    },
+                );
+                indices.push(max_idx as u32);
+            }
+            // Take the last predicted token
+            let last_token_id = *indices.last().expect("indices should not be empty");
+            token_ids.push(last_token_id as f32);
+
+            let test_ytrue_onehot = Tensor::element(
+                Shape::new(vec![BATCH_SIZE, tokenizer.get_vocab_size(true)]),
+                0.0,
+            );
+
+            for b in 0..BATCH_SIZE {
+                //    test_ytrue_onehot.set_index([b, ytr[b]].into(), 1.0);
+            }
+
+            println!("{:?}", token_ids);
+
+            // Decode just the last token and append to running text
+            let decoded = tokenizer.decode(&[last_token_id], true).unwrap();
+
+            get_equation().garbage_collect();
+        }
+
+        // Optionally assert something about `test_text` here
+        // e.g.:
+        // assert!(test_text.len() > " A".len());
+    }
+
+    use rand::seq::SliceRandom;
+    use rand::thread_rng;
     use tokenizers::models::bpe::BPE;
     use tokenizers::tokenizer::{Result, Tokenizer};
 

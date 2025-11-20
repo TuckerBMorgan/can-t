@@ -96,6 +96,14 @@ impl Equation {
         let internal_tensor = InternalTensor::new(id, shape, data_start, grad_stat, operation);
         self.tensor_record.insert(id, internal_tensor);
 
+        if self._debugging_options.nan_check {
+            for val in &data {
+                if val.is_nan() {
+                    panic!("Tried to allocate tensor with Nan Value");
+                }
+            }
+        }
+
         // Extend the vectors by the right length, with 0 init data
         self.data.extend(data);
         self.grad.extend(grad);
@@ -444,8 +452,15 @@ impl Equation {
     /// 'tensor_id' - Id of for the loopup on the tensor
     /// 'grad' - the grad we are copying in
     pub fn add_tensor_grad(&mut self, tensor_id: TensorID, grad: Vec<f32>) {
+        
+        if !self.tensor_record.contains_key(&tensor_id) {
+            panic!("{:?} is missing from tensor record", tensor_id);
+        }
+
         let internal_tensor = &self.tensor_record[&tensor_id];
+        
         assert!(internal_tensor.shape.total_size() == grad.len());
+        
         for i in 0..internal_tensor.shape.total_size() {
             self.grad[internal_tensor.grad_start_index + i] += grad[i];
         }
@@ -681,6 +696,19 @@ impl Equation {
         self.end_timer(String::from("backwards_prop"));
     }
 
+    pub fn trace_backwrads_path(&self, starting_value: TensorID) {
+        let mut visited = HashSet::new();
+        let mut stack = Vec::new();
+        self.topological_sort_util(starting_value, &mut visited, &mut stack);
+        let mut output_string = String::from("");
+
+
+        while let Some(node) = stack.pop() {
+            let internal_tensor = self.tensor_record.get(&node).unwrap();
+            output_string += &internal_tensor.id.id.to_string();
+        }
+    }
+
     // Zeroes out the grad, important to call before calling backwards on a value
     pub fn zero_grad(&mut self) {
         for g in &mut self.grad {
@@ -740,6 +768,11 @@ impl Equation {
                     let grad_anchor_point = v.grad_start_index;
                     let data_anchor_point = v.data_start_index;
                     let _update = learning_rate * self.grad[grad_anchor_point + i];
+                    if self._debugging_options.nan_check {
+                        if _update.is_nan() {
+                            panic!("Tried to update parameter with NaN value");
+                        }
+                    }
                     self.data[data_anchor_point + i] +=
                         learning_rate * self.grad[grad_anchor_point + i];
                 }
@@ -764,6 +797,21 @@ impl Equation {
     /// 'requires_grad' : what we are setting the bool too
     pub fn set_keep_alive(&mut self, tensor_id: TensorID, keep_alive: bool) {
         self.tensor_record.get_mut(&tensor_id).unwrap().keep_alive = keep_alive;
+    }
+
+    pub fn validate_tensor_store(&self) {
+        for d in &self.data {
+            if d.is_nan() || d.is_infinite() {
+                panic!("Bad Data in tensor data");
+            }
+        }
+        
+        for d in &self.grad {
+            if d.is_nan() || d.is_infinite() {
+                panic!("Bad Data in tensor grad");
+            }
+        }
+        
     }
 
     pub fn compact_tensor_store(&mut self) {

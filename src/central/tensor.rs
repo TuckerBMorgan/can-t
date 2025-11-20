@@ -175,11 +175,14 @@ impl Tensor {
         let data = gguf_file.get_weight_for_tensor(tensor_name.clone());
         let dims = gguf_file.get_tensor_dims(tensor_name);
 
-        return Tensor::create_tensor_data_and_shape_and_operation(
+        let mut a = Tensor::create_tensor_data_and_shape_and_operation(
             Shape::new(dims),
             data,
             Operation::Nop,
         );
+        a.set_keep_alive(true);
+        a.set_requires_grad(true);
+        return a;
     }
 
     /// Allocates a new tensor with provided shape, all with 0s
@@ -362,7 +365,7 @@ impl Tensor {
             data,
             Operation::Exp(self.id),
         );
-    }
+    }   
 }
 
 #[cfg(test)]

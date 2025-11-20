@@ -102,3 +102,8 @@ pub fn clean_up_tensor_store() {
 pub fn clip_gradients(max_norm: f32) {
     get_equation().clip_grad_norm(max_norm);
 }
+
+
+pub fn validate_tensor_store() {
+    get_equation().validate_tensor_store();
+}

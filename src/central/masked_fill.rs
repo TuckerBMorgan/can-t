@@ -23,7 +23,6 @@ impl Tensor {
 
             result
         };
-
         return Tensor::create_tensor_data_and_shape_and_operation(
             local.shape,
             result,
