@@ -1,6 +1,6 @@
 use ndarray::ArrayD;
 
-use crate::utils::GGUFFile;
+use crate::{central::operation, utils::GGUFFile};
 
 use super::{Operation, Shape, get_equation};
 
@@ -164,6 +164,11 @@ impl Tensor {
             requires_grad: false,
             keep_alive: false,
         }
+    }
+
+    pub fn detach(&self) -> Tensor {
+        let self_data = get_equation().get_grad_flat_buffer(self.id).to_vec();
+        return Tensor::create_tensor_data_and_shape_and_operation(self.shape, self_data, Operation::Nop);
     }
 
     // Loads a tensor from a GGUF file

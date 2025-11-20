@@ -127,13 +127,15 @@ impl MultiHeadAttention {
 
         // ❗ Correct scale is 1 / sqrt(head_dim), not sqrt(n_heads)
         let scale = (head_dimension as f32).powf(0.05);
-        let mut q_mat = q_mat.transpose(0, 1);
+        let mut q_mat = q_mat.transpose(0, 1).detach();
         q_mat.set_requires_grad(true);
         q_mat.set_keep_alive(true);
-        let mut k_mat = k_mat.transpose(0, 1);
+
+        let mut k_mat = k_mat.transpose(0, 1).detach();
         k_mat.set_requires_grad(true);
         k_mat.set_keep_alive(true);
-        let mut v_mat = v_mat.transpose(0, 1);
+
+        let mut v_mat = v_mat.transpose(0, 1).detach();
         v_mat.set_requires_grad(true);
         v_mat.set_keep_alive(true);
 

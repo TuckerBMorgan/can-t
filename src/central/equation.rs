@@ -187,6 +187,7 @@ impl Equation {
     /// * 'a' : The first tensor
     /// * 'b' : the second tensor
     pub fn add_tensors(&self, a: TensorID, b: TensorID) -> Vec<f32> {
+        
         // Get the left side of the add
         let left_data = extract_tensor_data!(self.tensor_record, a, self.data);
         // Get the the right side of the add
@@ -455,6 +456,18 @@ impl Equation {
         
         if !self.tensor_record.contains_key(&tensor_id) {
             panic!("{:?} is missing from tensor record", tensor_id);
+        }
+
+        if self._debugging_options.nan_check {
+            for val in &grad {
+                if val.is_nan() {
+                    panic!("NaN grad found");
+                }
+
+                if val.is_infinite() {
+                    panic!("Infnite grad found");
+                }
+            }
         }
 
         let internal_tensor = &self.tensor_record[&tensor_id];
@@ -802,13 +815,26 @@ impl Equation {
     pub fn validate_tensor_store(&self) {
         for d in &self.data {
             if d.is_nan() || d.is_infinite() {
-                panic!("Bad Data in tensor data");
+                if d.is_nan() {
+                    panic!("Bad Data in tensor data, NaN value found");
+                }
+
+                if d.is_infinite() {
+                    panic!("Bad Data is tensor data, infinite value found");
+                }
+
             }
         }
         
         for d in &self.grad {
             if d.is_nan() || d.is_infinite() {
-                panic!("Bad Data in tensor grad");
+                if d.is_nan() {
+                    panic!("Bad Data in tensor data, NaN value found");
+                }
+
+                if d.is_infinite() {
+                    panic!("Bad Data is tensor data, infinite value found");
+                }
             }
         }
         
