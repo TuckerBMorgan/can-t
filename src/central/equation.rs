@@ -187,7 +187,6 @@ impl Equation {
     /// * 'a' : The first tensor
     /// * 'b' : the second tensor
     pub fn add_tensors(&self, a: TensorID, b: TensorID) -> Vec<f32> {
-        
         // Get the left side of the add
         let left_data = extract_tensor_data!(self.tensor_record, a, self.data);
         // Get the the right side of the add
@@ -453,7 +452,6 @@ impl Equation {
     /// 'tensor_id' - Id of for the loopup on the tensor
     /// 'grad' - the grad we are copying in
     pub fn add_tensor_grad(&mut self, tensor_id: TensorID, grad: Vec<f32>) {
-        
         if !self.tensor_record.contains_key(&tensor_id) {
             panic!("{:?} is missing from tensor record", tensor_id);
         }
@@ -471,9 +469,9 @@ impl Equation {
         }
 
         let internal_tensor = &self.tensor_record[&tensor_id];
-        
+
         assert!(internal_tensor.shape.total_size() == grad.len());
-        
+
         for i in 0..internal_tensor.shape.total_size() {
             self.grad[internal_tensor.grad_start_index + i] += grad[i];
         }
@@ -715,7 +713,6 @@ impl Equation {
         self.topological_sort_util(starting_value, &mut visited, &mut stack);
         let mut output_string = String::from("");
 
-
         while let Some(node) = stack.pop() {
             let internal_tensor = self.tensor_record.get(&node).unwrap();
             output_string += &internal_tensor.id.id.to_string();
@@ -822,10 +819,9 @@ impl Equation {
                 if d.is_infinite() {
                     panic!("Bad Data is tensor data, infinite value found");
                 }
-
             }
         }
-        
+
         for d in &self.grad {
             if d.is_nan() || d.is_infinite() {
                 if d.is_nan() {
@@ -837,7 +833,6 @@ impl Equation {
                 }
             }
         }
-        
     }
 
     pub fn compact_tensor_store(&mut self) {

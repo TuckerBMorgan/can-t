@@ -11,7 +11,7 @@ impl Tensor {
         let sum = loss.sum(vec![1], true);
 
         let mut mean = sum.mean(vec![0]);
-        while  mean.shape.dimensions().len() > 1 {
+        while mean.shape.dimensions().len() > 1 {
             mean = mean.mean(vec![0]);
         }
 

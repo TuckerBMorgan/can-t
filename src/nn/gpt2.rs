@@ -82,9 +82,9 @@ impl GPT2 {
 
     pub fn from_gguf_file(gguf_file: &mut GGUFFile) -> GPT2 {
         let gpt_config = GPT2Config::gpt2_small();
-        let mut wpe_tensor = Tensor::from_gguf_file(String::from("position_embd.weight"), gguf_file);
+        let mut wpe_tensor =
+            Tensor::from_gguf_file(String::from("position_embd.weight"), gguf_file);
 
-        
         let mut wte_tensor = Tensor::from_gguf_file(String::from("token_embd.weight"), gguf_file);
         let wpe: Embedding = Embedding::from_tensor(wpe_tensor);
         let wte = Embedding::from_tensor(wte_tensor);
@@ -113,9 +113,9 @@ impl GPT2 {
         println!("{:?}", wte_weights_reshapes_for_weight_tying.id);
         let mut wte_weights_reshapes_for_weight_tying =
             wte_weights_reshapes_for_weight_tying.transpose(0, 1);
-            wte_weights_reshapes_for_weight_tying.set_keep_alive(true);
-            wte_weights_reshapes_for_weight_tying.set_requires_grad(true);
-            println!("{:?}", wte_weights_reshapes_for_weight_tying.id);
+        wte_weights_reshapes_for_weight_tying.set_keep_alive(true);
+        wte_weights_reshapes_for_weight_tying.set_requires_grad(true);
+        println!("{:?}", wte_weights_reshapes_for_weight_tying.id);
         let final_head = Linear::from_tensors(wte_weights_reshapes_for_weight_tying, None);
 
         GPT2 {
@@ -263,7 +263,7 @@ mod tests {
         println!("{:?}", input.id);
         println!("Forward pass");
         let output = model.forward(input);
-        
+
         let output_onehots = Tensor::zeros(Shape::new(vec![expected_output.len(), vocab_size]));
         for i in 0..expected_output.len() {
             output_onehots.set_index(Indexable::Double(i, expected_output[i] as usize), 1.0);
@@ -309,13 +309,13 @@ Together, they shared the needle and sewed the button on Lily's shirt. It was no
         let traing_batch_length = training_batches.len();
         for (a, b) in training_batches {
             println!("Starting run {:?}", i + 1);
-            let a = a.iter().map(|x|*x as f32).collect();
-            let b = b.iter().map(|x|*x as f32).collect();
-             single_run(a, b, &mut gpt2, tokenizer.get_vocab_size(false));
-             i+= 1;
-             let percent_done = i as f32 / traing_batch_length  as f32 ;
-             println!("Percent done {:?}%", percent_done * 100.0);
-          }
+            let a = a.iter().map(|x| *x as f32).collect();
+            let b = b.iter().map(|x| *x as f32).collect();
+            single_run(a, b, &mut gpt2, tokenizer.get_vocab_size(false));
+            i += 1;
+            let percent_done = i as f32 / traing_batch_length as f32;
+            println!("Percent done {:?}%", percent_done * 100.0);
+        }
         return;
         let read_for_cant: Vec<f32> = tokens.get_ids().iter().map(|x| return *x as f32).collect();
 

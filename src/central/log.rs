@@ -4,7 +4,6 @@ impl Tensor {
     /// Returns the natural log(ln, not log10) of each element
     /// it uses natural log because that is what pytorch does when you call .log on a tensor
     pub fn log(&self) -> Tensor {
-
         // Take the natural log of each value in the source tensor
         let data = get_equation().get_item(self.id).clone().map(|x| x.ln());
 
