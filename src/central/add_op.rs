@@ -73,22 +73,39 @@ impl Add<Tensor> for f32 {
 
 /// Handles calculating and passing back the gradient of an add operation
 pub fn backward_for_add(backprop_backet: BackproagationPacket) {
+    // The stored operation must be an Add; otherwise this backward is being called incorrectly.
     if let Operation::Add(left_hand_side, right_hand_side) = backprop_backet.operation {
-        // for the add operation, the gradient is simply the incoming gradient for both the left and right right operand
+
+        // In an addition operation:  z = x + y
+        //
+        // The derivative of z with respect to each input is 1:
+        //   ∂z/∂x = 1
+        //   ∂z/∂y = 1
+        //
+        // Therefore, the incoming gradient dL/dz is passed unchanged to both inputs:
+        //   dL/dx = dL/dz
+        //   dL/dy = dL/dz
+        //
+        // Here we fetch the incoming gradient buffer (dL/dz) for this node.
         let grad = backprop_backet
             .equation
             .get_grad_flat_buffer(backprop_backet.incoming_grad)
             .to_owned();
+        
+        // Add the incoming gradient to the right-hand side tensor's accumulated gradient.
         backprop_backet
             .equation
             .add_tensor_grad(right_hand_side, grad.to_vec());
+
+        // Add the same incoming gradient to the left-hand side tensor's accumulated gradient.
         backprop_backet
             .equation
             .add_tensor_grad(left_hand_side, grad.to_vec());
     } else {
-        panic!("Wrong opeartion for backwards add");
+        panic!("Wrong operation for backwards add");
     }
 }
+
 
 #[cfg(test)]
 mod tests {

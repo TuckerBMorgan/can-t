@@ -1,7 +1,8 @@
+use rand_distr::num_traits::Pow;
+
 use crate::central::*;
 use crate::nn::*;
 use crate::utils::GGUFFile;
-use ndarray::Axis;
 
 pub struct MultiHeadAttention {
     // Parameters
@@ -30,7 +31,7 @@ impl MultiHeadAttention {
     ) -> MultiHeadAttention {
         assert_eq!(embed_dim % number_of_heads, 0);
         let head_dimension = embed_dim / number_of_heads;
-        let scale = 1.0 / (head_dimension as f32).sqrt();
+        let scale = (head_dimension as f32).pow(2.0);
 
         MultiHeadAttention {
             number_of_heads,
@@ -59,8 +60,9 @@ impl MultiHeadAttention {
             Linear::from_gguf_file(attn_output_weight, Some(attn_output_bias), gguf_file);
 
         // ---- fused QKV weight & bias (c_attn) ----
-        let qkv: Tensor =
+        let mut qkv: Tensor =
             Tensor::from_gguf_file(format!("blk.{}.attn_qkv.weight", block_count), gguf_file);
+
         let b: Tensor =
             Tensor::from_gguf_file(format!("blk.{}.attn_qkv.bias", block_count), gguf_file);
 
@@ -124,14 +126,16 @@ impl MultiHeadAttention {
         let head_dimension = embed_dim / config.number_of_heads;
 
         // ❗ Correct scale is 1 / sqrt(head_dim), not sqrt(n_heads)
-        let scale = 1.0f32 / (head_dimension as f32).sqrt();
-        let mut q_mat = q_mat.transpose(0, 1);
+        let scale = (head_dimension as f32).powf(0.05);
+        let mut q_mat = q_mat.transpose(0, 1).detach();
         q_mat.set_requires_grad(true);
         q_mat.set_keep_alive(true);
-        let mut k_mat = k_mat.transpose(0, 1);
+
+        let mut k_mat = k_mat.transpose(0, 1).detach();
         k_mat.set_requires_grad(true);
         k_mat.set_keep_alive(true);
-        let mut v_mat = v_mat.transpose(0, 1);
+
+        let mut v_mat = v_mat.transpose(0, 1).detach();
         v_mat.set_requires_grad(true);
         v_mat.set_keep_alive(true);
 
@@ -187,6 +191,7 @@ impl Layer for MultiHeadAttention {
         let query = query.transpose(1, 2);
         let key = key.transpose(1, 2);
         let value = value.transpose(1, 2);
+
         let attended = self
             .scaled_dot_project_attention
             .forward(query, key, value, self.mask);

@@ -1,9 +1,6 @@
 use regex::Regex;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::fs;
-use std::hash::Hash;
-use std::io;
 
 pub struct BPETokenizer {}
 
@@ -15,7 +12,7 @@ impl BPETokenizer {
         let data = fs::read(input).unwrap();
         let data = String::from_utf8(data).unwrap();
 
-        let mut count = 0;
+        let mut _count = 0;
 
         let mut ranks = HashMap::new();
 
@@ -95,7 +92,6 @@ impl BPETokenizer {
 
 #[cfg(test)]
 mod tests {
-    use crate::nn::BPETokenizer;
 
     #[test]
     pub fn basic() {

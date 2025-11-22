@@ -39,7 +39,7 @@ impl Linear {
         bias_tensor_name: Option<String>,
         gguf_file: &mut GGUFFile,
     ) -> Linear {
-        let mut weights = Tensor::from_gguf_file(weight_tensor_name, gguf_file);
+        let weights = Tensor::from_gguf_file(weight_tensor_name, gguf_file);
         // GGUF saves linear layers in pytorch format, which is inverse from cant
         let mut weights = weights.transpose(0, 1);
         weights.set_requires_grad(true);
@@ -435,7 +435,7 @@ mod tests {
         let input_grad = input.grad();
         // Each input element should have gradient = sum of corresponding weight row
         assert!(approx_equal(input_grad[[0, 0]], 1.0, 1e-5)); // First row, first col
-        assert!(approx_equal(input_grad[[0, 1]], 1.0, 1e-5)); // First row, second col  
+        assert!(approx_equal(input_grad[[0, 1]], 1.0, 1e-5)); // First row, second col
         assert!(approx_equal(input_grad[[1, 0]], 1.0, 1e-5)); // Second row, first col
         assert!(approx_equal(input_grad[[1, 1]], 1.0, 1e-5)); // Second row, second col
 
@@ -539,7 +539,7 @@ mod tests {
         assert!(layer1_weight_grad.iter().all(|&g| g.is_finite()));
 
         // Some gradients might be zero due to ReLU blocking
-        let has_zero_grads = layer1_weight_grad.iter().any(|&g| g == 0.0);
+        let _has_zero_grads = layer1_weight_grad.iter().any(|&g| g == 0.0);
         let has_nonzero_grads = layer1_weight_grad.iter().any(|&g| g.abs() > 1e-6);
 
         // We should have at least some non-zero gradients

@@ -124,16 +124,6 @@ mod tests {
         assert!(approx_equal(result[[2, 1]], 6.0, 1e-6)); // (1,2) -> (2,1)
     }
 
-    fn first() {
-        let mut a = Vec::new();
-        show(&mut a);
-        a.push(10.0);
-    }
-
-    fn show(list: &mut Vec<f32>) {
-        list.push(0.0);
-    }
-
     #[test]
     fn test_transpose_3d_axes_01() {
         // Test 3D tensor transpose of axes 0 and 1

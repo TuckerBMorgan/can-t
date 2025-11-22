@@ -1,5 +1,4 @@
 use crate::{central::*, utils::handle_broadcasting};
-use ndarray::prelude::*;
 
 impl Tensor {
     pub fn masked_fill(&self, mask: Tensor, value: f32) -> Tensor {
@@ -24,7 +23,6 @@ impl Tensor {
 
             result
         };
-
         return Tensor::create_tensor_data_and_shape_and_operation(
             local.shape,
             result,
@@ -34,7 +32,7 @@ impl Tensor {
 }
 
 pub fn backwards_for_mask_fill(packet: BackproagationPacket) {
-    if let Operation::MaskFill(source, mask, value) = packet.operation {
+    if let Operation::MaskFill(source, mask, _value) = packet.operation {
         let incoming_grad = packet.equation.get_grad_flat_buffer(packet.incoming_grad);
         let mask_buffer = packet.equation.get_data_flat_buffer(mask);
         let zipped = incoming_grad.iter().zip(mask_buffer);
@@ -278,7 +276,7 @@ mod tests {
             // All values should be filled since mask is all zeros
             let result_data = result.item();
             for i in 0..size {
-                let indices: Vec<usize> = (0..shape.len())
+                let _indices: Vec<usize> = (0..shape.len())
                     .map(|dim| (i / shape[dim + 1..].iter().product::<usize>()) % shape[dim])
                     .collect();
 
@@ -448,7 +446,7 @@ mod tests {
         // and 0.0 where mask=0.0 (gradient blocked by masking)
         assert!(approx_equal(input_grad[[0]], 2.0, 1e-6)); // mask=1.0 -> 2.0 * 1.0
         assert!(approx_equal(input_grad[[1]], 0.0, 1e-6)); // mask=0.0 -> blocked
-        assert!(approx_equal(input_grad[[2]], 2.0, 1e-6)); // mask=1.0 -> 2.0 * 1.0  
+        assert!(approx_equal(input_grad[[2]], 2.0, 1e-6)); // mask=1.0 -> 2.0 * 1.0
         assert!(approx_equal(input_grad[[3]], 0.0, 1e-6)); // mask=0.0 -> blocked
     }
 

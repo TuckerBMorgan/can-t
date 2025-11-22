@@ -993,7 +993,7 @@ mod tests {
         let weight_grad2 = layer_norm.weight.grad();
 
         // Gradients should be different for different inputs
-        let grad_diff = (input1_grad[[0, 0]] - input2_grad[[0, 0]]).abs();
+        let _grad_diff = (input1_grad[[0, 0]] - input2_grad[[0, 0]]).abs();
         // assert!(grad_diff > 1e-6, "Gradients should differ for different inputs");
 
         // All gradients should be finite
@@ -1027,28 +1027,6 @@ mod tests {
 
         zero_all_grads();
         loss.backward();
-
-        let weight_grad = layer_norm.weight.grad();
-        let bias_grad = layer_norm.bias.grad();
-
-        // Bias gradients should equal the normalized values (since d/d_bias = 1)
-        // Weight gradients should equal normalized values * input_normalized
-        return;
-        for i in 0..3 {
-            // Bias gradient should be non-zero and finite
-            assert!(bias_grad[[i]].is_finite());
-            assert!(
-                bias_grad[[i]].abs() > 1e-8,
-                "Bias gradient should be non-zero"
-            );
-
-            // Weight gradient should be non-zero and finite
-            assert!(weight_grad[[i]].is_finite());
-            assert!(
-                weight_grad[[i]].abs() > 1e-8,
-                "Weight gradient should be non-zero"
-            );
-        }
     }
 
     #[test]
@@ -1168,22 +1146,6 @@ mod tests {
 
         zero_all_grads();
         loss.backward();
-
-        // Check that gradients flow back to input
-        let input_grad = input.grad();
-        for &grad in input_grad.iter() {
-            //  assert!(grad.is_finite(), "Input gradient should be finite");
-            //  assert!(grad.abs() > 1e-8, "Input gradient should be non-zero");
-        }
-
-        // Check LayerNorm parameter gradients
-        let weight_grad = layer_norm.weight.grad();
-        let bias_grad = layer_norm.bias.grad();
-
-        for i in 0..3 {
-            //   assert!(weight_grad[[i]].is_finite(), "LayerNorm weight gradient should be finite");
-            //   assert!(bias_grad[[i]].is_finite(), "LayerNorm bias gradient should be finite");
-        }
     }
 
     #[test]
@@ -1202,7 +1164,7 @@ mod tests {
             layer_norm.bias.set_requires_grad(true);
 
             // Create input with specified batch size
-            let input_data: Vec<f32> = (0..batch_size * 3).map(|i| (i as f32 + 1.0)).collect();
+            let input_data: Vec<f32> = (0..batch_size * 3).map(|i| i as f32 + 1.0).collect();
             let mut input = Tensor::from_vec(input_data, vec![batch_size, 3]);
             input.set_requires_grad(true);
 
@@ -1853,22 +1815,12 @@ mod tests {
         let mut gguf_file = GGUFFile::new(
             "./models/tests/layer_norm/layer_norm_forward_different_feature_sizes.gguf".to_string(),
         );
-        let pytorch_input = Tensor::from_gguf_file(
-            String::from("layer_norm_forward_different_feature_sizes_input"),
-            &mut gguf_file,
-        );
+
         let pytorch_output = Tensor::from_gguf_file(
             String::from("layer_norm_forward_different_feature_sizes_output"),
             &mut gguf_file,
         );
-        let pytorch_weight = Tensor::from_gguf_file(
-            String::from("layer_norm_forward_different_feature_sizes_weight"),
-            &mut gguf_file,
-        );
-        let pytorch_bias = Tensor::from_gguf_file(
-            String::from("layer_norm_forward_different_feature_sizes_bias"),
-            &mut gguf_file,
-        );
+
         let pytorch_mean = Tensor::from_gguf_file(
             String::from("layer_norm_forward_different_feature_sizes_mean"),
             &mut gguf_file,
@@ -1982,24 +1934,13 @@ mod tests {
         let mut gguf_file = GGUFFile::new(
             "./models/tests/layer_norm/layer_norm_forward_multiple_calls.gguf".to_string(),
         );
-        let pytorch_input = Tensor::from_gguf_file(
-            String::from("layer_norm_forward_multiple_calls_input"),
-            &mut gguf_file,
-        );
+
         let pytorch_output1 = Tensor::from_gguf_file(
             String::from("layer_norm_forward_multiple_calls_output1"),
             &mut gguf_file,
         );
         let pytorch_output2 = Tensor::from_gguf_file(
             String::from("layer_norm_forward_multiple_calls_output2"),
-            &mut gguf_file,
-        );
-        let pytorch_weight = Tensor::from_gguf_file(
-            String::from("layer_norm_forward_multiple_calls_weight"),
-            &mut gguf_file,
-        );
-        let pytorch_bias = Tensor::from_gguf_file(
-            String::from("layer_norm_forward_multiple_calls_bias"),
             &mut gguf_file,
         );
         let pytorch_mean = Tensor::from_gguf_file(
@@ -2174,10 +2115,7 @@ mod tests {
         let mut gguf_file = GGUFFile::new(
             "./models/tests/layer_norm/layer_norm_backward_parameter_gradients.gguf".to_string(),
         );
-        let pytorch_input = Tensor::from_gguf_file(
-            String::from("layer_norm_backward_parameter_gradients_input"),
-            &mut gguf_file,
-        );
+
         let pytorch_output = Tensor::from_gguf_file(
             String::from("layer_norm_backward_parameter_gradients_output"),
             &mut gguf_file,
@@ -2186,18 +2124,7 @@ mod tests {
             String::from("layer_norm_backward_parameter_gradients_loss"),
             &mut gguf_file,
         );
-        let pytorch_weight = Tensor::from_gguf_file(
-            String::from("layer_norm_backward_parameter_gradients_weight"),
-            &mut gguf_file,
-        );
-        let pytorch_bias = Tensor::from_gguf_file(
-            String::from("layer_norm_backward_parameter_gradients_bias"),
-            &mut gguf_file,
-        );
-        let pytorch_input_grad = Tensor::from_gguf_file(
-            String::from("layer_norm_backward_parameter_gradients_input_grad"),
-            &mut gguf_file,
-        );
+
         let pytorch_weight_grad = Tensor::from_gguf_file(
             String::from("layer_norm_backward_parameter_gradients_weight_grad"),
             &mut gguf_file,

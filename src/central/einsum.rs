@@ -1,13 +1,8 @@
-use super::{BackproagationPacket, Operation, Tensor};
+use super::Tensor;
 use crate::central::*;
-use regex::Regex;
-use std::{collections::HashMap, hash::Hash, mem::swap};
 
 impl Tensor {
-    fn dim_list_to_bitset(
-        summed_dimensions: &Vec<usize>,
-        number_of_dimensions: usize,
-    ) -> Vec<bool> {
+    fn dim_list_to_bitset(summed_dimensions: &Vec<usize>) -> Vec<bool> {
         let mut bitset = vec![false; 64];
         for index in 0..summed_dimensions.len() {
             let dimension = summed_dimensions[index];
@@ -21,7 +16,7 @@ impl Tensor {
         left: Tensor,
         right: Tensor,
         sum_dimensions: Vec<usize>,
-        keep_dimensions: bool,
+        _keep_dimensions: bool,
     ) -> Tensor {
         if sum_dimensions.is_empty() {
             return left * right;
@@ -31,7 +26,7 @@ impl Tensor {
         let mut right = right;
 
         let number_left_dimensions = left.shape.number_of_dimension();
-        let summed_dimensions = Tensor::dim_list_to_bitset(&sum_dimensions, number_left_dimensions);
+        let summed_dimensions = Tensor::dim_list_to_bitset(&sum_dimensions);
         let mut lro = vec![];
         let mut lro_size = 1;
         let mut lo = vec![];
@@ -511,7 +506,7 @@ mod tests {
     fn basic_test() {
         let a = Tensor::arange(0, 4, 1).reshape(Shape::new(vec![2, 2]));
         let b = Tensor::arange(5, 4, 1).reshape(Shape::new(vec![2, 2]));
-        let c = Tensor::einsum("ij,jk->ik", vec![a, b]);
+        let _c = Tensor::einsum("ij,jk->ik", vec![a, b]);
     }
 
     #[test]
@@ -519,20 +514,20 @@ mod tests {
         let a = Tensor::arange(0, 4, 1).reshape(Shape::new(vec![4]));
         let b = Tensor::arange(5, 4, 1).reshape(Shape::new(vec![4]));
 
-        let c = Tensor::einsum("i,k->ik", vec![a, b]);
+        let _c = Tensor::einsum("i,k->ik", vec![a, b]);
     }
 
     #[test]
     fn basic_batch_test() {
         let a = Tensor::arange(0, 12, 1).reshape(Shape::new(vec![3, 2, 2]));
         let b = Tensor::arange(0, 6, 1).reshape(Shape::new(vec![3, 2]));
-        let c = Tensor::einsum("bec,be->bc", vec![a, b]);
+        let _c = Tensor::einsum("bec,be->bc", vec![a, b]);
     }
 
     #[test]
     fn advanced_batch_mutiply_test() {
         let a = Tensor::arange(0, 72, 1).reshape(Shape::new(vec![4, 3, 2, 3]));
         let b = Tensor::arange(0, 72, 1).reshape(Shape::new(vec![4, 3, 3, 2]));
-        let c = Tensor::einsum("qhmd,khdm->hmqk", vec![a, b]); // note: k h d m
+        let _c = Tensor::einsum("qhmd,khdm->hmqk", vec![a, b]); // note: k h d m
     }
 }

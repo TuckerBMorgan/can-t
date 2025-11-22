@@ -1,6 +1,5 @@
 use crate::central::*;
 use ndarray::prelude::*;
-use std::collections::HashSet;
 
 impl Tensor {
     /// Computes the standard deviation along specified axes
@@ -172,7 +171,7 @@ pub fn backward_for_std(backprop_packet: BackproagationPacket) {
 
 #[cfg(test)]
 mod tests {
-    use crate::central::{Operation, Shape, Tensor, get_equation};
+    use crate::central::{Operation, Shape, Tensor};
 
     fn approx_equal(a: f32, b: f32, epsilon: f32) -> bool {
         (a - b).abs() <= epsilon

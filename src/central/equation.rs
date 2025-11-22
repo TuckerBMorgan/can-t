@@ -7,7 +7,7 @@ use super::{
 use crate::central::index::Indexable;
 use crate::central::{
     DebuggingOptions, backward_for_clamp, backwards_for_mask_fill, cat_op, diagonal_op, gather_op,
-    max_op, movedim_op, permute, relu_op, softmax_op, topk_op, unsqueeze_op,
+    max_op, movedim_op, permute, relu_op, sigmoid_op, softmax_op, topk_op, unsqueeze_op,
 };
 use crate::utils::*;
 use ndarray::ArrayD;
@@ -57,7 +57,7 @@ pub struct Equation {
     tensor_record: HashMap<TensorID, InternalTensor>, // A lookup table from the tensor id to a internal tensor \
     // (which has the information needed to find tensors in data and grad),
     timing: Timing,
-    debugging_options: DebuggingOptions,
+    _debugging_options: DebuggingOptions,
 }
 
 impl Equation {
@@ -70,7 +70,7 @@ impl Equation {
             tensor_count: 0,
             tensor_record: HashMap::new(),
             timing: Timing::new(),
-            debugging_options: DebuggingOptions::default(),
+            _debugging_options: DebuggingOptions::default(),
         }
     }
 
@@ -84,11 +84,6 @@ impl Equation {
         data: Vec<f32>,
         operation: Operation,
     ) -> TensorID {
-        if self.debugging_options.NaNCheck {
-            for d in &data {
-                assert!(d.is_infinite() == false);
-            }
-        }
         let id = self.allocate_tensor_id();
         let total_size = shape.total_size();
 
@@ -100,6 +95,14 @@ impl Equation {
         //Do some record keeping
         let internal_tensor = InternalTensor::new(id, shape, data_start, grad_stat, operation);
         self.tensor_record.insert(id, internal_tensor);
+
+        if self._debugging_options.nan_check {
+            for val in &data {
+                if val.is_nan() {
+                    panic!("Tried to allocate tensor with Nan Value");
+                }
+            }
+        }
 
         // Extend the vectors by the right length, with 0 init data
         self.data.extend(data);
@@ -184,6 +187,7 @@ impl Equation {
     /// * 'a' : The first tensor
     /// * 'b' : the second tensor
     pub fn add_tensors(&self, a: TensorID, b: TensorID) -> Vec<f32> {
+        
         // Get the left side of the add
         let left_data = extract_tensor_data!(self.tensor_record, a, self.data);
         // Get the the right side of the add
@@ -449,8 +453,27 @@ impl Equation {
     /// 'tensor_id' - Id of for the loopup on the tensor
     /// 'grad' - the grad we are copying in
     pub fn add_tensor_grad(&mut self, tensor_id: TensorID, grad: Vec<f32>) {
+        
+        if !self.tensor_record.contains_key(&tensor_id) {
+            panic!("{:?} is missing from tensor record", tensor_id);
+        }
+
+        if self._debugging_options.nan_check {
+            for val in &grad {
+                if val.is_nan() {
+                    panic!("NaN grad found");
+                }
+
+                if val.is_infinite() {
+                    panic!("Infnite grad found");
+                }
+            }
+        }
+
         let internal_tensor = &self.tensor_record[&tensor_id];
+        
         assert!(internal_tensor.shape.total_size() == grad.len());
+        
         for i in 0..internal_tensor.shape.total_size() {
             self.grad[internal_tensor.grad_start_index + i] += grad[i];
         }
@@ -626,6 +649,9 @@ impl Equation {
             Operation::Max(_, _, _, _) => {
                 max_op::backwards_for_max(packet);
             }
+            Operation::Sigmoid(_) => {
+                sigmoid_op::backward_for_sigmoid(packet);
+            }
             Operation::SmoothL1Loss(_, _) => {
                 panic!()
             }
@@ -683,6 +709,19 @@ impl Equation {
         self.end_timer(String::from("backwards_prop"));
     }
 
+    pub fn trace_backwrads_path(&self, starting_value: TensorID) {
+        let mut visited = HashSet::new();
+        let mut stack = Vec::new();
+        self.topological_sort_util(starting_value, &mut visited, &mut stack);
+        let mut output_string = String::from("");
+
+
+        while let Some(node) = stack.pop() {
+            let internal_tensor = self.tensor_record.get(&node).unwrap();
+            output_string += &internal_tensor.id.id.to_string();
+        }
+    }
+
     // Zeroes out the grad, important to call before calling backwards on a value
     pub fn zero_grad(&mut self) {
         for g in &mut self.grad {
@@ -719,11 +758,6 @@ impl Equation {
             let eps: f32 = 1e-6;
             let scale = max_norm / (total_norm + eps);
 
-            // Optional: sanity check if you're debugging
-            if self.debugging_options.NaNCheck {
-                assert!(scale.is_finite());
-            }
-
             for (_k, v) in &self.tensor_record {
                 if v.requires_grad {
                     let grad_anchor_point = v.grad_start_index;
@@ -746,10 +780,11 @@ impl Equation {
                 for i in 0..v.shape.total_size() {
                     let grad_anchor_point = v.grad_start_index;
                     let data_anchor_point = v.data_start_index;
-                    let update = learning_rate * self.grad[grad_anchor_point + i];
-
-                    if self.debugging_options.NaNCheck {
-                        assert!(update.is_infinite() == false);
+                    let _update = learning_rate * self.grad[grad_anchor_point + i];
+                    if self._debugging_options.nan_check {
+                        if _update.is_nan() {
+                            panic!("Tried to update parameter with NaN value");
+                        }
                     }
                     self.data[data_anchor_point + i] +=
                         learning_rate * self.grad[grad_anchor_point + i];
@@ -775,6 +810,34 @@ impl Equation {
     /// 'requires_grad' : what we are setting the bool too
     pub fn set_keep_alive(&mut self, tensor_id: TensorID, keep_alive: bool) {
         self.tensor_record.get_mut(&tensor_id).unwrap().keep_alive = keep_alive;
+    }
+
+    pub fn validate_tensor_store(&self) {
+        for d in &self.data {
+            if d.is_nan() || d.is_infinite() {
+                if d.is_nan() {
+                    panic!("Bad Data in tensor data, NaN value found");
+                }
+
+                if d.is_infinite() {
+                    panic!("Bad Data is tensor data, infinite value found");
+                }
+
+            }
+        }
+        
+        for d in &self.grad {
+            if d.is_nan() || d.is_infinite() {
+                if d.is_nan() {
+                    panic!("Bad Data in tensor data, NaN value found");
+                }
+
+                if d.is_infinite() {
+                    panic!("Bad Data is tensor data, infinite value found");
+                }
+            }
+        }
+        
     }
 
     pub fn compact_tensor_store(&mut self) {

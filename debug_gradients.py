@@ -1,4 +1,5 @@
 import torch
+import sys
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
 # --- setup ---
@@ -12,12 +13,22 @@ torch.manual_seed(0)
 model.config.use_cache = True
 
 # --- prompt ---
-prompt = "A"
-inputs = tok(prompt, return_tensors="pt", add_special_tokens=False)
-input_ids = inputs["input_ids"]          # [B=1, S0]
-attention_mask = inputs.get("attention_mask", torch.ones_like(input_ids))
+# Your chosen IDs – e.g. [198, 198]
+ids = torch.tensor([[32, 13, 198, 198]], dtype=torch.long)  # shape [B=1, S=4]
+attention_mask = torch.ones_like(ids)
 
-# --- capture dict + hook ---
+# --- get WTE output and exit ---
+with torch.no_grad():
+    # output shape: [batch_size, seq_len, hidden_dim]
+    wte_out = model.transformer.wte(ids)
+
+print("=== WTE output ===")
+print("Shape:", wte_out.shape)
+print(wte_out)
+
+
+
+# --- capture dict + hook ---  # (everything below here is now unreachable)
 caps = {"ln_f_out_steps": []}
 
 def ln_f_hook(_, inp, out):
@@ -28,12 +39,12 @@ def ln_f_hook(_, inp, out):
 h = model.transformer.ln_f.register_forward_hook(ln_f_hook)
 
 # --- decoding config ---
-max_new_tokens = 32
+max_new_tokens = 5
 temperature = 0.0        # 0 = greedy. Set >0 to sample
 top_k = None             # set e.g. 50 for top-k sampling
 eos_id = tok.eos_token_id
 
-generated = input_ids.clone()
+generated = ids.clone()
 past_key_values = None
 
 with torch.no_grad():
@@ -90,3 +101,4 @@ decoded = tok.decode(generated[0], clean_up_tokenization_spaces=False)
 
 print("=== Generated text ===")
 print(decoded)
+print(generated[0])

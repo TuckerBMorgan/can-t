@@ -11,6 +11,7 @@ impl Mul for Tensor {
 
         // We vend out the actual work to the equation, which in turn uses libs that take advantage of platform libs to speed it up
         let data = get_equation().mul_tensors(working_lfs.id, working_rhs.id);
+       // println!("{:?}", data);
         let return_tensor = Tensor::create_tensor_data_and_shape_and_operation(
             working_lfs.shape,
             data,

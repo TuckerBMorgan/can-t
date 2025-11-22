@@ -112,7 +112,7 @@ mod tests {
         (a - b).abs() <= epsilon
     }
 
-    fn assert_softmax_properties(tensor: &Tensor, axis: usize) {
+    fn assert_softmax_properties(tensor: &Tensor, _axis: usize) {
         let data = tensor.item();
 
         // Check that all values are non-negative

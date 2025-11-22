@@ -1,8 +1,8 @@
 use ndarray::ArrayD;
 
-use crate::utils::GGUFFile;
+use crate::{central::operation, utils::GGUFFile};
 
-use super::{get_equation, Operation, Shape};
+use super::{Operation, Shape, get_equation};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TensorID {
@@ -135,6 +135,9 @@ impl InternalTensor {
             Operation::SmoothL1Loss(source, other) => {
                 return vec![*source, *other];
             }
+            Operation::Sigmoid(source) => {
+                return vec![*source];
+            }
         }
     }
 }
@@ -143,7 +146,7 @@ impl InternalTensor {
 pub struct Tensor {
     pub id: TensorID, // The unique id for this tensor, ties it to the InternalTensor that can be used to look up the data
     pub shape: Shape, // The shape of the tensor
-    operation: Operation, // The operation that created this Tensor(Nop for basic allocations)
+    _operation: Operation, // The operation that created this Tensor(Nop for basic allocations)
     requires_grad: bool,
     keep_alive: bool,
 }
@@ -157,10 +160,15 @@ impl Tensor {
         Tensor {
             id,
             shape,
-            operation: Operation::Nop,
+            _operation: Operation::Nop,
             requires_grad: false,
             keep_alive: false,
         }
+    }
+
+    pub fn detach(&self) -> Tensor {
+        let self_data = get_equation().get_grad_flat_buffer(self.id).to_vec();
+        return Tensor::create_tensor_data_and_shape_and_operation(self.shape, self_data, Operation::Nop);
     }
 
     // Loads a tensor from a GGUF file
@@ -172,11 +180,14 @@ impl Tensor {
         let data = gguf_file.get_weight_for_tensor(tensor_name.clone());
         let dims = gguf_file.get_tensor_dims(tensor_name);
 
-        return Tensor::create_tensor_data_and_shape_and_operation(
+        let mut a = Tensor::create_tensor_data_and_shape_and_operation(
             Shape::new(dims),
             data,
             Operation::Nop,
         );
+        a.set_keep_alive(true);
+        a.set_requires_grad(true);
+        return a;
     }
 
     /// Allocates a new tensor with provided shape, all with 0s
@@ -187,7 +198,7 @@ impl Tensor {
         Tensor {
             id,
             shape,
-            operation: Operation::Nop,
+            _operation: Operation::Nop,
             requires_grad: false,
             keep_alive: false,
         }
@@ -201,7 +212,7 @@ impl Tensor {
         Tensor {
             id,
             shape,
-            operation: Operation::Nop,
+            _operation: Operation::Nop,
             requires_grad: false,
             keep_alive: false,
         }
@@ -216,7 +227,7 @@ impl Tensor {
         Tensor {
             id,
             shape,
-            operation: Operation::Nop,
+            _operation: Operation::Nop,
             requires_grad: false,
             keep_alive: false,
         }
@@ -230,7 +241,7 @@ impl Tensor {
         Tensor {
             id,
             shape,
-            operation: Operation::Nop,
+            _operation: Operation::Nop,
             requires_grad: false,
             keep_alive: false,
         }
@@ -282,7 +293,7 @@ impl Tensor {
         return Tensor {
             id,
             shape,
-            operation: operation,
+            _operation: operation,
             requires_grad: false,
             keep_alive: false,
         };
@@ -359,7 +370,7 @@ impl Tensor {
             data,
             Operation::Exp(self.id),
         );
-    }
+    }   
 }
 
 #[cfg(test)]

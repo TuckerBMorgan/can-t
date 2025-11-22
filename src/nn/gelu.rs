@@ -1,6 +1,5 @@
 use crate::central::*;
 use crate::nn::*;
-use std::f32::consts::PI;
 
 pub struct GELU;
 

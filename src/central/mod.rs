@@ -25,8 +25,8 @@ mod relu_op;
 mod reshape;
 mod select_op;
 mod shape;
+mod sigmoid_op;
 mod sin_op;
-mod smooth_l1_loss;
 mod softmax_op;
 mod std_op;
 mod sum_op;
@@ -41,13 +41,16 @@ pub use cat_op::*;
 pub use chunk_op::*;
 pub use clamp_op::*;
 pub use cos_op::*;
+#[allow(unused_imports)]
 pub use cross_entropy_op::*;
 pub use debugging::*;
 pub use diagonal_op::*;
+#[allow(unused_imports)]
 pub use einsum::*;
 pub use equation::*;
 pub use gather_op::*;
 pub use index::*;
+#[allow(unused_imports)]
 pub use l1_loss::*;
 pub use log::*;
 pub use masked_fill::*;
@@ -63,8 +66,8 @@ pub use relu_op::*;
 pub use reshape::*;
 pub use select_op::*;
 pub use shape::*;
+pub use sigmoid_op::*;
 pub use sin_op::*;
-pub use smooth_l1_loss::*;
 pub use softmax_op::*;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 pub use std_op::*;
@@ -98,4 +101,9 @@ pub fn clean_up_tensor_store() {
 
 pub fn clip_gradients(max_norm: f32) {
     get_equation().clip_grad_norm(max_norm);
+}
+
+
+pub fn validate_tensor_store() {
+    get_equation().validate_tensor_store();
 }

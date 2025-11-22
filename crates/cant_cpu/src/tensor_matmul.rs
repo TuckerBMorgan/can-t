@@ -9,9 +9,6 @@ use ndarray::Array2;
 /// third or fourth dimension has an implict one
 /// * 'a' : The first vector
 /// * 'b' : the second vector
-///
-use ndarray::prelude::*;
-use std::{char::MAX, cmp::max};
 
 fn valid_shape(a: [usize; MAX_DIMS], b: [usize; MAX_DIMS]) {
     // batch dims must match exactly (no broadcasting here)

@@ -5,6 +5,7 @@ impl Tensor {
     /// It does this into a new tensor, not in place
     pub fn clamp(&self, min: f32, max: f32) -> Tensor {
         assert!(min <= max, "Clamp min must be less than or equal to max");
+        // Just map each of the values from the original tensor to a new one
         let result: Vec<f32> = get_equation()
             .get_data_flat_buffer(self.id)
             .iter()
@@ -25,6 +26,8 @@ pub fn backward_for_clamp(packet: BackproagationPacket) {
         let in_gradient = packet.equation.get_grad_flat_buffer(packet.incoming_grad);
         let source_data = packet.equation.get_data_flat_buffer(from);
 
+        // Only those values that are within then clampped range(min, max) keep their grad
+        // those values that did get clamped, get no grad
         let updated: Vec<f32> = in_gradient
             .iter()
             .zip(source_data.iter())

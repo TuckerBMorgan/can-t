@@ -20,6 +20,7 @@ pub enum Operation {
     Select(TensorID, TensorID), // Source tensor, indices tensor
     Tanh(TensorID),          // Source tensor
     Cos(TensorID),           // Source tensor
+    Sigmoid(TensorID),       // Source tensor
     Sin(TensorID),           // Source tensor
     Mean(TensorID, [isize; MAX_DIMS], usize), // Source tensor, axes, num_axes
     Std(TensorID, [usize; MAX_DIMS], usize), // Source tensor, axes, num_axes

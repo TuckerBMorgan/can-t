@@ -5,7 +5,6 @@ mod tensor_sub;
 pub use lazy_static::*;
 
 use metal::*;
-use std::mem;
 
 // This is also defined in the main src crate, maybe think about having some other crate
 pub(crate) const MAX_DIMS: usize = 10;

@@ -510,17 +510,4 @@ mod tests {
             }
         }
     }
-
-    #[test]
-    pub fn celeb_a_dcgan_test() {
-        let batch_size = 128;
-        let image_size = 64;
-        let number_of_channels = 3;
-        let size_of_latent_z_vector = 100;
-        let number_of_feature_maps_generator = 64;
-        let number_of_feature_maps_discriminator = 64;
-        let number_of_training_epochs = 5;
-        let learning_rate = 0.0020;
-        let beta_1 = 0.5;
-    }
 }

@@ -146,10 +146,26 @@ mod tests {
         let target_grad = target.grad();
         let total_elems = 4.0;
 
-        assert!(approx_equal(prediction_grad[[0, 0]], 1.0 / total_elems, 1e-6));
-        assert!(approx_equal(prediction_grad[[0, 1]], -1.0 / total_elems, 1e-6));
-        assert!(approx_equal(prediction_grad[[1, 0]], 1.0 / total_elems, 1e-6));
-        assert!(approx_equal(prediction_grad[[1, 1]], -1.0 / total_elems, 1e-6));
+        assert!(approx_equal(
+            prediction_grad[[0, 0]],
+            1.0 / total_elems,
+            1e-6
+        ));
+        assert!(approx_equal(
+            prediction_grad[[0, 1]],
+            -1.0 / total_elems,
+            1e-6
+        ));
+        assert!(approx_equal(
+            prediction_grad[[1, 0]],
+            1.0 / total_elems,
+            1e-6
+        ));
+        assert!(approx_equal(
+            prediction_grad[[1, 1]],
+            -1.0 / total_elems,
+            1e-6
+        ));
 
         assert!(approx_equal(target_grad[[0, 0]], -1.0 / total_elems, 1e-6));
         assert!(approx_equal(target_grad[[0, 1]], 1.0 / total_elems, 1e-6));
