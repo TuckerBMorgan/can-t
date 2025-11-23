@@ -18,6 +18,8 @@ ggus = "0.5"
 rust_tokenizers = "8.1.1"
 tokenizers = "*"
 regex = "*"
+ratatui = "*"
+crossterm = "*"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cant_metal = { path = "crates/cant_metal" }

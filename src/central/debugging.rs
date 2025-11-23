@@ -5,6 +5,6 @@ pub struct DebuggingOptions {
 
 impl DebuggingOptions {
     pub fn default() -> DebuggingOptions {
-        DebuggingOptions { nan_check: true }
+        DebuggingOptions { nan_check: false }
     }
 }
