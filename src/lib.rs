@@ -2,6 +2,7 @@
 
 pub mod central;
 pub mod nn;
+pub mod optimizers;
 pub mod utils;
 
 #[cfg(test)]

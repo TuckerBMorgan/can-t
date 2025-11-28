@@ -1,5 +1,6 @@
 // To keep the library simple we have a forced max of the number of dimensions we work with
 pub const MAX_DIMS: usize = 10;
+pub const MAX_STACK_AMOUNT : usize = 10;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Shape {
     dimension: [usize; MAX_DIMS], // Right to left, the length of up to 4 dimensions, Capping at 4 since that is the most we will encounter

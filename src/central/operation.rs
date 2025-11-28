@@ -1,4 +1,4 @@
-use crate::central::MAX_DIMS;
+use crate::central::{MAX_DIMS, MAX_STACK_AMOUNT};
 
 use super::{Shape, tensor::TensorID};
 

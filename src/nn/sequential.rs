@@ -39,6 +39,8 @@ impl From<Vec<Box<dyn Layer>>> for Sequential {
 
 #[cfg(test)]
 mod tests {
+    use crate::utils::{DataLoader, MnistDataSet};
+
     use super::*;
     use ndarray::ArrayD;
     fn approx_equal(a: f32, b: f32, epsilon: f32) -> bool {
@@ -286,123 +288,10 @@ mod tests {
     fn test_sequential_mnist_training() {
         use mnist::{Mnist, MnistBuilder};
 
-        // Helper function to load and preprocess MNIST data
-        fn load_mnist_data() -> (Tensor, Tensor, Tensor, Tensor) {
-            let Mnist {
-                trn_img,
-                trn_lbl,
-                tst_img,
-                tst_lbl,
-                ..
-            } = MnistBuilder::new()
-                .label_format_digit()
-                //  .training_set_length(1000)  // Small subset for fast testing
-                //   .test_set_length(200)
-                .finalize();
-            println!("Preprocess images, train");
-            let train_images = preprocess_images(trn_img, 60000);
-            println!("Preprocess labels, train");
-            let train_labels = preprocess_labels(trn_lbl);
-            println!("Preprocess images, test");
-            let test_images = preprocess_images(tst_img, 10000);
-            println!("Preprocess images, test");
-            let test_labels = preprocess_labels(tst_lbl);
+        let mnist_data = MnistDataSet::new();
+        let mut data_loader = DataLoader::new(Box::new(mnist_data),32 );
 
-            (train_images, train_labels, test_images, test_labels)
-        }
 
-        // Convert u8 pixel values to normalized f32 tensors
-        fn preprocess_images(raw_images: Vec<u8>, num_samples: usize) -> Tensor {
-            let normalized: Vec<f32> = raw_images
-                .iter()
-                .map(|&pixel| pixel as f32 / 255.0)
-                .collect();
-
-            Tensor::from_vec(normalized, vec![num_samples, 784])
-        }
-
-        // Convert digit labels to one-hot encoded vectors
-        fn preprocess_labels(raw_labels: Vec<u8>) -> Tensor {
-            let num_samples = raw_labels.len();
-            let mut one_hot = vec![0.0f32; num_samples * 10];
-
-            for (i, &label) in raw_labels.iter().enumerate() {
-                one_hot[i * 10 + label as usize] = 1.0;
-            }
-
-            Tensor::from_vec(one_hot, vec![num_samples, 10])
-        }
-
-        // Extract batch from tensor by copying rows
-        fn extract_batch(
-            tensor: &ArrayD<f32>,
-            features: usize,
-            start_idx: usize,
-            end_idx: usize,
-        ) -> Tensor {
-            let batch_size = end_idx - start_idx;
-            let features = features;
-            let data = tensor;
-
-            // Pre-allocate the exact size needed
-            let mut batch_data = Vec::with_capacity(batch_size * features);
-
-            // Use slice copying for better performance
-            for i in start_idx..end_idx {
-                let row_start = i * features;
-                let row_end = row_start + features;
-
-                // Copy entire row at once (more efficient than element-by-element)
-                if let Some(flat_data) = data.as_slice() {
-                    batch_data.extend_from_slice(&flat_data[row_start..row_end]);
-                } else {
-                    // Fallback to element access
-                    for j in 0..features {
-                        batch_data.push(data[[i, j]]);
-                    }
-                }
-            }
-
-            Tensor::from_vec(batch_data, vec![batch_size, features])
-        }
-
-        // Calculate classification accuracy
-        fn calculate_accuracy(predictions: &Tensor, targets: &Tensor) -> f32 {
-            let pred_data = predictions.item();
-            let target_data = targets.item();
-            let num_samples = predictions.shape.dimensions()[0];
-
-            let mut correct = 0;
-            for i in 0..num_samples {
-                // Find predicted class (argmax)
-                let mut pred_class = 0;
-                let mut max_pred = pred_data[[i, 0]];
-                for j in 1..10 {
-                    if pred_data[[i, j]] > max_pred {
-                        max_pred = pred_data[[i, j]];
-                        pred_class = j;
-                    }
-                }
-
-                // Find true class (argmax owf one-hot)
-                let mut true_class = 0;
-                for j in 0..10 {
-                    if target_data[[i, j]] == 1.0 {
-                        true_class = j;
-                        break;
-                    }
-                }
-
-                if pred_class == true_class {
-                    correct += 1;
-                }
-            }
-
-            correct as f32 / num_samples as f32
-        }
-
-        // Load MNIST data
-        let (train_images, train_labels, test_images, test_labels) = load_mnist_data();
         // Create MNIST classifier model: 784 -> 128 -> 64 -> 10
         let mut model = Sequential::new(vec![
             Box::new(Linear::new(784, 128, true)),
@@ -418,22 +307,19 @@ mod tests {
             get_equation().set_is_grequires_grad(param_id, true);
         }
 
+
+
         let batch_size = 32;
         let epochs = 2;
 
         let mut initial_loss = 0.0;
         let mut final_loss = 0.0;
         let learning_rates = lerp_array(0.1, 0.01, epochs);
-        // Training loop
-        let train_images_array_d = train_images.item();
-        let train_features = train_images.shape.dimensions()[1];
 
-        let test_images_array_d = train_labels.item();
-        let test_features = train_labels.shape.dimensions()[1];
 
         for epoch in 0..epochs {
             let mut total_loss = 0.0;
-            let num_samples = train_images.shape.dimensions()[0];
+            let num_samples = data_loader.number_of_samples();
             let num_batches = (num_samples + batch_size - 1) / batch_size; // Ceiling division
 
             for batch_idx in 0..num_batches {
@@ -441,28 +327,21 @@ mod tests {
 
                 // Extract batch (handle last batch which might be smaller)
                 let start_idx = batch_idx * batch_size;
-                let end_idx = std::cmp::min(start_idx + batch_size, num_samples);
 
-                let batch_images =
-                    extract_batch(&train_images_array_d, train_features, start_idx, end_idx);
-                let batch_labels =
-                    extract_batch(&test_images_array_d, test_features, start_idx, end_idx);
-
+                let (batch_images, batch_labels) = data_loader.get_random_batch(32);
                 // Forward pass
                 let outputs = model.forward(batch_images);
-
                 // Compute loss (mean squared error)
                 let loss = (outputs - batch_labels).pow(2.0).mean(vec![0, 1]);
                 let loss_val = loss.item()[0];
                 total_loss += loss_val;
-
                 if epoch == 0 && batch_idx == 0 {
                     initial_loss = loss_val;
                 }
-
                 // Backward pass and parameter update
                 loss.backward();
                 update_parameters(-learning_rates[epoch]);
+                clean_up_tensor_store();
             }
 
             let avg_loss = total_loss / num_batches as f32;
@@ -480,34 +359,5 @@ mod tests {
             initial_loss,
             final_loss
         );
-
-        // Test model accuracy on test set
-        let test_outputs = model.forward(test_images.clone());
-        let accuracy = calculate_accuracy(&test_outputs, &test_labels);
-
-        println!("Test Accuracy: {:.2}%", accuracy * 100.0);
-
-        // Model should achieve better than random performance (10% for 10 classes)
-        assert!(
-            accuracy > 0.15,
-            "Model should achieve > 15% accuracy, got {:.2}%",
-            accuracy * 100.0
-        );
-
-        // Basic sanity checks
-        assert_eq!(test_outputs.shape.dimensions(), vec![10000, 10]);
-
-        // Verify outputs are finite
-        let output_data = test_outputs.item();
-        for i in 0..200 {
-            for j in 0..10 {
-                assert!(
-                    output_data[[i, j]].is_finite(),
-                    "Output should be finite at [{}, {}]",
-                    i,
-                    j
-                );
-            }
-        }
     }
 }

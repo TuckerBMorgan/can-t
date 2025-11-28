@@ -4,27 +4,26 @@ use cant::central::*;
 use cant::nn::{Layer, Linear, Model};
 use mnist::{Mnist, MnistBuilder};
 use ndarray::ArrayD;
-use rand::{Rng, thread_rng};
 use rand::rngs::ThreadRng;
 use rand::seq::SliceRandom;
+use rand::{Rng, thread_rng};
 
-use std::io;
 use std::error::Error;
+use std::io;
 
 use crossterm::{
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{
-    backend::CrosstermBackend,
-    Terminal,
-    widgets::{Block, Borders, Paragraph, Chart, Axis, Dataset, GraphType},
-    layout::{Layout, Constraint, Direction},
-    text::Span,
-};
-use ratatui::backend::Backend;
 use ratatui::Frame;
-
+use ratatui::backend::Backend;
+use ratatui::{
+    Terminal,
+    backend::CrosstermBackend,
+    layout::{Constraint, Direction, Layout},
+    text::Span,
+    widgets::{Axis, Block, Borders, Chart, Dataset, GraphType, Paragraph},
+};
 
 // Convert u8 pixel values to normalized f32 tensors
 fn preprocess_images(raw_images: Vec<u8>, num_samples: usize) -> Tensor {
@@ -92,7 +91,7 @@ fn load_mnist_data() -> (Tensor, Tensor, Tensor, Tensor) {
         ..
     } = MnistBuilder::new()
         .label_format_digit()
-          .training_set_length(training_set_size)  // Small subset for fast testing
+        .training_set_length(training_set_size) // Small subset for fast testing
         //   .test_set_length(200)
         .finalize();
     println!("Preprocess images, train");
@@ -260,12 +259,7 @@ fn first_image_from_array2(arr: &ArrayD<f32>) -> Option<Vec<f32>> {
     }
 }
 
-fn draw_ui(
-    f: &mut Frame,
-    loss_history: &[(f64, f64)],
-    original_ascii: &str,
-    recon_ascii: &str,
-) {
+fn draw_ui(f: &mut Frame, loss_history: &[(f64, f64)], original_ascii: &str, recon_ascii: &str) {
     let size = f.size();
 
     let chunks = Layout::default()
@@ -301,26 +295,21 @@ fn draw_ui(
         }
     };
 
-    let x_max = loss_history
-        .last()
-        .map(|(x, _)| *x)
-        .unwrap_or(1.0)
-        .max(1.0);
+    let x_max = loss_history.last().map(|(x, _)| *x).unwrap_or(1.0).max(1.0);
 
-    let x_labels = vec![
-        Span::raw("0"),
-        Span::raw(format!("{:.0}", x_max)),
-    ];
+    let x_labels = vec![Span::raw("0"), Span::raw(format!("{:.0}", x_max))];
 
     let y_labels = vec![
         Span::raw(format!("{:.3}", min_loss)),
         Span::raw(format!("{:.3}", max_loss)),
     ];
 
-    let datasets = vec![Dataset::default()
-        .name("avg loss")
-        .graph_type(GraphType::Line)
-        .data(loss_history)];
+    let datasets = vec![
+        Dataset::default()
+            .name("avg loss")
+            .graph_type(GraphType::Line)
+            .data(loss_history),
+    ];
 
     let chart = Chart::new(datasets)
         .block(Block::default().borders(Borders::ALL).title("Average Loss"))
@@ -363,10 +352,13 @@ fn draw_ui(
         recon_ascii
     };
 
-    let orig_para = Paragraph::new(orig_text)
-        .block(Block::default().borders(Borders::ALL).title("Original"));
-    let recon_para = Paragraph::new(recon_text)
-        .block(Block::default().borders(Borders::ALL).title("Reconstruction"));
+    let orig_para =
+        Paragraph::new(orig_text).block(Block::default().borders(Borders::ALL).title("Original"));
+    let recon_para = Paragraph::new(recon_text).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title("Reconstruction"),
+    );
 
     f.render_widget(orig_para, img_chunks[0]);
     f.render_widget(recon_para, img_chunks[1]);
@@ -401,23 +393,21 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut total_loss = 0.0;
         let num_samples = train_images.shape.dimensions()[0];
         let num_batches = (num_samples + batch_size - 1) / batch_size; // Ceiling division
-        let mut offsets : Vec<usize> = (0..num_batches).collect();
+        let mut offsets: Vec<usize> = (0..num_batches).collect();
         offsets.shuffle(&mut thread_rng());
         for batch_idx in 0..num_batches {
             let start_idx = offsets[batch_idx] * batch_size;
             let end_idx = ((offsets[batch_idx] + 1) * batch_size).min(num_samples);
 
             // Assuming you already had something like this:
-            let batch_images = extract_batch(
-                &train_images_array_d,
-                train_features,
-                start_idx,
-                end_idx,
-            );
+            let batch_images =
+                extract_batch(&train_images_array_d, train_features, start_idx, end_idx);
 
             let test = auto_encoder.forward(batch_images.clone());
 
-            let diff = (test.clone() - batch_images.clone()).pow(2.0).mean(vec![0, 1]);
+            let diff = (test.clone() - batch_images.clone())
+                .pow(2.0)
+                .mean(vec![0, 1]);
             total_loss += diff.item()[0];
 
             // ---- New: update loss history more frequently (per batch) ----
@@ -435,9 +425,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let test_arr = test.item();
                 let input_arr = batch_images.item();
 
-                if let (Some(out_vec), Some(inp_vec)) =
-                    (first_image_from_array2(&test_arr), first_image_from_array2(&input_arr))
-                {
+                if let (Some(out_vec), Some(inp_vec)) = (
+                    first_image_from_array2(&test_arr),
+                    first_image_from_array2(&input_arr),
+                ) {
                     recon_ascii = image_to_ascii(&out_vec);
                     original_ascii = image_to_ascii(&inp_vec);
                 }
@@ -455,7 +446,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             get_equation().garbage_collect();
         }
 
-        println!("Epoch {} loss: {:?}", epoch, total_loss / num_batches as f32);
+        println!(
+            "Epoch {} loss: {:?}",
+            epoch,
+            total_loss / num_batches as f32
+        );
     }
 
     // ---- TUI cleanup ----
