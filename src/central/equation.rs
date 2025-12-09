@@ -759,7 +759,7 @@ impl Equation {
     /// Arugments
     /// 'parameter': the tensor that will have its weights updated 
     /// 'learning_rate': the learning rate applied to each gradient
-    pub fn update_single_parameter(&mut self, parameter: TensorID, learning_rate: f32) {
+    pub fn update_single_parameter(&mut self, parameter: TensorID, learning_rate: f32, weight_decay: f32) {
         let v = &self.tensor_record[&parameter];
         if v.requires_grad {
             for i in 0..v.shape.total_size() {
@@ -771,8 +771,11 @@ impl Equation {
                         panic!("Tried to update parameter with NaN value");
                     }
                 }
-                self.data[data_anchor_point + i] +=
-                    learning_rate * self.grad[grad_anchor_point + i];
+                self.data[data_anchor_point + i] = self.data[data_anchor_point + i] +
+                // Standard applying the learning rate
+                learning_rate * (self.grad[grad_anchor_point + i] + 
+                        // This is applying weight decay
+                        (self.data[data_anchor_point + i] * weight_decay));
             }
         }
         else {
