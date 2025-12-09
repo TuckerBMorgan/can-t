@@ -289,8 +289,7 @@ mod tests {
         use mnist::{Mnist, MnistBuilder};
 
         let mnist_data = MnistDataSet::new();
-        let mut data_loader = DataLoader::new(Box::new(mnist_data),32 );
-
+        let mut data_loader = DataLoader::new(Box::new(mnist_data), 32);
 
         // Create MNIST classifier model: 784 -> 128 -> 64 -> 10
         let mut model = Sequential::new(vec![
@@ -307,15 +306,12 @@ mod tests {
             get_equation().set_is_grequires_grad(param_id, true);
         }
 
-
-
         let batch_size = 32;
         let epochs = 2;
 
         let mut initial_loss = 0.0;
         let mut final_loss = 0.0;
         let learning_rates = lerp_array(0.1, 0.01, epochs);
-
 
         for epoch in 0..epochs {
             let mut total_loss = 0.0;

@@ -727,44 +727,9 @@ impl Equation {
         //        self.grad = vec![0.0;self.grad.len()];
     }
 
-    pub fn clip_grad_norm(&mut self, max_norm: f32) {
-        let mut total_sq_norm: f32 = 0.0;
-
-        // 1. Compute total squared norm of all grads
-        for (_k, v) in &self.tensor_record {
-            if v.requires_grad {
-                let grad_anchor_point = v.grad_start_index;
-                let n = v.shape.total_size();
-
-                for i in 0..n {
-                    let g = self.grad[grad_anchor_point + i];
-                    total_sq_norm += g * g;
-                }
-            }
-        }
-
-        if total_sq_norm == 0.0 {
-            // Nothing to do; all grads are zero
-            return;
-        }
-
-        let total_norm = total_sq_norm.sqrt();
-
-        // 2. If norm is too large, scale all grads down
-        if total_norm > max_norm {
-            let eps: f32 = 1e-6;
-            let scale = max_norm / (total_norm + eps);
-
-            for (_k, v) in &self.tensor_record {
-                if v.requires_grad {
-                    let grad_anchor_point = v.grad_start_index;
-                    let n = v.shape.total_size();
-
-                    for i in 0..n {
-                        self.grad[grad_anchor_point + i] *= scale;
-                    }
-                }
-            }
+    pub fn clip_grad(&mut self, max_norm: f32) {
+        for g in self.grad.iter_mut() {
+            *g = g.clamp(-max_norm, max_norm);
         }
     }
 
@@ -787,6 +752,31 @@ impl Equation {
                         learning_rate * self.grad[grad_anchor_point + i];
                 }
             }
+        }
+    }
+
+    /// Updates the paramaters of a single tensor
+    /// Arugments
+    /// 'parameter': the tensor that will have its weights updated 
+    /// 'learning_rate': the learning rate applied to each gradient
+    pub fn update_single_parameter(&mut self, parameter: TensorID, learning_rate: f32) {
+        let v = &self.tensor_record[&parameter];
+        if v.requires_grad {
+            for i in 0..v.shape.total_size() {
+                let grad_anchor_point = v.grad_start_index;
+                let data_anchor_point = v.data_start_index;
+                let _update = learning_rate * self.grad[grad_anchor_point + i];
+                if self._debugging_options.nan_check {
+                    if _update.is_nan() {
+                        panic!("Tried to update parameter with NaN value");
+                    }
+                }
+                self.data[data_anchor_point + i] +=
+                    learning_rate * self.grad[grad_anchor_point + i];
+            }
+        }
+        else {
+            panic!("Update single parameter called on a tensor that does not have grad required: Tensor ID {:?}", parameter);
         }
     }
 

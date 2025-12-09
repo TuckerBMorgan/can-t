@@ -4,17 +4,24 @@ use super::{BackproagationPacket, Operation, Tensor};
 
 impl Tensor {
     pub fn stack(&self, others: Vec<Tensor>, dimension: usize) -> Tensor {
-
         let first_shape = self.shape;
         for other in &others {
-            assert!(first_shape == other.shape, "All tensors much share the same share for stack to work");
+            assert!(
+                first_shape == other.shape,
+                "All tensors much share the same share for stack to work"
+            );
         }
 
-        assert!(others.len() > 0, "There must be at least one other tensor to stack with");
+        assert!(
+            others.len() > 0,
+            "There must be at least one other tensor to stack with"
+        );
 
         // we add a new dimension at the desired location, that new dimension is the total number of dimension we are stacking
         // which is the length of the others vector + 1 to cover the tensor we are inside of so to speak
-        let new_shape = self.shape.add_dimension_at_index(others.len() + 1, dimension);
+        let new_shape = self
+            .shape
+            .add_dimension_at_index(others.len() + 1, dimension);
 
         let mut output_tensor = self.cat(others[0], dimension);
 

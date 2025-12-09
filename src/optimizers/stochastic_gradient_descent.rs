@@ -1,4 +1,83 @@
-pub struct SGD {
+use crate::central::{TensorID, get_equation};
+use crate::nn::Model;
+use crate::optimizers::*;
 
+pub struct SGD {
+    parameters: Vec<TensorID>,
+    learning_rate: f32,
 }
 
+impl SGD {
+    pub fn new(learning_rate: f32) -> SGD {
+        SGD {
+            parameters: vec![],
+            learning_rate,
+        }
+    }
+}
+
+impl Optimizer for SGD {
+    fn get_parameters(&mut self, model: &mut dyn Model) {
+        self.parameters.extend(model.get_parameters());
+    }
+
+    fn update(&mut self) {
+        for p in &self.parameters {
+            get_equation().update_single_parameter(*p, self.learning_rate);
+        }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use crate::{central::{Tensor, get_equation}, nn::Model, optimizers::{Optimizer, SGD}};
+
+    #[test]
+    pub fn basic_test() {
+
+        // Optimizers work off of Models so we need to write a little wrapper model
+        struct BasicModel {
+            weight: Tensor
+        }
+
+        impl BasicModel {
+            pub fn new(weight: Tensor) -> BasicModel {
+                BasicModel {
+                    weight
+                }
+            }
+        }
+
+        impl Model for BasicModel {
+            fn forward(&mut self, input: Tensor) -> Tensor {
+                return self.weight + input;
+            }
+
+            fn get_parameters(&self) -> Vec<crate::central::TensorID> {
+                vec![self.weight.id]
+            }
+        }
+
+        let mut weight = Tensor::from_vec(vec![1.0, 1.0, 1.0, 1.0], vec![4]);
+        weight.set_requires_grad(true);
+        weight.set_keep_alive(true);
+
+        let mut basic_model = BasicModel::new(weight);    
+        let mut sgd = SGD::new(-0.01);
+
+        sgd.get_parameters(&mut basic_model);
+
+        for _ in 0..10 {
+            let input = Tensor::from_vec(vec![1.0, 1.0, 1.0, 1.0], vec![4]);
+            let output = basic_model.forward(input);
+            println!("{:?}", output.item());
+            let expected_output = Tensor::from_vec(vec![3.0, 3.0, 3.0, 3.0], vec![4]);
+            let loss = (expected_output - output).pow(2.0).mean(vec![0]);
+            println!("{:?}", loss.item());
+            loss.backward();
+            sgd.update();
+            get_equation().compact_tensor_store();
+        }
+    }
+}

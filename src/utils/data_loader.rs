@@ -1,5 +1,5 @@
 use crate::{central::Tensor, utils::DataSet};
-use rand::{thread_rng, Rng};
+use rand::{Rng, thread_rng};
 
 pub struct DataLoader {
     batch_size: usize,
@@ -18,7 +18,7 @@ impl DataLoader {
         assert!(batch_size > 0);
         let number_of_samples = self.data_set.length();
         let mut rng = thread_rng();
-        
+
         // Create empty tensors for input and label batches
         let mut batch_inputs: Vec<Tensor> = Vec::with_capacity(batch_size);
         let mut batch_labels: Vec<Tensor> = Vec::with_capacity(batch_size);

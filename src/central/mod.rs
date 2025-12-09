@@ -28,6 +28,7 @@ mod shape;
 mod sigmoid_op;
 mod sin_op;
 mod softmax_op;
+mod stack_op;
 mod std_op;
 mod sum_op;
 mod tanh_op;
@@ -35,7 +36,6 @@ mod tensor;
 mod topk_op;
 mod transpose_op;
 mod unsqueeze_op;
-mod stack_op;
 
 pub use add_op::*;
 pub use cat_op::*;
@@ -70,6 +70,7 @@ pub use shape::*;
 pub use sigmoid_op::*;
 pub use sin_op::*;
 pub use softmax_op::*;
+pub use stack_op::*;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 pub use std_op::*;
 pub use sum_op::*;
@@ -78,7 +79,6 @@ pub use tensor::*;
 pub use topk_op::*;
 pub use transpose_op::*;
 pub use unsqueeze_op::*;
-pub use stack_op::*;
 
 static SINGLETON_INSTANCE: LazyLock<Mutex<Equation>> =
     LazyLock::new(|| Mutex::new(Equation::new()));
@@ -102,7 +102,7 @@ pub fn clean_up_tensor_store() {
 }
 
 pub fn clip_gradients(max_norm: f32) {
-    get_equation().clip_grad_norm(max_norm);
+    get_equation().clip_grad(max_norm);
 }
 
 pub fn validate_tensor_store() {

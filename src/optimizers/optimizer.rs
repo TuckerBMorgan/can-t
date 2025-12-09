@@ -1,6 +1,6 @@
 use crate::nn::Model;
 
-trait Optimizer {
-    fn get_parameters(&mut self, mode: Box<dyn Model>);
-    fn update();
+pub trait Optimizer {
+    fn get_parameters(&mut self, mode: &mut dyn Model);
+    fn update(&mut self);
 }

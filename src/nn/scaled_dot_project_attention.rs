@@ -5,6 +5,7 @@ use crate::central::*;
 pub struct ScaledDotProductAttention {
     scale: f32,
     _dropout: f32,
+    kv_cache: Option<(Tensor, Tensor)>,
 }
 
 impl ScaledDotProductAttention {
@@ -12,6 +13,7 @@ impl ScaledDotProductAttention {
         ScaledDotProductAttention {
             scale,
             _dropout: 1.0,
+            kv_cache: None,
         }
     }
     pub fn forward(
