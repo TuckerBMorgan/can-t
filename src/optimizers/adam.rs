@@ -49,7 +49,17 @@ impl Optimizer for Adam {
 
     fn get_parameters(&mut self, model: &mut dyn Model) {
         self.params.extend(model.get_parameters());
-        panic!("Need to implement having the velocity and momentum vecs here");
+
+        for param in &self.params {
+            let shape = get_equation().get_tensor_shape(*param);
+
+            let total_elements = shape.total_size();
+
+            let velocity = vec![0.0; total_elements];
+            let momentum = vec![0.0;total_elements];
+            self.momentum.insert(*param, momentum);
+            self.velocity.insert(*param, velocity);
+        }
     }
 
     fn update(&mut self) {
@@ -92,9 +102,57 @@ impl Optimizer for Adam {
 
 #[cfg(test)]
 mod tests {
-
+    use crate::optimizers::adam::Adam;
+    use crate::{central::{Tensor, get_equation}, nn::Model, optimizers::{Optimizer, SGD}};
     #[test]
     pub fn basic_test() {
 
+        // Optimizers work off of Models so we need to write a little wrapper model
+        struct BasicModel {
+            weight: Tensor
+        }
+
+        impl BasicModel {
+            pub fn new(weight: Tensor) -> BasicModel {
+                BasicModel {
+                    weight
+                }
+            }
+        }
+
+        impl Model for BasicModel {
+            fn forward(&mut self, input: Tensor) -> Tensor {
+                return self.weight + input;
+            }
+
+            fn get_parameters(&self) -> Vec<crate::central::TensorID> {
+                vec![self.weight.id]
+            }
+        }
+
+        let mut weight = Tensor::from_vec(vec![1.0, 1.0, 1.0, 1.0], vec![4]);
+        weight.set_requires_grad(true);
+        weight.set_keep_alive(true);
+
+        let mut basic_model = BasicModel::new(weight);    
+        let mut sgd = Adam::new(0.1);
+
+        sgd.get_parameters(&mut basic_model);
+
+        for _ in 0..1 {
+            let input = Tensor::from_vec(vec![1.0, 1.0, 1.0, 1.0], vec![4]);
+            let output = basic_model.forward(input);
+            let expected_output = Tensor::from_vec(vec![3.0, 3.0, 3.0, 3.0], vec![4]);
+            let loss = (expected_output - output).pow(2.0).mean(vec![0]);
+            loss.backward();
+            sgd.update();
+            get_equation().compact_tensor_store();
+        }
+
+        let updates = basic_model.weight.item().into_raw_vec();
+
+        for element in updates {
+            assert!(element - 1.0 < f32::EPSILON);
+        }
     }
 }
