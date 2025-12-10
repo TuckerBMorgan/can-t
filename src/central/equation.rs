@@ -783,6 +783,27 @@ impl Equation {
         }
     }
 
+    /// Updates the paramaters of a single tensor using the provided gradient vector
+    /// Arugments
+    /// 'parameter': the tensor that will have its weights updated 
+    /// 'learning_rate': the learning rate applied to each gradient
+    pub fn update_single_parameter_with_provided_gradient(&mut self, parameter: TensorID, gradient: Vec<f32>) {
+        let v = &self.tensor_record[&parameter];
+        if v.requires_grad {
+            for i in 0..v.shape.total_size() {
+                let grad_anchor_point = v.grad_start_index;
+                let data_anchor_point = v.data_start_index;
+                self.data[data_anchor_point + i] = self.data[data_anchor_point + i] + gradient[grad_anchor_point + i];
+                if self._debugging_options.nan_check {
+                    assert!(self.data[data_anchor_point + i].is_nan() == false);
+                }
+            }
+        }
+        else {
+            panic!("Update single parameter called on a tensor that does not have grad required: Tensor ID {:?}", parameter);
+        }
+    }
+
     /// Helper function for setting the internal tensor to know if it needs gradient or not
     /// # Arguments
     /// 'tensor_id' : which Tensor we are setting
