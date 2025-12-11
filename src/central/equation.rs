@@ -754,6 +754,27 @@ impl Equation {
             }
         }
     }
+    /// sets the weights of tensor
+    /// Arguments
+    /// 'param_id' : the Id of the Tensor we are updating
+    /// 'new_parameters' : the new values
+    pub fn set_parameter(&mut self, param_id: TensorID, new_parameters: Vec<f32>) {
+        let v = &self.tensor_record[&param_id];
+        assert!(v.shape.total_size() == new_parameters.len());
+        if v.requires_grad {
+            for i in 0..v.shape.total_size() {
+                let data_anchor_point = v.data_start_index;
+                self.data[data_anchor_point + i] = new_parameters[i];
+                if self._debugging_options.nan_check {
+                    assert!(self.data[data_anchor_point + i].is_nan() == false);
+                }
+            }
+        }
+        else {
+            panic!("Set parameter called on a tensor that does not have grad required: Tensor ID {:?}", param_id);
+        }
+
+    }
 
     /// Updates the paramaters of a single tensor
     /// Arugments
@@ -791,9 +812,8 @@ impl Equation {
         let v = &self.tensor_record[&parameter];
         if v.requires_grad {
             for i in 0..v.shape.total_size() {
-                let grad_anchor_point = v.grad_start_index;
                 let data_anchor_point = v.data_start_index;
-                self.data[data_anchor_point + i] = self.data[data_anchor_point + i] + gradient[grad_anchor_point + i];
+                self.data[data_anchor_point + i] = self.data[data_anchor_point + i] + gradient[i];
                 if self._debugging_options.nan_check {
                     assert!(self.data[data_anchor_point + i].is_nan() == false);
                 }

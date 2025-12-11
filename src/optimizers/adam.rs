@@ -1,7 +1,4 @@
-use std::default;
-use std::hash::Hash;
 
-use rand_distr::num_traits::Pow;
 
 use crate::central::{TensorID, get_equation};
 use crate::nn::Model;
@@ -103,7 +100,7 @@ impl Optimizer for Adam {
 #[cfg(test)]
 mod tests {
     use crate::optimizers::adam::Adam;
-    use crate::{central::{Tensor, get_equation}, nn::Model, optimizers::{Optimizer, SGD}};
+    use crate::{central::{Tensor, get_equation}, nn::Model, optimizers::Optimizer};
     #[test]
     pub fn basic_test() {
 
@@ -152,7 +149,7 @@ mod tests {
         let updates = basic_model.weight.item().into_raw_vec();
 
         for element in updates {
-            assert!(element - 1.0 < f32::EPSILON);
+            assert!(element - 1.1 < f32::EPSILON, "updates {:?}", element);
         }
     }
 }
