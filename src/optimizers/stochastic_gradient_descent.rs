@@ -1,9 +1,8 @@
 use std::default;
 
-use crate::central::{TensorID, get_equation};
+use crate::central::{TensorID, get_equation, zero_all_grads};
 use crate::nn::Model;
 use crate::optimizers::*;
-
 
 #[derive(Default)]
 pub struct SGD {
@@ -12,7 +11,7 @@ pub struct SGD {
     maximize: bool,
     weight_decay: f32,
     momentum: f32,
-    dampening: f32
+    dampening: f32,
 }
 
 impl SGD {
@@ -23,7 +22,7 @@ impl SGD {
             maximize: false,
             weight_decay: 0.0,
             momentum: 0.0,
-            dampening: 0.0
+            dampening: 0.0,
         }
     }
 }
@@ -34,11 +33,10 @@ impl Optimizer for SGD {
     }
 
     fn update(&mut self) {
-
         if self.dampening.abs() > 0.0 || self.momentum.abs() > 0.0 {
             panic!("Damening and Momentum are not yet implemented for SDG");
         }
-        
+
         for p in &self.parameters {
             let mut use_learning_rate = self.learning_rate;
             // This will have SDG attempt to maximize the obejctive instate of mizimize it
@@ -49,26 +47,30 @@ impl Optimizer for SGD {
             get_equation().update_single_parameter(*p, use_learning_rate, self.weight_decay);
         }
     }
-}
 
+    fn zero_grads(&mut self) {
+        zero_all_grads();
+    }
+}
 
 #[cfg(test)]
 mod tests {
-    use crate::{central::{Tensor, get_equation}, nn::Model, optimizers::{Optimizer, SGD}};
+    use crate::{
+        central::{Tensor, get_equation},
+        nn::Model,
+        optimizers::{Optimizer, SGD},
+    };
 
     #[test]
     pub fn basic_test() {
-
         // Optimizers work off of Models so we need to write a little wrapper model
         struct BasicModel {
-            weight: Tensor
+            weight: Tensor,
         }
 
         impl BasicModel {
             pub fn new(weight: Tensor) -> BasicModel {
-                BasicModel {
-                    weight
-                }
+                BasicModel { weight }
             }
         }
 
@@ -86,7 +88,7 @@ mod tests {
         weight.set_requires_grad(true);
         weight.set_keep_alive(true);
 
-        let mut basic_model = BasicModel::new(weight);    
+        let mut basic_model = BasicModel::new(weight);
         let mut sgd = SGD::new(0.01);
 
         sgd.get_parameters(&mut basic_model);

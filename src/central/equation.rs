@@ -769,18 +769,24 @@ impl Equation {
                     assert!(self.data[data_anchor_point + i].is_nan() == false);
                 }
             }
+        } else {
+            panic!(
+                "Set parameter called on a tensor that does not have grad required: Tensor ID {:?}",
+                param_id
+            );
         }
-        else {
-            panic!("Set parameter called on a tensor that does not have grad required: Tensor ID {:?}", param_id);
-        }
-
     }
 
     /// Updates the paramaters of a single tensor
     /// Arugments
-    /// 'parameter': the tensor that will have its weights updated 
+    /// 'parameter': the tensor that will have its weights updated
     /// 'learning_rate': the learning rate applied to each gradient
-    pub fn update_single_parameter(&mut self, parameter: TensorID, learning_rate: f32, weight_decay: f32) {
+    pub fn update_single_parameter(
+        &mut self,
+        parameter: TensorID,
+        learning_rate: f32,
+        weight_decay: f32,
+    ) {
         let v = &self.tensor_record[&parameter];
         if v.requires_grad {
             for i in 0..v.shape.total_size() {
@@ -798,17 +804,23 @@ impl Equation {
                         // This is applying weight decay
                         (self.data[data_anchor_point + i] * weight_decay));
             }
-        }
-        else {
-            panic!("Update single parameter called on a tensor that does not have grad required: Tensor ID {:?}", parameter);
+        } else {
+            panic!(
+                "Update single parameter called on a tensor that does not have grad required: Tensor ID {:?}",
+                parameter
+            );
         }
     }
 
     /// Updates the paramaters of a single tensor using the provided gradient vector
     /// Arugments
-    /// 'parameter': the tensor that will have its weights updated 
+    /// 'parameter': the tensor that will have its weights updated
     /// 'learning_rate': the learning rate applied to each gradient
-    pub fn update_single_parameter_with_provided_gradient(&mut self, parameter: TensorID, gradient: Vec<f32>) {
+    pub fn update_single_parameter_with_provided_gradient(
+        &mut self,
+        parameter: TensorID,
+        gradient: Vec<f32>,
+    ) {
         let v = &self.tensor_record[&parameter];
         if v.requires_grad {
             for i in 0..v.shape.total_size() {
@@ -818,9 +830,11 @@ impl Equation {
                     assert!(self.data[data_anchor_point + i].is_nan() == false);
                 }
             }
-        }
-        else {
-            panic!("Update single parameter called on a tensor that does not have grad required: Tensor ID {:?}", parameter);
+        } else {
+            panic!(
+                "Update single parameter called on a tensor that does not have grad required: Tensor ID {:?}",
+                parameter
+            );
         }
     }
 

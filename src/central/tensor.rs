@@ -167,7 +167,7 @@ impl Tensor {
     }
 
     pub fn detach(&self) -> Tensor {
-        let self_data = get_equation().get_grad_flat_buffer(self.id).to_vec();
+        let self_data = get_equation().get_data_flat_buffer(self.id).to_vec();
         return Tensor::create_tensor_data_and_shape_and_operation(
             self.shape,
             self_data,
